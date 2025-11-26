@@ -2,7 +2,7 @@
 node_modules
 dist
 prisma/migrations
-prisma/schema.prisma
+
 .env.local
 .env.development.local
 .env.test.local

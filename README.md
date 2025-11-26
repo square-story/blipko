@@ -235,4 +235,5 @@ Put ngrok HTTPS URL into Meta WhatsApp webhook config.
 
 ## 🧑‍💻 Author
 
-Built with ❤️ by **Sadik**
+Built with ❤️ by **[MOHAMMED SADIK](https://sadik.is-a.dev)**
+
