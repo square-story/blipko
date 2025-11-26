@@ -75,8 +75,7 @@ export class WebhookController {
 
       const senderPhone = message.from ?? '';
       const textMessage = message.text?.body ?? '';
-
-      console.log(message, senderPhone, textMessage)
+      console.log(senderPhone, textMessage)
       if (!senderPhone || !textMessage) {
         res.status(400).json({
           success: false,

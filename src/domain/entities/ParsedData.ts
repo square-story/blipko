@@ -1,4 +1,4 @@
-export type ParsedIntent = 'CREDIT' | 'DEBIT' | 'BALANCE';
+export type ParsedIntent = 'CREDIT' | 'DEBIT' | 'BALANCE' | 'START' | 'QUICK_REPLY';
 
 export interface ParsedData {
   intent: ParsedIntent;

@@ -12,7 +12,7 @@ const envSchema = z.object({
   META_WHATSAPP_TOKEN: z.string(),
   WHATSAPP_PHONE_NUMBER_ID: z.string(),
   GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
-  WHATSAPP_MESSAGE_MOCK_URL: z.string().url().default('https://httpbin.org/post'),
+  WHATSAPP_GRAPH_VERSION: z.string().default('v21.0'),
 });
 
 export const env = envSchema.parse(process.env);

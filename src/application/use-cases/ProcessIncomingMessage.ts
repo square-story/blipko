@@ -17,11 +17,18 @@ interface ProcessIncomingMessageOutput {
   parsed: ParsedData;
 }
 
+const QUICK_REPLIES: Record<string, string> = {
+  ping: 'pong',
+  hello: 'Hi there! 👋',
+  admin: "Sadik is here 💦"
+};
+
 const isTransactionIntent = (
   intent: ParsedIntent,
-): intent is Exclude<ParsedIntent, 'BALANCE'> => intent === 'CREDIT' || intent === 'DEBIT';
+): intent is Extract<ParsedIntent, 'CREDIT' | 'DEBIT'> => intent === 'CREDIT' || intent === 'DEBIT';
 
-type TransactionParsedData = ParsedData & { intent: Exclude<ParsedIntent, 'BALANCE'>; amount: number };
+type TransactionIntent = Extract<ParsedIntent, 'CREDIT' | 'DEBIT'>;
+type TransactionParsedData = ParsedData & { intent: TransactionIntent; amount: number };
 
 export class ProcessIncomingMessageUseCase {
   constructor(
@@ -29,11 +36,22 @@ export class ProcessIncomingMessageUseCase {
     private readonly customerRepository: ICustomerRepository,
     private readonly transactionRepository: ITransactionRepository,
     private readonly messageService: IMessageService,
-  ) {}
+  ) { }
 
   async execute(
     payload: ProcessIncomingMessageInput,
   ): Promise<ProcessIncomingMessageOutput> {
+    const normalizedMessage = payload.textMessage.trim().toLowerCase();
+
+    if (normalizedMessage === 'start') {
+      return this.handleStartIntent(payload.senderPhone);
+    }
+
+    const quickReply = QUICK_REPLIES[normalizedMessage];
+    if (quickReply) {
+      return this.handleQuickReply(payload.senderPhone, normalizedMessage, quickReply);
+    }
+
     const parsed = await this.aiParser.parseText(payload.textMessage);
 
     if (parsed.intent === 'BALANCE') {
@@ -53,6 +71,33 @@ export class ProcessIncomingMessageUseCase {
     }
 
     throw new Error(`Unsupported intent: ${parsed.intent}`);
+  }
+
+  private async handleStartIntent(
+    phoneNumber: string,
+  ): Promise<ProcessIncomingMessageOutput> {
+    const response =
+      "👋 Welcome to AI Ledger! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.";
+
+    await this.messageService.sendMessage({ to: phoneNumber, body: response });
+
+    return {
+      response,
+      parsed: { intent: 'START', notes: 'User initiated onboarding' },
+    };
+  }
+
+  private async handleQuickReply(
+    phoneNumber: string,
+    keyword: string,
+    response: string,
+  ): Promise<ProcessIncomingMessageOutput> {
+    await this.messageService.sendMessage({ to: phoneNumber, body: response });
+
+    return {
+      response,
+      parsed: { intent: 'QUICK_REPLY', notes: `Quick reply for keyword: ${keyword}` },
+    };
   }
 
   private async handleBalanceIntent(
