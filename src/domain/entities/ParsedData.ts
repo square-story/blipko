@@ -5,5 +5,7 @@ export interface ParsedData {
   amount?: number;
   name?: string;
   notes?: string;
+  category?: string;
+  currency?: string;
 }
 
