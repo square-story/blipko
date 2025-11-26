@@ -1,11 +1,10 @@
 import { IAiParser } from '../../domain/services/IAiParser';
-import {
-  ICustomerRepository,
-  CreateCustomerDTO,
-} from '../../domain/repositories/ICustomerRepository';
+import { IUserRepository, CreateUserDTO } from '../../domain/repositories/IUserRepository';
+import { IContactRepository } from '../../domain/repositories/IContactRepository';
 import { ITransactionRepository } from '../../domain/repositories/ITransactionRepository';
 import { IMessageService } from '../interfaces/IMessageService';
 import { ParsedData, ParsedIntent } from '../../domain/entities/ParsedData';
+import { User, Contact } from '@prisma/client';
 
 interface ProcessIncomingMessageInput {
   senderPhone: string;
@@ -33,7 +32,8 @@ type TransactionParsedData = ParsedData & { intent: TransactionIntent; amount: n
 export class ProcessIncomingMessageUseCase {
   constructor(
     private readonly aiParser: IAiParser,
-    private readonly customerRepository: ICustomerRepository,
+    private readonly userRepository: IUserRepository,
+    private readonly contactRepository: IContactRepository,
     private readonly transactionRepository: ITransactionRepository,
     private readonly messageService: IMessageService,
   ) { }
@@ -42,20 +42,28 @@ export class ProcessIncomingMessageUseCase {
     payload: ProcessIncomingMessageInput,
   ): Promise<ProcessIncomingMessageOutput> {
     const normalizedMessage = payload.textMessage.trim().toLowerCase();
+    console.log(`Executing ProcessIncomingMessage for ${payload.senderPhone} with message: "${normalizedMessage}"`);
+
+    // 1. Identify or Create User
+    const user = await this.ensureUserExists(payload.senderPhone);
+    console.log(`User identified: ${user.id}`);
+
 
     if (normalizedMessage === 'start') {
-      return this.handleStartIntent(payload.senderPhone);
+      return this.handleStartIntent(user);
     }
 
     const quickReply = QUICK_REPLIES[normalizedMessage];
     if (quickReply) {
-      return this.handleQuickReply(payload.senderPhone, normalizedMessage, quickReply);
+      return this.handleQuickReply(user, normalizedMessage, quickReply);
     }
 
+    console.log('Parsing message with AI...');
     const parsed = await this.aiParser.parseText(payload.textMessage);
+    console.log('AI Parsed result:', JSON.stringify(parsed, null, 2));
 
     if (parsed.intent === 'BALANCE') {
-      return this.handleBalanceIntent(payload.senderPhone, parsed);
+      return this.handleBalanceIntent(user, parsed);
     }
 
     if (isTransactionIntent(parsed.intent)) {
@@ -63,7 +71,7 @@ export class ProcessIncomingMessageUseCase {
         throw new Error('Amount is required for CREDIT or DEBIT intents');
       }
 
-      return this.handleTransactionIntent(payload.senderPhone, {
+      return this.handleTransactionIntent(user, {
         ...parsed,
         amount: parsed.amount,
         intent: parsed.intent,
@@ -74,12 +82,12 @@ export class ProcessIncomingMessageUseCase {
   }
 
   private async handleStartIntent(
-    phoneNumber: string,
+    user: User,
   ): Promise<ProcessIncomingMessageOutput> {
     const response =
       "👋 Welcome to Blipko! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.";
 
-    await this.messageService.sendMessage({ to: phoneNumber, body: response });
+    await this.messageService.sendMessage({ to: user.phoneNumber, body: response });
 
     return {
       response,
@@ -88,11 +96,11 @@ export class ProcessIncomingMessageUseCase {
   }
 
   private async handleQuickReply(
-    phoneNumber: string,
+    user: User,
     keyword: string,
     response: string,
   ): Promise<ProcessIncomingMessageOutput> {
-    await this.messageService.sendMessage({ to: phoneNumber, body: response });
+    await this.messageService.sendMessage({ to: user.phoneNumber, body: response });
 
     return {
       response,
@@ -101,72 +109,100 @@ export class ProcessIncomingMessageUseCase {
   }
 
   private async handleBalanceIntent(
-    phoneNumber: string,
+    user: User,
     parsed: ParsedData,
   ): Promise<ProcessIncomingMessageOutput> {
-    const customer = await this.ensureCustomerExists({
-      phoneNumber,
-      name: parsed.name ?? 'Friend',
-    });
+    if (!parsed.name) {
+      const response = "Please specify a contact name to check balance (e.g., 'Balance for Raju')";
+      await this.messageService.sendMessage({ to: user.phoneNumber, body: response });
+      return { response, parsed };
+    }
 
-    const response = `📊 Balance for ${customer.name}: ${customer.currentBalance.toFixed(2)}`;
-    await this.messageService.sendMessage({ to: phoneNumber, body: response });
+    const contact = await this.contactRepository.findByName(user.id, parsed.name);
+
+    if (!contact) {
+      const response = `You don't have any records with ${parsed.name} yet.`;
+      await this.messageService.sendMessage({ to: user.phoneNumber, body: response });
+      return { response, parsed };
+    }
+
+    // Calculate balance dynamically from transactions
+    // In a real app, we might cache this on the Contact model
+    // For now, let's fetch all transactions for this contact (we need to add a method to repo or filter in memory)
+    // Since I didn't add findByContact to TransactionRepo, I'll fetch all user transactions and filter.
+    // Optimization: Add findByContact to TransactionRepo later.
+
+    // Actually, let's just calculate it from all user transactions for now as a simple implementation
+    // Or better, assume we should have added findByContact. 
+    // Given the constraints, I will fetch all user transactions and filter in memory.
+    const transactions = await this.transactionRepository.findByUser(user.id);
+    const contactTransactions = transactions.filter(t => t.contactId === contact.id);
+
+    let balance = 0;
+    for (const t of contactTransactions) {
+      if (t.intent === 'CREDIT') { // I gave money
+        balance += Number(t.amount);
+      } else if (t.intent === 'DEBIT') { // I received money
+        balance -= Number(t.amount);
+      }
+    }
+
+    const response = `📊 Balance with ${contact.name}: ${balance.toFixed(2)} (${balance >= 0 ? 'You are owed' : 'You owe'})`;
+    await this.messageService.sendMessage({ to: user.phoneNumber, body: response });
 
     return { response, parsed };
   }
 
   private async handleTransactionIntent(
-    phoneNumber: string,
+    user: User,
     parsed: TransactionParsedData,
   ): Promise<ProcessIncomingMessageOutput> {
-    const customer = await this.ensureCustomerExists({
-      phoneNumber,
-      name: parsed.name ?? 'Friend',
-    });
+    let contact: Contact | null = null;
 
+    if (parsed.name) {
+      contact = await this.ensureContactExists(user.id, parsed.name);
+    }
+
+    console.log(`Creating transaction for user ${user.id}, contact ${contact?.id}, amount ${parsed.amount}, intent ${parsed.intent}`);
     const transaction = await this.transactionRepository.create({
       amount: parsed.amount,
-      type: parsed.intent,
-      ...(typeof parsed.notes === 'string' ? { description: parsed.notes } : {}),
-      customerId: customer.id,
+      intent: parsed.intent,
+      description: parsed.notes,
+      userId: user.id,
+      contactId: contact?.id,
     });
 
-    const updatedBalance =
-      parsed.intent === 'CREDIT'
-        ? customer.currentBalance + transaction.amount
-        : customer.currentBalance - transaction.amount;
+    const response = `✅ Recorded ${parsed.intent} of ${transaction.amount.toFixed(2)} ${contact ? `with ${contact.name}` : ''}.`;
 
-    const updatedCustomer = await this.customerRepository.updateBalance(
-      customer.id,
-      updatedBalance,
-    );
-
-    const response = `✅ Recorded ${transaction.amount.toFixed(2)} for ${updatedCustomer.name}. New balance: ${updatedCustomer.currentBalance.toFixed(
-      2,
-    )}`;
-
-    await this.messageService.sendMessage({ to: phoneNumber, body: response });
+    await this.messageService.sendMessage({ to: user.phoneNumber, body: response });
 
     return { response, parsed };
   }
 
-  private async ensureCustomerExists(data: CreateCustomerDTO) {
-    const existing = await this.customerRepository.findByPhone(data.phoneNumber);
+  private async ensureUserExists(phoneNumber: string): Promise<User> {
+    const existing = await this.userRepository.findByPhone(phoneNumber);
     if (existing) {
+      console.log(`Found existing user for phone ${phoneNumber}`);
       return existing;
     }
+    console.log(`Creating new user for phone ${phoneNumber}`);
 
-    if (data.name) {
-      const byName = await this.customerRepository.findByName(data.name);
-      if (byName) {
-        return byName;
-      }
+    return this.userRepository.create({
+      phoneNumber: phoneNumber,
+    });
+  }
+
+  private async ensureContactExists(userId: string, name: string): Promise<Contact> {
+    const existing = await this.contactRepository.findByName(userId, name);
+    if (existing) {
+      console.log(`Found existing contact ${name} for user ${userId}`);
+      return existing;
     }
+    console.log(`Creating new contact ${name} for user ${userId}`);
 
-    return this.customerRepository.create({
-      phoneNumber: data.phoneNumber,
-      name: data.name,
-      initialBalance: data.initialBalance ?? 0,
+    return this.contactRepository.create({
+      userId,
+      name
     });
   }
 }

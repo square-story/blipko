@@ -1,23 +1,25 @@
-import { prisma } from '../prisma/client';
-import {
-  CreateTransactionDTO,
-  ITransactionRepository,
-} from '../../domain/repositories/ITransactionRepository';
-import { Transaction } from '../../domain/entities/Transaction';
+import { PrismaClient, Transaction } from '@prisma/client';
+import { ITransactionRepository, CreateTransactionDTO } from '../../domain/repositories/ITransactionRepository';
 
 export class PrismaTransactionRepository implements ITransactionRepository {
-  async create(data: CreateTransactionDTO): Promise<Transaction> {
-    const record = await prisma.transaction.create({ data });
+  constructor(private readonly prisma: PrismaClient) { }
 
-    return {
-      id: record.id,
-      amount: Number(record.amount),
-      type: record.type,
-      description: record.description,
-      customerId: record.customerId,
-      createdAt: record.createdAt,
-    };
+  async create(data: CreateTransactionDTO): Promise<Transaction> {
+    return this.prisma.transaction.create({
+      data: {
+        amount: data.amount,
+        intent: data.intent,
+        description: data.description ?? null,
+        userId: data.userId,
+        contactId: data.contactId ?? null,
+      },
+    });
+  }
+
+  async findByUser(userId: string): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      where: { userId },
+      orderBy: { date: 'desc' },
+    });
   }
 }
-
-

@@ -20,6 +20,7 @@ app.use(
     res: Response,
     _next: NextFunction,
   ) => {
+    console.error('Global Error Handler:', err);
     res.status(500).json({
       success: false,
       message: err.message ?? 'Internal Server Error',

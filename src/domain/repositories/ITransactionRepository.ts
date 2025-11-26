@@ -1,13 +1,14 @@
-import { Transaction, TransactionType } from '../entities/Transaction';
+import { Transaction, Intent } from '@prisma/client';
 
 export interface CreateTransactionDTO {
   amount: number;
-  type: TransactionType;
-  description?: string;
-  customerId: string;
+  intent: Intent;
+  description?: string | undefined;
+  userId: string;
+  contactId?: string | undefined;
 }
 
 export interface ITransactionRepository {
   create(data: CreateTransactionDTO): Promise<Transaction>;
+  findByUser(userId: string): Promise<Transaction[]>;
 }
-

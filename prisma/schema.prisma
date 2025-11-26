@@ -7,26 +7,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum TransactionType {
+enum Intent {
   CREDIT
   DEBIT
 }
 
-model Customer {
-  id             String        @id @default(uuid())
-  phoneNumber    String        @unique
-  name           String
-  currentBalance Decimal       @default(0)
-  transactions   Transaction[]
-  createdAt      DateTime      @default(now())
+enum Status {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  phoneNumber String   @unique
+  name        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  transactions Transaction[]
+  contacts     Contact[]
+  logs         ParseLog[]
+}
+
+model Contact {
+  id   String @id @default(cuid())
+  name String
+
+  // Contacts are private to a user
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Relations
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Ensure a user doesn't have two contacts named "Raju"
+  @@unique([userId, name])
 }
 
 model Transaction {
-  id          String          @id @default(uuid())
-  amount      Decimal
-  type        TransactionType
+  id          String  @id @default(cuid())
+  amount      Decimal @db.Decimal(10, 2)
+  currency    String  @default("INR")
+  intent      Intent
   description String?
-  customerId  String
-  customer    Customer        @relation(fields: [customerId], references: [id])
-  createdAt   DateTime        @default(now())
+  category    String  @default("General")
+
+  date DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+
+  // Link back to the raw parsed log
+  parseLogId String?   @unique
+  parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
+
+  @@index([userId, date])
+}
+
+model ParseLog {
+  id      String @id @default(cuid())
+  rawText String
+  parsed  Json
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  transaction Transaction?
+
+  createdAt DateTime @default(now())
+}
+
+model ProcessedMessage {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  processedAt DateTime @default(now())
 }
