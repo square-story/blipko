@@ -77,7 +77,7 @@ export class ProcessIncomingMessageUseCase {
     phoneNumber: string,
   ): Promise<ProcessIncomingMessageOutput> {
     const response =
-      "👋 Welcome to AI Ledger! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.";
+      "👋 Welcome to Blipko! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.";
 
     await this.messageService.sendMessage({ to: phoneNumber, body: response });
 

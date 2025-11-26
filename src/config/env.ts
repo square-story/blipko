@@ -11,7 +11,7 @@ const envSchema = z.object({
   META_VERIFY_TOKEN: z.string(),
   META_WHATSAPP_TOKEN: z.string(),
   WHATSAPP_PHONE_NUMBER_ID: z.string(),
-  GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
   WHATSAPP_GRAPH_VERSION: z.string().default('v21.0'),
 });
 

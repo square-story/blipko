@@ -90,6 +90,8 @@ export class WebhookController {
         textMessage,
       });
 
+      console.log('Processed message result:', result);
+
       res.status(200).json({
         success: true,
         message: 'Message processed',
