@@ -1,15 +1,15 @@
-# 📒 AI Ledger – WhatsApp Bookkeeping Bot
+# 📒 Blipko – WhatsApp Bookkeeping Bot
 
 ### Zero-UI Accounting for Small Businesses
 
-AI Ledger is a fintech-grade WhatsApp chatbot that acts as a full-stack digital accountant.
+Blipko is a fintech-grade WhatsApp chatbot that acts as a full-stack digital accountant.
 Users simply type, speak, or send photos of financial activities — the bot parses everything using AI and records clean, structured accounting entries.
 
 ---
 
 ## 🚀 Executive Summary
 
-AI Ledger solves bookkeeping for Indian SMBs by turning WhatsApp into an invisible, zero-friction ledger.
+Blipko solves bookkeeping for Indian SMBs by turning WhatsApp into an invisible, zero-friction ledger.
 
 ✔ “Gave 200 to Raju” → Recorded
 ✔ “Amit se 5k aaya” → Parsed
