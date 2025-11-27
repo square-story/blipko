@@ -5,6 +5,7 @@ import { ITransactionRepository } from "../../domain/repositories/ITransactionRe
 import { IMessageService } from "../interfaces/IMessageService";
 import { ParsedData, ParsedIntent } from "../../domain/entities/ParsedData";
 import { User, Contact } from "@prisma/client";
+import { totalBalance } from "../../utils/totalBalance";
 
 interface ProcessIncomingMessageInput {
   senderPhone: string;
@@ -49,7 +50,6 @@ export class ProcessIncomingMessageUseCase {
     console.log(
       `Executing ProcessIncomingMessage for ${payload.senderPhone} with message: "${normalizedMessage}"`,
     );
-
     // 1. Identify or Create User
     const user = await this.ensureUserExists(payload.senderPhone);
     console.log(`User identified: ${user.id}`);
@@ -89,8 +89,7 @@ export class ProcessIncomingMessageUseCase {
   private async handleStartIntent(
     user: User,
   ): Promise<ProcessIncomingMessageOutput> {
-    const response =
-      "👋 Welcome to Blipko! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.";
+    const response = `👋 Hey ${user.name}! Welcome to Blipko! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.`;
 
     await this.messageService.sendMessage({
       to: user.phoneNumber,
@@ -154,18 +153,28 @@ export class ProcessIncomingMessageUseCase {
       contact.id,
     );
 
-    let balance = 0;
-    for (const t of contactTransactions) {
-      if (t.intent === "CREDIT") {
-        // I gave money
-        balance += Number(t.amount);
-      } else if (t.intent === "DEBIT") {
-        // I received money
-        balance -= Number(t.amount);
-      }
-    }
+    const threeTransactions =
+      await this.transactionRepository.findThreeTransactions({
+        userId: user.id,
+        contactId: contact.id,
+      });
 
-    const response = `📊 Balance with ${contact.name}: ${balance.toFixed(2)} (${balance >= 0 ? "You are owed" : "You owe"})`;
+    const balance = totalBalance(contactTransactions);
+
+    const response = `👤 *Customer Report: ${contact.name}*
+
+💰 *Current Balance:* ₹${balance.toFixed(2)} ${balance < 0 ? "🔴 (Due)" : "🟢 (Credit)"}
+📉 *Recent History:*
+
+${threeTransactions
+  .map((t) => {
+    const type = t.intent === "CREDIT" ? "Gave" : "Received";
+    return `- ${type} ₹${t.amount.toFixed(2)} on ${t.date.toISOString().split("T")[0]}${t.description ? ` (${t.description})` : ""}`;
+  })
+  .join("\n\n")}
+
+_Reply with "Statement ${contact.name}" for full PDF._
+`;
     await this.messageService.sendMessage({
       to: user.phoneNumber,
       body: response,
@@ -196,7 +205,21 @@ export class ProcessIncomingMessageUseCase {
       contactId: contact?.id,
     });
 
-    const response = `✅ Recorded ${parsed.intent} of ${transaction.amount.toFixed(2)} ${contact ? `with ${contact.name}` : ""}.`;
+    const newBalance = totalBalance(
+      (contact &&
+        (await this.transactionRepository.findByContact(contact?.id))) ||
+        [],
+    );
+
+    const response = `✅ *Entry Added*
+
+${parsed.intent === "CREDIT" ? "🔻 *Gave:*" : "🟩 *Received:*"} ₹${transaction.amount.toFixed(2)}
+👤 ${parsed.intent === "CREDIT" ? "To" : "From"}: ${contact ? contact.name : "Unknown"}
+📝 *Note:* ${transaction.description || "None"}
+
+💰 *New Balance:* ₹${newBalance.toFixed(2)} ${newBalance < 0 ? "🔴 (Due)" : "🟢 (Credit)"}
+
+_Add more entries or ask for your balance anytime!_`;
 
     await this.messageService.sendMessage({
       to: user.phoneNumber,
