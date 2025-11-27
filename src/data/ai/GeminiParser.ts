@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { IAiParser } from '../../domain/services/IAiParser';
-import { ParsedData } from '../../domain/entities/ParsedData'; // Assuming this matches the schema below
-import { env } from '../../config/env';
+import { IAiParser } from "../../domain/services/IAiParser";
+import { ParsedData } from "../../domain/entities/ParsedData"; // Assuming this matches the schema below
+import { env } from "../../config/env";
 
 // 1. Define the Schema strictly using the SDK types
 const transactionSchema: Schema = {
@@ -10,24 +10,28 @@ const transactionSchema: Schema = {
     intent: {
       type: Type.STRING,
       enum: ["CREDIT", "DEBIT", "BALANCE"],
-      description: "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status.",
+      description:
+        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status.",
     },
     amount: {
       type: Type.NUMBER,
-      description: "The numeric amount involved. Returns 0 if no amount is mentioned.",
+      description:
+        "The numeric amount involved. Returns 0 if no amount is mentioned.",
     },
     name: {
       type: Type.STRING,
-      description: "The name of the person, shop, or entity involved. Returns 'Unknown' if not specified.",
+      description:
+        "The name of the person, shop, or entity involved. Returns 'Unknown' if not specified.",
     },
     category: {
       type: Type.STRING,
-      description: "Inferred category (e.g., Food, Travel, Salary, Loan). Returns 'General' if unclear.",
+      description:
+        "Inferred category (e.g., Food, Travel, Salary, Loan). Returns 'General' if unclear.",
     },
     currency: {
       type: Type.STRING,
       description: "The currency code detected, defaulting to INR.",
-    }
+    },
   },
   required: ["intent", "amount", "name"],
 };
@@ -98,23 +102,21 @@ export class GeminiParser implements IAiParser {
         throw new Error("GeminiParser: Empty response from AI.");
       }
 
-      // The SDK guarantees JSON structure due to responseSchema, 
+      // The SDK guarantees JSON structure due to responseSchema,
       // but we parse it to ensure it matches our application type.
       const parsed = JSON.parse(responseText) as ParsedData;
 
       return parsed;
-
     } catch (error) {
       console.error("GeminiParser Error:", error);
 
       // Fallback for graceful failure
       return {
-        intent: 'BALANCE',
+        intent: "BALANCE",
         amount: 0,
-        name: 'Unknown',
-        // @ts-ignore - Handle optional properties based on your entity definition
-        category: 'Error',
-        currency: 'INR'
+        name: "Unknown",
+        category: "Error",
+        currency: "INR",
       } as ParsedData;
     }
   }
