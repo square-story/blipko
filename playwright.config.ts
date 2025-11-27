@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 // Load environment variables from .env file
-dotenv.config({ path: path.resolve(__dirname, ".env") });
+dotenv.config({ path: path.resolve(__dirname, ".env.example") });
 
 const PORT = process.env.PORT || 3000;
 
