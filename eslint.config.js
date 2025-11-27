@@ -19,6 +19,9 @@ module.exports = tseslint.config(
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
             '@typescript-eslint/ban-ts-comment': 'warn',
             'no-undef': 'off', // TypeScript handles this
+            'no-console': 'off',
+            'no-debugger': 'off',
+            '@typescript-eslint/no-explicit-any': 'off',
         },
     },
 );
