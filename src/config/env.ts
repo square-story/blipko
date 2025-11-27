@@ -13,6 +13,7 @@ const envSchema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string(),
   GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
   WHATSAPP_GRAPH_VERSION: z.string().default('v21.0'),
+  OPENAI_API_KEY: z.string(),
 });
 
 export const env = envSchema.parse(process.env);
