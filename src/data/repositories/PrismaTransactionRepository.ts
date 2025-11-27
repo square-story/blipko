@@ -11,6 +11,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         intent: data.intent,
         description: data.description ?? null,
         userId: data.userId,
+        category: data.category ?? "General",
         contactId: data.contactId ?? null,
       },
     });
@@ -19,6 +20,13 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   async findByUser(userId: string): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
       where: { userId },
+      orderBy: { date: 'desc' },
+    });
+  }
+
+  async findByContact(contactId: string): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      where: { contactId },
       orderBy: { date: 'desc' },
     });
   }

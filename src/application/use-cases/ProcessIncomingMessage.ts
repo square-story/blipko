@@ -126,17 +126,7 @@ export class ProcessIncomingMessageUseCase {
       return { response, parsed };
     }
 
-    // Calculate balance dynamically from transactions
-    // In a real app, we might cache this on the Contact model
-    // For now, let's fetch all transactions for this contact (we need to add a method to repo or filter in memory)
-    // Since I didn't add findByContact to TransactionRepo, I'll fetch all user transactions and filter.
-    // Optimization: Add findByContact to TransactionRepo later.
-
-    // Actually, let's just calculate it from all user transactions for now as a simple implementation
-    // Or better, assume we should have added findByContact. 
-    // Given the constraints, I will fetch all user transactions and filter in memory.
-    const transactions = await this.transactionRepository.findByUser(user.id);
-    const contactTransactions = transactions.filter(t => t.contactId === contact.id);
+    const contactTransactions = await this.transactionRepository.findByContact(contact.id);
 
     let balance = 0;
     for (const t of contactTransactions) {
@@ -167,8 +157,9 @@ export class ProcessIncomingMessageUseCase {
     const transaction = await this.transactionRepository.create({
       amount: parsed.amount,
       intent: parsed.intent,
-      description: parsed.notes,
+      description: parsed.category,
       userId: user.id,
+      category: parsed.category,
       contactId: contact?.id,
     });
 
