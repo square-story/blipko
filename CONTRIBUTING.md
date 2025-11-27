@@ -6,7 +6,7 @@ The following is a set of guidelines for contributing to Blipko. These are just 
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [INSERT EMAIL ADDRESS].
+This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to gibmepreo@gmail.com.
 
 ## How Can I Contribute?
 
