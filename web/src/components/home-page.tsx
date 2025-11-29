@@ -1,10 +1,7 @@
-import Image from "next/image"
-import Link from "next/link"
 import { LineShadowText } from "./ui/line-shadow-text"
-import { MorphingText } from "./ui/morphing-text"
 import { TextAnimate } from "./ui/text-animate"
 import { Button } from "./ui/button"
-import MagicBento from "./MagicBento"
+import { FaqsSection } from "./faqs-section"
 
 export default function HomePageClient() {
     return (
@@ -33,12 +30,12 @@ export default function HomePageClient() {
                             className="px-6 py-3 text-lg font-semibold rounded-full"
                             variant="default"
                         >
-                            Get started
+                            Get on the list
                         </Button>
                     </div>
                 </section>
-                <div className="mt-100 flex items-center justify-center px-4 pb-8 sm:px-6 lg:px-8 xl:px-0">
-                    <MagicBento clickEffect enableTilt />
+                <div className="mt-20 flex items-center justify-center px-4 pb-8 sm:px-6 lg:px-8 xl:px-0">
+                    <FaqsSection />
                 </div>
             </div>
         </main>
