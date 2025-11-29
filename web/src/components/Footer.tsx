@@ -10,7 +10,7 @@ const Underline = `hover:-translate-y-1 border border-dotted rounded-xl p-2.5 tr
 
 export function Footer() {
   return (
-    <footer className="border-ali/20 :px-4 mx-auto w-full border-b   border-t  px-2">
+    <footer className="border-ali/20 px-4 mx-auto w-full border-b border-t">
       <div className="relative mx-auto w-full items-center flex justify-center gap-6 p-10 pb-0 pt-10">
         <Link href="/" aria-label="home" className="flex gap-2 items-center">
           <p className="font-semibold text-xl tracking-tighter italic">Blipko</p>
@@ -32,15 +32,6 @@ export function Footer() {
               clipRule="evenodd"
             />
           </svg>
-        </Link>
-        <Link
-          aria-label="Facebook"
-          href="https://www.facebook.com/mohammedsadik"
-          rel="noreferrer"
-          target="_blank"
-          className={Underline}
-        >
-          <DIcons.Facebook className="h-5 w-5" />
         </Link>
         <Link
           aria-label="LinkedIn"
