@@ -10,3 +10,5 @@ prisma/migrations
 
 /test-results
 /playwright-report
+.gitignore
+.DS_Store

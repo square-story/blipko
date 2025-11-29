@@ -1,3 +1,5 @@
+![Blipko Banner](public/Banner.png)
+
 # 📒 Blipko – WhatsApp Bookkeeping Bot
 
 ### Zero-UI Accounting for Small Businesses
@@ -17,6 +19,8 @@ Blipko solves bookkeeping for Indian SMBs by turning WhatsApp into an invisible,
 ✔ Invoice PDFs, reminders, UPI links → Automated
 
 No UI. No app to learn. Just chat.
+
+![Blipko Screenshot 1](public/screenshot01.png)
 
 ---
 
@@ -194,6 +198,8 @@ Put ngrok HTTPS URL into Meta WhatsApp webhook config.
 | “Rahul ka hisab?”                    | Balance summary |
 | “Raju owes 1000 rent every 2 months” | Recurring entry |
 | “Invoice Raju 2000 website”          | PDF invoice     |
+
+![Blipko Screenshot 2](public/screenshot02.png)
 
 ---
 
