@@ -2,12 +2,14 @@ import { LineShadowText } from "./ui/line-shadow-text"
 import { TextAnimate } from "./ui/text-animate"
 import { Button } from "./ui/button"
 import { FaqsSection } from "./faqs-section"
+import { GravityStarsBackground } from "../components/animate-ui/components/backgrounds/gravity-stars"
 
 export default function HomePageClient() {
     return (
         <main className="relative" aria-label="Home Page">
-            <div className="lg:pt-48 pt-28 pb-20">
-                <section aria-labelledby="hero-heading">
+            <GravityStarsBackground movementSpeed={0.5} className="fixed inset-0 -z-10" />
+            <div className="lg:pt-48 pt-28 pb-40 relative">
+                <section aria-labelledby="hero-heading" className="relative z-10">
                     <h1
                         id="hero-heading"
                         className="text-5xl leading-none font-semibold tracking-tighter text-balance sm:text-6xl md:text-7xl lg:text-8xl text-center"
