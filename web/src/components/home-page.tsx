@@ -1,6 +1,5 @@
 import { LineShadowText } from "./ui/line-shadow-text"
 import { TextAnimate } from "./ui/text-animate"
-import { Button } from "./ui/button"
 import { FaqsSection } from "./faqs-section"
 import { GravityStarsBackground } from "../components/animate-ui/components/backgrounds/gravity-stars"
 import { SignInButton } from "./sign-in-button"
