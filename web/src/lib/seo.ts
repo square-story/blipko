@@ -144,13 +144,13 @@ export function generateOrganizationSchema() {
     "@type": "Organization",
     name: siteConfig.name,
     url: siteConfig.url,
-    logo: `${siteConfig.url}/icon-512.png`,
+    logo: `${siteConfig.url}/Square.png`,
     description: siteConfig.description,
     sameAs: [siteConfig.links.twitter, siteConfig.links.github],
     founder: {
       "@type": "Person",
-      name: "Johuniq",
-      email: "support@johuniq.tech",
+      name: "sadik",
+      email: "sadik.build@gmail.com",
     },
   };
 }
@@ -188,8 +188,8 @@ export function generateWebApplicationSchema() {
       priceCurrency: "USD",
     },
     screenshot: [
-      `${siteConfig.url}/screenshot-wide.png`,
-      `${siteConfig.url}/screenshot-narrow.png`,
+      `${siteConfig.url}/screenshot01.png`,
+      `${siteConfig.url}/screenshot02.png`,
     ],
     aggregateRating: {
       "@type": "AggregateRating",
@@ -244,8 +244,8 @@ export function generateSoftwareApplicationSchema() {
     url: siteConfig.url,
     description: siteConfig.description,
     screenshot: [
-      `${siteConfig.url}/screenshot-wide.png`,
-      `${siteConfig.url}/screenshot-narrow.png`,
+      `${siteConfig.url}/screenshot01.png`,
+      `${siteConfig.url}/screenshot02.png`,
     ],
     image: `${siteConfig.url}/opengraph-image.png`,
     author: {
