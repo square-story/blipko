@@ -30,7 +30,7 @@ export function LineShadowText({
   }
 
   // Motion's style typing does not yet understand custom CSS variables.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const style = { "--shadow-color": shadowColor } as any;
 
   return (
