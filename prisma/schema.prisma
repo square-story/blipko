@@ -10,6 +10,7 @@ datasource db {
 enum Intent {
   CREDIT
   DEBIT
+  UNDO
 }
 
 enum Status {
@@ -114,6 +115,11 @@ model Transaction {
   // Link back to the raw parsed log
   parseLogId String?   @unique
   parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
+
+  // Soft Delete
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  deletedByUserId String?
 
   @@index([userId, date])
 }

@@ -13,6 +13,7 @@ export interface ITransactionRepository {
   create(data: CreateTransactionDTO): Promise<Transaction>;
   findByUser(userId: string): Promise<Transaction[]>;
   findByContact(contactId: string): Promise<Transaction[]>;
+  deleteLastTransaction(userId: string): Promise<Transaction | null>;
   findThreeTransactions(filter: {
     userId?: string;
     contactId?: string;
