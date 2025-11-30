@@ -49,6 +49,10 @@ interface MetaMessageEntry {
           text?: { body?: string };
           audio?: { id?: string; mime_type?: string };
           type?: string;
+          context?: {
+            from?: string;
+            id?: string;
+          };
         }>;
       };
     }>;
@@ -163,10 +167,17 @@ export class WebhookController {
           return;
         }
 
-        const result = await this.processIncomingMessage.execute({
+        const replyToMessageId = message.context?.id;
+
+        const input: any = {
           senderPhone,
           textMessage,
-        });
+        };
+        if (replyToMessageId) {
+          input.replyToMessageId = replyToMessageId;
+        }
+
+        const result = await this.processIncomingMessage.execute(input);
 
         console.log("Processed text message result:", result);
 

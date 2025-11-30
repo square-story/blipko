@@ -18,4 +18,14 @@ export interface ITransactionRepository {
     userId?: string;
     contactId?: string;
   }): Promise<Transaction[]>;
+  findByConfirmationId(messageId: string): Promise<Transaction | null>;
+  updateConfirmationMessageId(
+    transactionId: string,
+    messageId: string,
+  ): Promise<void>;
+  delete(transactionId: string): Promise<void>;
+  update(
+    transactionId: string,
+    data: Partial<CreateTransactionDTO>,
+  ): Promise<void>;
 }

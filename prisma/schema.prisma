@@ -116,6 +116,9 @@ model Transaction {
   parseLogId String?   @unique
   parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
 
+  // Link to the confirmation message sent to the user (for reply handling)
+  confirmationMessageId String? @unique
+
   // Soft Delete
   isDeleted       Boolean   @default(false)
   deletedAt       DateTime?

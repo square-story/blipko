@@ -18,7 +18,7 @@ export class WhatsAppMessageService implements IMessageService {
     this.endpoint = `${graphBase}/${this.graphVersion}/${this.phoneNumberId}/messages`;
   }
 
-  async sendMessage(payload: SendMessagePayload): Promise<void> {
+  async sendMessage(payload: SendMessagePayload): Promise<string> {
     const response = await fetch(this.endpoint, {
       method: "POST",
       headers: {
@@ -42,6 +42,9 @@ export class WhatsAppMessageService implements IMessageService {
         `WhatsAppMessageService failed with status ${response.status} ${errorDetails}`,
       );
     }
+
+    const data = (await response.json()) as { messages?: { id: string }[] };
+    return data.messages?.[0]?.id || "";
   }
 
   async markAsRead(messageId: string): Promise<void> {

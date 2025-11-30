@@ -4,12 +4,13 @@ import { IContactRepository } from "../../domain/repositories/IContactRepository
 import { ITransactionRepository } from "../../domain/repositories/ITransactionRepository";
 import { IMessageService } from "../interfaces/IMessageService";
 import { ParsedData, ParsedIntent } from "../../domain/entities/ParsedData";
-import { User, Contact } from "@prisma/client";
+import { User, Contact, Transaction } from "@prisma/client";
 import { totalBalance } from "../../utils/totalBalance";
 
 interface ProcessIncomingMessageInput {
   senderPhone: string;
   textMessage: string;
+  replyToMessageId?: string;
 }
 
 interface ProcessIncomingMessageOutput {
@@ -56,6 +57,25 @@ export class ProcessIncomingMessageUseCase {
 
     if (normalizedMessage === "start") {
       return this.handleStartIntent(user);
+    }
+
+    // 2. Check for Reply Context (Update/Delete)
+    if (payload.replyToMessageId) {
+      console.log(
+        `Processing reply to message ${payload.replyToMessageId} from ${user.id}`,
+      );
+      const transaction = await this.transactionRepository.findByConfirmationId(
+        payload.replyToMessageId,
+      );
+
+      if (transaction) {
+        console.log(`Found transaction ${transaction.id} for reply.`);
+        return this.handleReplyIntent(user, transaction, normalizedMessage);
+      } else {
+        console.log(
+          `No transaction found for confirmation ID ${payload.replyToMessageId}`,
+        );
+      }
     }
 
     const quickReply = QUICK_REPLIES[normalizedMessage];
@@ -225,10 +245,16 @@ ${parsed.intent === "CREDIT" ? "🔻 *Gave:*" : "🟩 *Received:*"} ₹${transac
 
 _Add more entries or ask for your balance anytime!_`;
 
-    await this.messageService.sendMessage({
+    const messageId = await this.messageService.sendMessage({
       to: user.phoneNumber!,
       body: response,
     });
+
+    // Link the confirmation message to the transaction
+    await this.transactionRepository.updateConfirmationMessageId(
+      transaction.id,
+      messageId,
+    );
 
     return { response, parsed };
   }
@@ -301,5 +327,77 @@ Removed: ₹${Number(deletedTransaction.amount).toFixed(2)} (${deletedTransactio
     });
 
     return { response, parsed };
+  }
+
+  private async handleReplyIntent(
+    user: User,
+    transaction: Transaction,
+    message: string,
+  ): Promise<ProcessIncomingMessageOutput> {
+    const lowerMessage = message.toLowerCase();
+
+    // DELETE Intent
+    if (
+      lowerMessage.includes("delete") ||
+      lowerMessage.includes("remove") ||
+      lowerMessage.includes("undo")
+    ) {
+      await this.transactionRepository.delete(transaction.id);
+      const response = `🗑️ *Entry Deleted*
+      
+Removed: ₹${Number(transaction.amount).toFixed(2)} (${transaction.intent})
+Note: ${transaction.description}`;
+
+      await this.messageService.sendMessage({
+        to: user.phoneNumber!,
+        body: response,
+      });
+
+      return {
+        response,
+        parsed: { intent: "UNDO", notes: "Deleted via reply" },
+      };
+    }
+
+    // UPDATE Intent (Category)
+    if (lowerMessage.includes("update category to")) {
+      const newCategory = message.split("update category to")[1].trim();
+      if (newCategory) {
+        await this.transactionRepository.update(transaction.id, {
+          category: newCategory,
+          description: newCategory, // Updating description as well for now as they are often mapped
+        });
+
+        const response = `✅ *Category Updated*
+        
+New Category: ${newCategory}`;
+
+        await this.messageService.sendMessage({
+          to: user.phoneNumber!,
+          body: response,
+        });
+
+        return {
+          response,
+          parsed: {
+            intent: "START", // Using START as a generic intent for now
+            notes: `Updated category to ${newCategory}`,
+          },
+        };
+      }
+    }
+
+    // Default: Unknown reply intent
+    const response =
+      "❓ I see you replied to a transaction, but I didn't understand. Try 'delete' or 'update category to [name]'.";
+    await this.messageService.sendMessage({
+      to: user.phoneNumber!,
+      body: response,
+    });
+
+    return {
+      response,
+      parsed: { intent: "START", notes: "Unknown reply intent" },
+    };
   }
 }
