@@ -71,6 +71,10 @@ export class ProcessIncomingMessageUseCase {
       return this.handleBalanceIntent(user, parsed);
     }
 
+    if (parsed.intent === "UNDO") {
+      return this.handleUndoIntent(user, parsed);
+    }
+
     if (isTransactionIntent(parsed.intent)) {
       if (typeof parsed.amount !== "number") {
         throw new Error("Amount is required for CREDIT or DEBIT intents");
@@ -92,7 +96,7 @@ export class ProcessIncomingMessageUseCase {
     const response = `👋 Hey ${user.name}! Welcome to Blipko! Tell me things like 'Gave 500 to Raju' or ask 'Balance for Raju' to track your ledger.`;
 
     await this.messageService.sendMessage({
-      to: user.phoneNumber,
+      to: user.phoneNumber!,
       body: response,
     });
 
@@ -108,7 +112,7 @@ export class ProcessIncomingMessageUseCase {
     response: string,
   ): Promise<ProcessIncomingMessageOutput> {
     await this.messageService.sendMessage({
-      to: user.phoneNumber,
+      to: user.phoneNumber!,
       body: response,
     });
 
@@ -129,7 +133,7 @@ export class ProcessIncomingMessageUseCase {
       const response =
         "Please specify a contact name to check balance (e.g., 'Balance for Raju')";
       await this.messageService.sendMessage({
-        to: user.phoneNumber,
+        to: user.phoneNumber!,
         body: response,
       });
       return { response, parsed };
@@ -143,7 +147,7 @@ export class ProcessIncomingMessageUseCase {
     if (!contact) {
       const response = `You don't have any records with ${parsed.name} yet.`;
       await this.messageService.sendMessage({
-        to: user.phoneNumber,
+        to: user.phoneNumber!,
         body: response,
       });
       return { response, parsed };
@@ -176,7 +180,7 @@ ${threeTransactions
 _Reply with "Statement ${contact.name}" for full PDF._
 `;
     await this.messageService.sendMessage({
-      to: user.phoneNumber,
+      to: user.phoneNumber!,
       body: response,
     });
 
@@ -222,7 +226,7 @@ ${parsed.intent === "CREDIT" ? "🔻 *Gave:*" : "🟩 *Received:*"} ₹${transac
 _Add more entries or ask for your balance anytime!_`;
 
     await this.messageService.sendMessage({
-      to: user.phoneNumber,
+      to: user.phoneNumber!,
       body: response,
     });
 
@@ -257,5 +261,45 @@ _Add more entries or ask for your balance anytime!_`;
       userId,
       name,
     });
+  }
+
+  private async handleUndoIntent(
+    user: User,
+    parsed: ParsedData,
+  ): Promise<ProcessIncomingMessageOutput> {
+    const deletedTransaction =
+      await this.transactionRepository.deleteLastTransaction(user.id);
+
+    if (!deletedTransaction) {
+      const response = "⚠️ No recent transaction found to delete.";
+      await this.messageService.sendMessage({
+        to: user.phoneNumber!,
+        body: response,
+      });
+      return { response, parsed };
+    }
+
+    // Recalculate balance for the contact involved in the deleted transaction
+    let newBalance = 0;
+    if (deletedTransaction.contactId) {
+      const contactTransactions =
+        await this.transactionRepository.findByContact(
+          deletedTransaction.contactId,
+        );
+      newBalance = totalBalance(contactTransactions);
+    }
+
+    const response = `🗑️ *Deleted Last Entry*
+
+Removed: ₹${Number(deletedTransaction.amount).toFixed(2)} (${deletedTransaction.intent})
+    
+🔄 Balance reverted to previous state.`;
+
+    await this.messageService.sendMessage({
+      to: user.phoneNumber!,
+      body: response,
+    });
+
+    return { response, parsed };
   }
 }

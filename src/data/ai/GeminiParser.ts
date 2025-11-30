@@ -9,9 +9,9 @@ const transactionSchema: Schema = {
   properties: {
     intent: {
       type: Type.STRING,
-      enum: ["CREDIT", "DEBIT", "BALANCE"],
+      enum: ["CREDIT", "DEBIT", "BALANCE", "UNDO"],
       description:
-        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status.",
+        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status. UNDO if user wants to delete/correct last entry.",
     },
     amount: {
       type: Type.NUMBER,
@@ -57,6 +57,13 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
 3. **BALANCE (Inquiry):**
    - Queries about owing, dues, or status.
    - Example: "How much raju owes?", "Raju balance ethra?", "Hisab kya hai?"
+
+4. **UNDO (Correction/Deletion):**
+   - Requests to undo, delete, or correct the last action.
+   - English: "Undo", "Delete last", "Mistake", "Remove".
+   - Manglish/Malayalam: "Maati", "Thettu patti", "Kalayuka", "Thirichu".
+   - Hinglish/Hindi: "Galti se add ho gaya", "Wapas karo", "Delete karo", "Hata do".
+   - Example: "Delete last entry" -> { intent: "UNDO", name: "Unknown", amount: 0 }
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).

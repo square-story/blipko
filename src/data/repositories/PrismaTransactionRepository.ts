@@ -25,7 +25,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     contactId?: string;
   }): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
-      where: filter,
+      where: { ...filter, isDeleted: false },
       orderBy: { date: "desc" },
       take: 3,
     });
@@ -33,15 +33,35 @@ export class PrismaTransactionRepository implements ITransactionRepository {
 
   async findByUser(userId: string): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
-      where: { userId },
+      where: { userId, isDeleted: false },
       orderBy: { date: "desc" },
     });
   }
 
   async findByContact(contactId: string): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
-      where: { contactId },
+      where: { contactId, isDeleted: false },
       orderBy: { date: "desc" },
+    });
+  }
+
+  async deleteLastTransaction(userId: string): Promise<Transaction | null> {
+    const lastTransaction = await this.prisma.transaction.findFirst({
+      where: { userId, isDeleted: false },
+      orderBy: { date: "desc" },
+    });
+
+    if (!lastTransaction) {
+      return null;
+    }
+
+    return this.prisma.transaction.update({
+      where: { id: lastTransaction.id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedByUserId: userId,
+      },
     });
   }
 }
