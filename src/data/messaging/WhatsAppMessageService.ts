@@ -1,10 +1,10 @@
 import {
   IMessageService,
   SendMessagePayload,
-} from '../../application/interfaces/IMessageService';
-import { env } from '../../config/env';
+} from "../../application/interfaces/IMessageService";
+import { env } from "../../config/env";
 
-const DEFAULT_GRAPH_API_BASE = 'https://graph.facebook.com';
+const DEFAULT_GRAPH_API_BASE = "https://graph.facebook.com";
 
 export class WhatsAppMessageService implements IMessageService {
   private readonly endpoint: string;
@@ -20,15 +20,15 @@ export class WhatsAppMessageService implements IMessageService {
 
   async sendMessage(payload: SendMessagePayload): Promise<void> {
     const response = await fetch(this.endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${this.accessToken}`,
       },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
+        messaging_product: "whatsapp",
         to: payload.to,
-        type: 'text',
+        type: "text",
         text: {
           body: payload.body,
           preview_url: false,
@@ -37,12 +37,63 @@ export class WhatsAppMessageService implements IMessageService {
     });
 
     if (!response.ok) {
-      const errorDetails = await response.text().catch(() => '');
+      const errorDetails = await response.text().catch(() => "");
       throw new Error(
         `WhatsAppMessageService failed with status ${response.status} ${errorDetails}`,
       );
     }
   }
+
+  async markAsRead(messageId: string): Promise<void> {
+    const response = await fetch(this.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        status: "read",
+        message_id: messageId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => "");
+      console.error(
+        `Failed to mark message ${messageId} as read: ${response.status} ${errorDetails}`,
+      );
+    }
+  }
+
+  async sendReaction(
+    messageId: string,
+    emoji: string,
+    to: string,
+  ): Promise<void> {
+    const response = await fetch(this.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: to,
+        type: "reaction",
+        reaction: {
+          message_id: messageId,
+          emoji: emoji,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => "");
+      console.error(
+        `Failed to send reaction to ${messageId}: ${response.status} ${errorDetails}`,
+      );
+    }
+  }
 }
-
-
