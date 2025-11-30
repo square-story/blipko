@@ -64,4 +64,44 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       },
     });
   }
+  async findByConfirmationId(messageId: string): Promise<Transaction | null> {
+    return this.prisma.transaction.findUnique({
+      where: { confirmationMessageId: messageId },
+    });
+  }
+
+  async updateConfirmationMessageId(
+    transactionId: string,
+    messageId: string,
+  ): Promise<void> {
+    await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: { confirmationMessageId: messageId },
+    });
+  }
+
+  async delete(transactionId: string): Promise<void> {
+    await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  async update(
+    transactionId: string,
+    data: Partial<CreateTransactionDTO>,
+  ): Promise<void> {
+    const updateData: any = {};
+    if (data.category) updateData.category = data.category;
+    if (data.description) updateData.description = data.description;
+    if (data.amount !== undefined) updateData.amount = data.amount;
+
+    await this.prisma.transaction.update({
+      where: { id: transactionId },
+      data: updateData,
+    });
+  }
 }
