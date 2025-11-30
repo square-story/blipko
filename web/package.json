@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate --schema=../prisma/schema.prisma"
+    "postinstall": "npx prisma generate --schema=../prisma/schema.prisma"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
