@@ -141,9 +141,9 @@ export class WebhookController {
         return;
       }
 
-      // Mark message as read immediately
+      // Mark message as read and show typing indicator
       if (messageId) {
-        await messageService.markAsRead(messageId);
+        await messageService.sendTypingIndicator(messageId);
       }
 
       // Handle text messages
@@ -152,11 +152,6 @@ export class WebhookController {
         console.log(
           `Processing text message from ${senderPhone}: ${textMessage}`,
         );
-
-        // Send processing indicator (reaction)
-        if (messageId) {
-          await messageService.sendReaction(messageId, "✅", senderPhone);
-        }
 
         if (!textMessage) {
           console.error("Invalid message payload: Missing text body");
@@ -189,11 +184,6 @@ export class WebhookController {
         console.log(
           `Processing voice message from ${senderPhone}, media ID: ${mediaId}`,
         );
-
-        // Send processing indicator (reaction)
-        if (messageId) {
-          await messageService.sendReaction(messageId, "⏳", senderPhone);
-        }
 
         if (!mediaId) {
           console.error("Invalid message payload: Missing audio media ID");

@@ -66,11 +66,7 @@ export class WhatsAppMessageService implements IMessageService {
     }
   }
 
-  async sendReaction(
-    messageId: string,
-    emoji: string,
-    to: string,
-  ): Promise<void> {
+  async sendTypingIndicator(messageId: string): Promise<void> {
     const response = await fetch(this.endpoint, {
       method: "POST",
       headers: {
@@ -79,12 +75,10 @@ export class WhatsAppMessageService implements IMessageService {
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: to,
-        type: "reaction",
-        reaction: {
-          message_id: messageId,
-          emoji: emoji,
+        status: "read",
+        message_id: messageId,
+        typing_indicator: {
+          type: "text",
         },
       }),
     });
@@ -92,7 +86,7 @@ export class WhatsAppMessageService implements IMessageService {
     if (!response.ok) {
       const errorDetails = await response.text().catch(() => "");
       console.error(
-        `Failed to send reaction to ${messageId}: ${response.status} ${errorDetails}`,
+        `Failed to send typing indicator for ${messageId}: ${response.status} ${errorDetails}`,
       );
     }
   }
