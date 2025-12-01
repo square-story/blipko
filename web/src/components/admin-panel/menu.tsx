@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Ellipsis, LogOut } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -61,7 +62,7 @@ export function Menu({ isOpen }: MenuProps) {
                               variant={
                                 (active === undefined &&
                                   pathname.startsWith(href)) ||
-                                active
+                                  active
                                   ? "secondary"
                                   : "ghost"
                               }
@@ -118,7 +119,7 @@ export function Menu({ isOpen }: MenuProps) {
               <Tooltip delayDuration={100}>
                 <TooltipTrigger asChild>
                   <Button
-                    onClick={() => {}}
+                    onClick={() => signOut({ callbackUrl: "/" })}
                     variant="outline"
                     className="w-full justify-center h-10 mt-5"
                   >
