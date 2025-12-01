@@ -2,7 +2,6 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import React from "react";
-import { Button } from "./ui/button";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = React.useState(false);
@@ -35,14 +34,6 @@ export const Header = () => {
                 Blipko
               </p>
             </Link>
-            <div className="flex gap-2 items-center">
-              <Button
-                className="px-6 py-3 text-lg font-semibold rounded-full"
-                variant="default"
-              >
-                Try for free
-              </Button>
-            </div>
           </div>
         </div>
       </nav>

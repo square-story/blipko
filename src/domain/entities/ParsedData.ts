@@ -1,4 +1,12 @@
-export type ParsedIntent = 'CREDIT' | 'DEBIT' | 'BALANCE' | 'START' | 'QUICK_REPLY';
+export type ParsedIntent =
+  | "CREDIT"
+  | "DEBIT"
+  | "BALANCE"
+  | "START"
+  | "QUICK_REPLY"
+  | "UNDO"
+  | "VIEW_DAILY_SUMMARY"
+  | "UPDATE_TRANSACTION";
 
 export interface ParsedData {
   intent: ParsedIntent;
@@ -7,5 +15,10 @@ export interface ParsedData {
   notes?: string;
   category?: string;
   currency?: string;
+  updatedFields?: {
+    amount?: number;
+    category?: string;
+    description?: string;
+    name?: string;
+  };
 }
-
