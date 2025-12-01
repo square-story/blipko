@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from "express";
 import { ProcessIncomingMessageUseCase } from "../../application/use-cases/ProcessIncomingMessage";
 import { ProcessVoiceMessageUseCase } from "../../application/use-cases/ProcessVoiceMessage";
 import { GeminiParser } from "../../data/ai/GeminiParser";
-import { WhisperTranscriptionService } from "../../data/ai/WhisperTranscriptionService";
+import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
 import { PrismaContactRepository } from "../../data/repositories/PrismaContactRepository";
 import { PrismaTransactionRepository } from "../../data/repositories/PrismaTransactionRepository";
 import { WhatsAppMessageService } from "../../data/messaging/WhatsAppMessageService";
@@ -23,7 +23,7 @@ const transactionRepository = new PrismaTransactionRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const messageService = new WhatsAppMessageService();
 const mediaService = new WhatsAppMediaService();
-const transcriptionService = new WhisperTranscriptionService();
+const transcriptionService = new SarvamTranscriptionService();
 
 const processIncomingMessageUseCase = new ProcessIncomingMessageUseCase(
   aiParser,
