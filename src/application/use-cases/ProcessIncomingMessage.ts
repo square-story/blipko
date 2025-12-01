@@ -47,9 +47,21 @@ export class ProcessIncomingMessageUseCase {
       new StartProcessor(messageService),
       new ReplyProcessor(transactionRepository, messageService),
       new UndoProcessor(transactionRepository, messageService),
-      new BalanceProcessor(transactionRepository, contactRepository, messageService),
-      new BalanceProcessor(transactionRepository, contactRepository, messageService),
-      new TransactionProcessor(transactionRepository, contactRepository, messageService),
+      new BalanceProcessor(
+        transactionRepository,
+        contactRepository,
+        messageService,
+      ),
+      new BalanceProcessor(
+        transactionRepository,
+        contactRepository,
+        messageService,
+      ),
+      new TransactionProcessor(
+        transactionRepository,
+        contactRepository,
+        messageService,
+      ),
       new DailySummaryProcessor(transactionRepository, messageService),
     ];
   }
@@ -76,8 +88,6 @@ export class ProcessIncomingMessageUseCase {
         payload.replyToMessageId,
       );
     }
-
-    let parsed: ParsedData | undefined;
 
     // Quick check for quick replies before AI parsing
     const quickReply = QUICK_REPLIES[normalizedMessage];
@@ -108,20 +118,26 @@ export class ProcessIncomingMessageUseCase {
     };
 
     for (const processor of this.processors) {
-      if (processor instanceof StartProcessor || processor instanceof ConfirmationProcessor) {
+      if (
+        processor instanceof StartProcessor ||
+        processor instanceof ConfirmationProcessor
+      ) {
         if (processor.canHandle(contextWithoutParse)) {
           return processor.process(contextWithoutParse);
         }
       }
       // ReplyProcessor might need parsing if it's complex, but for now it checks text.
-      if (processor instanceof ReplyProcessor && processor.canHandle(contextWithoutParse)) {
+      if (
+        processor instanceof ReplyProcessor &&
+        processor.canHandle(contextWithoutParse)
+      ) {
         return processor.process(contextWithoutParse);
       }
     }
 
     // If no "simple" processor handled it, run AI Parser
     console.log("Parsing message with AI...");
-    parsed = await this.aiParser.parseText(payload.textMessage);
+    const parsed = await this.aiParser.parseText(payload.textMessage);
     console.log("AI Parsed result:", JSON.stringify(parsed, null, 2));
 
     const contextWithParse = {
