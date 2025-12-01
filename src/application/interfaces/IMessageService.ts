@@ -7,4 +7,9 @@ export interface IMessageService {
   sendMessage(payload: SendMessagePayload): Promise<string>;
   markAsRead(messageId: string): Promise<void>;
   sendTypingIndicator(messageId: string): Promise<void>;
+  sendInteractiveMessage(
+    to: string,
+    body: string,
+    buttons: { id: string; title: string }[],
+  ): Promise<string>;
 }

@@ -55,6 +55,13 @@ interface MetaMessageEntry {
           text?: { body?: string };
           audio?: { id?: string; mime_type?: string };
           type?: string;
+          interactive?: {
+            type?: string;
+            button_reply?: {
+              id?: string;
+              title?: string;
+            };
+          };
           context?: {
             from?: string;
             id?: string;
@@ -71,7 +78,7 @@ export class WebhookController {
     private readonly processVoiceMessage: ProcessVoiceMessageUseCase,
     private readonly processedMessageRepository: PrismaProcessedMessageRepository,
     private readonly verifyToken: string,
-  ) {}
+  ) { }
 
   async verifyWebhook(req: Request, res: Response, next: NextFunction) {
     try {
@@ -110,8 +117,12 @@ export class WebhookController {
 
       const messageType = message.type;
 
-      // Check if message type is supported (text or audio)
-      if (messageType !== "text" && messageType !== "audio") {
+      // Check if message type is supported (text, audio, or interactive)
+      if (
+        messageType !== "text" &&
+        messageType !== "audio" &&
+        messageType !== "interactive"
+      ) {
         console.log(`Unsupported message type: ${messageType}`);
         res.status(200).json({
           success: true,
@@ -225,6 +236,43 @@ export class WebhookController {
             transcribedText: result.transcribedText,
             response: result.response,
           },
+        });
+        return;
+      }
+
+      // Handle interactive messages (Button replies)
+      if (messageType === "interactive") {
+        const buttonReply = message.interactive?.button_reply;
+        const buttonId = buttonReply?.id;
+        const buttonTitle = buttonReply?.title;
+
+        console.log(
+          `Processing interactive message from ${senderPhone}: ID=${buttonId}, Title=${buttonTitle}`,
+        );
+
+        if (!buttonId) {
+          console.error("Invalid message payload: Missing button ID");
+          res.status(400).json({
+            success: false,
+            message: "Invalid message payload: Missing button ID",
+            data: null,
+          });
+          return;
+        }
+
+        // We pass the button ID as the text message so ConfirmationProcessor can handle it
+        const result = await this.processIncomingMessage.execute({
+          senderPhone,
+          textMessage: buttonId,
+          replyToMessageId: message.context?.id,
+        });
+
+        console.log("Processed interactive message result:", result);
+
+        res.status(200).json({
+          success: true,
+          message: "Interactive message processed",
+          data: { response: result.response, intent: result.parsed.intent },
         });
         return;
       }

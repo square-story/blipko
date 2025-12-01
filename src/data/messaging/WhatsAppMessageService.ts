@@ -93,4 +93,48 @@ export class WhatsAppMessageService implements IMessageService {
       );
     }
   }
+
+  async sendInteractiveMessage(
+    to: string,
+    body: string,
+    buttons: { id: string; title: string }[],
+  ): Promise<string> {
+    const response = await fetch(this.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to,
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: {
+            text: body,
+          },
+          action: {
+            buttons: buttons.map((btn) => ({
+              type: "reply",
+              reply: {
+                id: btn.id,
+                title: btn.title,
+              },
+            })),
+          },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorDetails = await response.text().catch(() => "");
+      throw new Error(
+        `WhatsAppMessageService failed to send interactive message: ${response.status} ${errorDetails}`,
+      );
+    }
+
+    const data = (await response.json()) as { messages?: { id: string }[] };
+    return data.messages?.[0]?.id || "";
+  }
 }

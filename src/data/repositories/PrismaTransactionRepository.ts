@@ -5,7 +5,7 @@ import {
 } from "../../domain/repositories/ITransactionRepository";
 
 export class PrismaTransactionRepository implements ITransactionRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) { }
 
   async create(data: CreateTransactionDTO): Promise<Transaction> {
     return this.prisma.transaction.create({
@@ -42,6 +42,12 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     return this.prisma.transaction.findMany({
       where: { contactId, isDeleted: false },
       orderBy: { date: "desc" },
+    });
+  }
+
+  async findById(transactionId: string): Promise<Transaction | null> {
+    return this.prisma.transaction.findUnique({
+      where: { id: transactionId },
     });
   }
 
