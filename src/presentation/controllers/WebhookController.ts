@@ -43,6 +43,12 @@ interface MetaMessageEntry {
   entry?: Array<{
     changes?: Array<{
       value?: {
+        contacts?: Array<{
+          profile?: {
+            name?: string;
+          };
+          wa_id?: string;
+        }>;
         messages?: Array<{
           from?: string;
           id?: string;
@@ -92,7 +98,6 @@ export class WebhookController {
       console.log("Webhook received:", JSON.stringify(req.body, null, 2));
       const payload = req.body as MetaMessageEntry;
       const message = payload.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-
       if (!message) {
         console.log("No message found in payload");
         res.status(200).json({
