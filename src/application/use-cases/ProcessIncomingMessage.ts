@@ -137,7 +137,10 @@ export class ProcessIncomingMessageUseCase {
 
     // If no "simple" processor handled it, run AI Parser
     console.log("Parsing message with AI...");
-    const parsed = await this.aiParser.parseText(payload.textMessage);
+    const parsed = await this.aiParser.parseText(
+      payload.textMessage,
+      replyTransaction,
+    );
     console.log("AI Parsed result:", JSON.stringify(parsed, null, 2));
 
     const contextWithParse = {

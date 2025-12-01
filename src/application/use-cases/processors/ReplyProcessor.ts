@@ -13,7 +13,29 @@ export class ReplyProcessor implements MessageProcessor {
   ) {}
 
   canHandle(context: ProcessContext): boolean {
-    return !!context.replyTransaction && !this.isConfirmationReply(context);
+    // 1. If AI explicitly says UPDATE_TRANSACTION, we handle it (regardless of replyTransaction).
+    if (context.parsed?.intent === "UPDATE_TRANSACTION") {
+      return true;
+    }
+
+    // 2. If no AI parsing yet (first loop):
+    //    We only handle if there IS a reply transaction AND it matches simple patterns.
+    if (
+      !context.parsed &&
+      context.replyTransaction &&
+      !this.isConfirmationReply(context)
+    ) {
+      const lower = context.textMessage.toLowerCase();
+      if (
+        lower.includes("delete") ||
+        lower.includes("remove") ||
+        lower.includes("undo")
+      )
+        return true;
+      if (lower.includes("update category to")) return true;
+    }
+
+    return false;
   }
 
   private isConfirmationReply(_context: ProcessContext): boolean {
@@ -25,7 +47,32 @@ export class ReplyProcessor implements MessageProcessor {
   }
 
   async process(context: ProcessContext): Promise<ProcessOutput> {
-    const transaction = context.replyTransaction!;
+    let transaction = context.replyTransaction;
+
+    // Fallback: If no reply transaction but intent is UPDATE, fetch last transaction
+    if (!transaction && context.parsed?.intent === "UPDATE_TRANSACTION") {
+      const lastTx = await this.transactionRepository.findLastByUserId(
+        context.user.id,
+      );
+      if (lastTx) {
+        transaction = lastTx;
+      } else {
+        return {
+          response:
+            "I couldn't find any recent transaction to update. Please create a new transaction first.",
+          parsed: context.parsed,
+        };
+      }
+    }
+
+    if (!transaction) {
+      return {
+        response:
+          "Please reply to the specific transaction you want to update.",
+        parsed: context.parsed || { intent: "START" },
+      };
+    }
+
     const lowerMessage = context.textMessage.toLowerCase();
 
     // DELETE Intent
@@ -54,7 +101,37 @@ export class ReplyProcessor implements MessageProcessor {
       };
     }
 
-    // UPDATE Intent (Category)
+    // UPDATE Intent (AI Parsed)
+    if (context.parsed?.intent === "UPDATE_TRANSACTION") {
+      const updates = context.parsed.updatedFields;
+      if (updates && Object.keys(updates).length > 0) {
+        // Ensure description is updated if category is updated (and description isn't explicitly provided)
+        if (updates.category && !updates.description) {
+          updates.description = updates.category;
+        }
+
+        await this.transactionRepository.update(transaction.id, updates);
+
+        let updateMsg = "✅ *Transaction Updated*\n";
+        if (updates.amount) updateMsg += `Amount: ${updates.amount}\n`;
+        if (updates.category) updateMsg += `Category: ${updates.category}\n`;
+        if (updates.description)
+          updateMsg += `Description: ${updates.description}\n`;
+        if (updates.name) updateMsg += `Name: ${updates.name}\n`;
+
+        await this.messageService.sendMessage({
+          to: context.user.phoneNumber!,
+          body: updateMsg,
+        });
+
+        return {
+          response: updateMsg,
+          parsed: context.parsed,
+        };
+      }
+    }
+
+    // Legacy/Fallback UPDATE Intent (Category) - Keep for safety or specific patterns if AI fails
     if (lowerMessage.includes("update category to")) {
       const newCategory = context.textMessage
         .split("update category to")[1]
@@ -62,7 +139,6 @@ export class ReplyProcessor implements MessageProcessor {
       if (newCategory) {
         await this.transactionRepository.update(transaction.id, {
           category: newCategory,
-          description: newCategory,
         });
 
         const response = `✅ *Category Updated*
@@ -77,8 +153,9 @@ New Category: ${newCategory}`;
         return {
           response,
           parsed: {
-            intent: "START",
+            intent: "UPDATE_TRANSACTION",
             notes: `Updated category to ${newCategory}`,
+            updatedFields: { category: newCategory },
           },
         };
       }

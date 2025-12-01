@@ -5,6 +5,7 @@ import { ProcessIncomingMessageUseCase } from "./ProcessIncomingMessage";
 export interface ProcessVoiceMessageInput {
   senderPhone: string;
   mediaId: string;
+  replyToMessageId?: string | undefined;
 }
 
 export interface ProcessVoiceMessageOutput {
@@ -49,6 +50,7 @@ export class ProcessVoiceMessageUseCase {
     const result = await this.processMessageUseCase.execute({
       senderPhone: input.senderPhone,
       textMessage: transcription.text,
+      replyToMessageId: input.replyToMessageId,
     });
 
     console.log(

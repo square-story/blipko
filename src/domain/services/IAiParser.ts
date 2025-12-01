@@ -1,6 +1,5 @@
-import { ParsedData } from '../entities/ParsedData';
+import { ParsedData } from "../entities/ParsedData";
 
 export interface IAiParser {
-  parseText(text: string): Promise<ParsedData>;
+  parseText(text: string, context?: any): Promise<ParsedData>;
 }
-

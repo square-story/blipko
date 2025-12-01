@@ -14,6 +14,7 @@ export interface ITransactionRepository {
   findByUser(userId: string): Promise<Transaction[]>;
   findByContact(contactId: string): Promise<Transaction[]>;
   findById(transactionId: string): Promise<Transaction | null>;
+  findLastByUserId(userId: string): Promise<Transaction | null>;
   deleteLastTransaction(userId: string): Promise<Transaction | null>;
   findThreeTransactions(filter: {
     userId?: string;
