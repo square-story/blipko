@@ -10,6 +10,7 @@ import { totalBalance } from "../../utils/totalBalance";
 interface ProcessIncomingMessageInput {
   senderPhone: string;
   textMessage: string;
+  senderName?: string;
   replyToMessageId?: string;
 }
 
@@ -52,7 +53,10 @@ export class ProcessIncomingMessageUseCase {
       `Executing ProcessIncomingMessage for ${payload.senderPhone} with message: "${normalizedMessage}"`,
     );
     // 1. Identify or Create User
-    const user = await this.ensureUserExists(payload.senderPhone);
+    const user = await this.ensureUserExists(
+      payload.senderPhone,
+      payload.senderName,
+    );
     console.log(`User identified: ${user.id}`);
 
     if (normalizedMessage === "start") {
@@ -259,17 +263,25 @@ _Add more entries or ask for your balance anytime!_`;
     return { response, parsed };
   }
 
-  private async ensureUserExists(phoneNumber: string): Promise<User> {
+  private async ensureUserExists(
+    phoneNumber: string,
+    name?: string,
+  ): Promise<User> {
     const existing = await this.userRepository.findByPhone(phoneNumber);
     if (existing) {
       console.log(`Found existing user for phone ${phoneNumber}`);
       return existing;
     }
-    console.log(`Creating new user for phone ${phoneNumber}`);
+    console.log(`Creating new user for phone ${phoneNumber} with name ${name}`);
 
-    return this.userRepository.create({
+    const userData: any = {
       phoneNumber: phoneNumber,
-    });
+    };
+    if (name) {
+      userData.name = name;
+    }
+
+    return this.userRepository.create(userData);
   }
 
   private async ensureContactExists(
