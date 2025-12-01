@@ -78,7 +78,7 @@ export class WebhookController {
     private readonly processVoiceMessage: ProcessVoiceMessageUseCase,
     private readonly processedMessageRepository: PrismaProcessedMessageRepository,
     private readonly verifyToken: string,
-  ) { }
+  ) {}
 
   async verifyWebhook(req: Request, res: Response, next: NextFunction) {
     try {
@@ -225,6 +225,7 @@ export class WebhookController {
         const result = await this.processVoiceMessage.execute({
           senderPhone,
           mediaId,
+          replyToMessageId: message.context?.id,
         });
 
         console.log("Processed voice message result:", result);

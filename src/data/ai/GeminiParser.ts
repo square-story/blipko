@@ -9,9 +9,16 @@ const transactionSchema: Schema = {
   properties: {
     intent: {
       type: Type.STRING,
-      enum: ["CREDIT", "DEBIT", "BALANCE", "UNDO", "VIEW_DAILY_SUMMARY"],
+      enum: [
+        "CREDIT",
+        "DEBIT",
+        "BALANCE",
+        "UNDO",
+        "VIEW_DAILY_SUMMARY",
+        "UPDATE_TRANSACTION",
+      ],
       description:
-        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions.",
+        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction (e.g. change amount, category).",
     },
     amount: {
       type: Type.NUMBER,
@@ -31,6 +38,19 @@ const transactionSchema: Schema = {
     currency: {
       type: Type.STRING,
       description: "The currency code detected, defaulting to INR.",
+    },
+    updatedFields: {
+      type: Type.OBJECT,
+      properties: {
+        amount: { type: Type.NUMBER, description: "New amount if updated" },
+        category: { type: Type.STRING, description: "New category if updated" },
+        description: {
+          type: Type.STRING,
+          description: "New description if updated",
+        },
+        name: { type: Type.STRING, description: "New name if updated" },
+      },
+      description: "Fields to update if intent is UPDATE_TRANSACTION",
     },
   },
   required: ["intent", "amount", "name"],
@@ -72,6 +92,12 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Hinglish/Hindi: "Aaj ka kharcha", "Aaj ka hisab".
    - Example: "Show me today's spend" -> { intent: "VIEW_DAILY_SUMMARY", name: "Unknown", amount: 0 }
 
+6. **UPDATE_TRANSACTION (Modification):**
+   - User replies to a transaction confirmation to change details.
+   - Context will be provided.
+   - Example: "Actually it was 600" -> { intent: "UPDATE_TRANSACTION", updatedFields: { amount: 600 } }
+   - Example: "Change category to Food" -> { intent: "UPDATE_TRANSACTION", updatedFields: { category: "Food" } }
+
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).
 - Ignore spelling mistakes.
@@ -92,14 +118,22 @@ export class GeminiParser implements IAiParser {
     this.client = new GoogleGenAI({ apiKey: this.apiKey });
   }
 
-  async parseText(text: string): Promise<ParsedData> {
+  async parseText(text: string, context?: any): Promise<ParsedData> {
     try {
+      let promptText = text;
+      if (context) {
+        promptText = `Context: User is replying to a message/transaction. 
+Transaction Details: ${JSON.stringify(context)}
+User Reply: "${text}"
+Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
+      }
+
       const response = await this.client.models.generateContent({
         model: this.modelName,
         contents: [
           {
             role: "user",
-            parts: [{ text: text }],
+            parts: [{ text: promptText }],
           },
         ],
         config: {

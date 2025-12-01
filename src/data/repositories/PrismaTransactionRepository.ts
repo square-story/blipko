@@ -5,7 +5,7 @@ import {
 } from "../../domain/repositories/ITransactionRepository";
 
 export class PrismaTransactionRepository implements ITransactionRepository {
-  constructor(private readonly prisma: PrismaClient) { }
+  constructor(private readonly prisma: PrismaClient) {}
 
   async create(data: CreateTransactionDTO): Promise<Transaction> {
     return this.prisma.transaction.create({
@@ -48,6 +48,13 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   async findById(transactionId: string): Promise<Transaction | null> {
     return this.prisma.transaction.findUnique({
       where: { id: transactionId },
+    });
+  }
+
+  async findLastByUserId(userId: string): Promise<Transaction | null> {
+    return this.prisma.transaction.findFirst({
+      where: { userId, isDeleted: false },
+      orderBy: { date: "desc" },
     });
   }
 
@@ -146,7 +153,8 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         totalSpend += amount;
 
         const category = tx.category || "General";
-        categoryBreakdown[category] = (categoryBreakdown[category] || 0) + amount;
+        categoryBreakdown[category] =
+          (categoryBreakdown[category] || 0) + amount;
       }
     }
 
