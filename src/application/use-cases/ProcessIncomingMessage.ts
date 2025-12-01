@@ -361,7 +361,7 @@ Note: ${transaction.description}`;
 
     // UPDATE Intent (Category)
     if (lowerMessage.includes("update category to")) {
-      const newCategory = message.split("update category to")[1].trim();
+      const newCategory = message.split("update category to")[1]?.trim();
       if (newCategory) {
         await this.transactionRepository.update(transaction.id, {
           category: newCategory,
