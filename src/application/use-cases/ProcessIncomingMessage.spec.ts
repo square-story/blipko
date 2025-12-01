@@ -27,6 +27,7 @@ describe("ProcessIncomingMessage", () => {
       updateConfirmationMessageId: vi.fn(),
       findThreeTransactions: vi.fn().mockResolvedValue([]),
       getBalance: vi.fn(),
+      getDailySummary: vi.fn(),
     };
     mockAiParser = {
       parseText: vi.fn(),
@@ -173,6 +174,49 @@ describe("ProcessIncomingMessage", () => {
     expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
       to: "1234567890",
       body: expect.stringContaining("Customer Report: Raju"),
+    });
+  });
+
+  it("should handle VIEW_DAILY_SUMMARY intent", async () => {
+    const mockUser = { id: "user-1", phoneNumber: "1234567890", name: "User" };
+    const mockParsedData = {
+      intent: "VIEW_DAILY_SUMMARY",
+      amount: 0,
+      name: "Unknown",
+    };
+    const mockSummary = {
+      transactions: [
+        { intent: "CREDIT", amount: 500, category: "Food" },
+        { intent: "CREDIT", amount: 200, category: "Travel" },
+      ],
+      totalSpend: 700,
+      categoryBreakdown: { Food: 500, Travel: 200 },
+    };
+
+    mockUserRepository.findByPhone.mockResolvedValue(mockUser);
+    mockAiParser.parseText.mockResolvedValue(mockParsedData);
+    mockTransactionRepository.getDailySummary.mockResolvedValue(mockSummary);
+
+    await useCase.execute({
+      senderPhone: "1234567890",
+      textMessage: "Show today's spend",
+    });
+
+    expect(mockTransactionRepository.getDailySummary).toHaveBeenCalledWith(
+      "user-1",
+      expect.any(Date),
+    );
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
+      to: "1234567890",
+      body: expect.stringContaining("Today's Summary"),
+    });
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
+      to: "1234567890",
+      body: expect.stringContaining("Total Spend"),
+    });
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
+      to: "1234567890",
+      body: expect.stringContaining("700"),
     });
   });
 });

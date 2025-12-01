@@ -12,15 +12,16 @@ import { TransactionProcessor } from "./processors/TransactionProcessor";
 import { UndoProcessor } from "./processors/UndoProcessor";
 import { ReplyProcessor } from "./processors/ReplyProcessor";
 import { ConfirmationProcessor } from "./processors/ConfirmationProcessor";
+import { DailySummaryProcessor } from "./processors/DailySummaryProcessor";
 
-interface ProcessIncomingMessageInput {
+export interface ProcessIncomingMessageInput {
   senderPhone: string;
   textMessage: string;
   senderName?: string | undefined;
   replyToMessageId?: string | undefined;
 }
 
-interface ProcessIncomingMessageOutput {
+export interface ProcessIncomingMessageOutput {
   response: string;
   parsed: ParsedData;
 }
@@ -47,7 +48,9 @@ export class ProcessIncomingMessageUseCase {
       new ReplyProcessor(transactionRepository, messageService),
       new UndoProcessor(transactionRepository, messageService),
       new BalanceProcessor(transactionRepository, contactRepository, messageService),
+      new BalanceProcessor(transactionRepository, contactRepository, messageService),
       new TransactionProcessor(transactionRepository, contactRepository, messageService),
+      new DailySummaryProcessor(transactionRepository, messageService),
     ];
   }
 
