@@ -13,5 +13,5 @@ export default async function Layout({
         redirect("/api/auth/signin?callbackUrl=/dashboard");
     }
 
-    return <AdminPanelLayout>{children}</AdminPanelLayout>;
+    return <AdminPanelLayout user={session.user}>{children}</AdminPanelLayout>;
 }
