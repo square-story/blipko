@@ -4,7 +4,8 @@ export type ParsedIntent =
   | "BALANCE"
   | "START"
   | "QUICK_REPLY"
-  | "UNDO";
+  | "UNDO"
+  | "VIEW_DAILY_SUMMARY";
 
 export interface ParsedData {
   intent: ParsedIntent;

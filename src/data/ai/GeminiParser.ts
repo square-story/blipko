@@ -9,9 +9,9 @@ const transactionSchema: Schema = {
   properties: {
     intent: {
       type: Type.STRING,
-      enum: ["CREDIT", "DEBIT", "BALANCE", "UNDO"],
+      enum: ["CREDIT", "DEBIT", "BALANCE", "UNDO", "VIEW_DAILY_SUMMARY"],
       description:
-        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status. UNDO if user wants to delete/correct last entry.",
+        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions.",
     },
     amount: {
       type: Type.NUMBER,
@@ -64,6 +64,13 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Manglish/Malayalam: "Maati", "Thettu patti", "Kalayuka", "Thirichu".
    - Hinglish/Hindi: "Galti se add ho gaya", "Wapas karo", "Delete karo", "Hata do".
    - Example: "Delete last entry" -> { intent: "UNDO", name: "Unknown", amount: 0 }
+
+5. **VIEW_DAILY_SUMMARY (Report):**
+   - Requests to see today's spending or entries.
+   - English: "Today's spend", "Daily summary", "Show today's entries".
+   - Manglish/Malayalam: "Innathe chilavu", "Innathe kanakku".
+   - Hinglish/Hindi: "Aaj ka kharcha", "Aaj ka hisab".
+   - Example: "Show me today's spend" -> { intent: "VIEW_DAILY_SUMMARY", name: "Unknown", amount: 0 }
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).

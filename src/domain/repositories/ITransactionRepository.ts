@@ -29,4 +29,12 @@ export interface ITransactionRepository {
     transactionId: string,
     data: Partial<CreateTransactionDTO>,
   ): Promise<void>;
+  getDailySummary(
+    userId: string,
+    date: Date,
+  ): Promise<{
+    transactions: Transaction[];
+    totalSpend: number;
+    categoryBreakdown: Record<string, number>;
+  }>;
 }

@@ -110,4 +110,50 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       data: updateData,
     });
   }
+
+  async getDailySummary(
+    userId: string,
+    date: Date,
+  ): Promise<{
+    transactions: Transaction[];
+    totalSpend: number;
+    categoryBreakdown: Record<string, number>;
+  }> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        isDeleted: false,
+      },
+      orderBy: { date: "desc" },
+    });
+
+    let totalSpend = 0;
+    const categoryBreakdown: Record<string, number> = {};
+
+    for (const tx of transactions) {
+      if (tx.intent === "CREDIT") {
+        const amount = Number(tx.amount);
+        totalSpend += amount;
+
+        const category = tx.category || "General";
+        categoryBreakdown[category] = (categoryBreakdown[category] || 0) + amount;
+      }
+    }
+
+    return {
+      transactions,
+      totalSpend,
+      categoryBreakdown,
+    };
+  }
 }
