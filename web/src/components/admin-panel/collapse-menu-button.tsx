@@ -67,12 +67,12 @@ export function CollapseMenuButton({
       >
         <Button
           variant={isSubmenuActive ? "secondary" : "ghost"}
-          className="w-full justify-start h-10"
+          className="w-full justify-start h-10 group"
         >
           <div className="w-full items-center flex justify-between">
             <div className="flex items-center">
               <span className="mr-4">
-                <Icon size={18} />
+                <Icon size={18} className="transition-transform ease-in-out duration-300 group-hover:scale-110" />
               </span>
               <p
                 className={cn(
@@ -140,12 +140,12 @@ export function CollapseMenuButton({
             <DropdownMenuTrigger asChild>
               <Button
                 variant={isSubmenuActive ? "secondary" : "ghost"}
-                className="w-full justify-start h-10 mb-1"
+                className="w-full justify-start h-10 mb-1 group"
               >
                 <div className="w-full items-center flex justify-between">
                   <div className="flex items-center">
                     <span className={cn(isOpen === false ? "" : "mr-4")}>
-                      <Icon size={18} />
+                      <Icon size={18} className="transition-transform ease-in-out duration-300 group-hover:scale-110" />
                     </span>
                     <p
                       className={cn(
@@ -173,10 +173,9 @@ export function CollapseMenuButton({
         {submenus.map(({ href, label, active }, index) => (
           <DropdownMenuItem key={index} asChild>
             <Link
-              className={`cursor-pointer ${
-                ((active === undefined && pathname === href) || active) &&
+              className={`cursor-pointer ${((active === undefined && pathname === href) || active) &&
                 "bg-secondary"
-              }`}
+                }`}
               href={href}
             >
               <p className="max-w-[180px] truncate">{label}</p>

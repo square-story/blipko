@@ -66,14 +66,14 @@ export function Menu({ isOpen }: MenuProps) {
                                   ? "secondary"
                                   : "ghost"
                               }
-                              className="w-full justify-start h-10 mb-1"
+                              className="w-full justify-start h-10 mb-1 group"
                               asChild
                             >
                               <Link href={href}>
                                 <span
                                   className={cn(isOpen === false ? "" : "mr-4")}
                                 >
-                                  <Icon size={18} />
+                                  <Icon size={18} className="transition-transform ease-in-out duration-300 group-hover:scale-110" />
                                 </span>
                                 <p
                                   className={cn(
@@ -121,10 +121,10 @@ export function Menu({ isOpen }: MenuProps) {
                   <Button
                     onClick={() => signOut({ callbackUrl: "/" })}
                     variant="outline"
-                    className="w-full justify-center h-10 mt-5"
+                    className="w-full justify-center h-10 mt-5 group"
                   >
                     <span className={cn(isOpen === false ? "" : "mr-4")}>
-                      <LogOut size={18} />
+                      <LogOut size={18} className="transition-transform ease-in-out duration-300 group-hover:scale-110" />
                     </span>
                     <p
                       className={cn(

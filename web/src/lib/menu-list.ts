@@ -1,11 +1,11 @@
 import {
-  Tag,
-  Users,
-  Settings,
-  Bookmark,
-  SquarePen,
   LayoutGrid,
   LucideIcon,
+  ArrowRightLeft,
+  PieChart,
+  Users,
+  Tags,
+  Settings,
 } from "lucide-react";
 
 type Submenu = {
@@ -41,32 +41,32 @@ export function getMenuList(pathname: string): Group[] {
       ],
     },
     {
-      groupLabel: "Contents",
+      groupLabel: "Finance",
       menus: [
         {
-          href: "",
-          label: "Posts",
-          icon: SquarePen,
-          submenus: [
-            {
-              href: "/posts",
-              label: "All Posts",
-            },
-            {
-              href: "/posts/new",
-              label: "New Post",
-            },
-          ],
+          href: "/dashboard/transactions",
+          label: "Transactions",
+          icon: ArrowRightLeft,
         },
         {
-          href: "/categories",
+          href: "/dashboard/analytics",
+          label: "Analytics",
+          icon: PieChart,
+        },
+      ],
+    },
+    {
+      groupLabel: "Management",
+      menus: [
+        {
+          href: "/dashboard/vendors",
+          label: "Vendors",
+          icon: Users,
+        },
+        {
+          href: "/dashboard/categories",
           label: "Categories",
-          icon: Bookmark,
-        },
-        {
-          href: "/tags",
-          label: "Tags",
-          icon: Tag,
+          icon: Tags,
         },
       ],
     },
@@ -74,12 +74,7 @@ export function getMenuList(pathname: string): Group[] {
       groupLabel: "Settings",
       menus: [
         {
-          href: "/users",
-          label: "Users",
-          icon: Users,
-        },
-        {
-          href: "/account",
+          href: "/dashboard/account",
           label: "Account",
           icon: Settings,
         },
