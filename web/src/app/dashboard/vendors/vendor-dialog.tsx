@@ -100,13 +100,6 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogTrigger asChild>
-                {trigger || (
-                    <Button>
-                        {isEditing ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                    </Button>
-                )}
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{isEditing ? "Edit Vendor" : "Add Vendor"}</DialogTitle>
