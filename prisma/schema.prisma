@@ -89,6 +89,12 @@ model Contact {
   category String        @default("General")
   status   ContactStatus @default(ACTIVE)
 
+  // Contact Details
+  phoneNumber String?
+  email       String?
+  address     String?
+  notes       String?
+
   // Contacts are private to a user
   userId String
   user   User   @relation(fields: [userId], references: [id])

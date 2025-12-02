@@ -1,3 +1,4 @@
+import { AnimatedNumber } from "@/components/animated-number";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import {
     Card,
@@ -53,7 +54,9 @@ export default async function Page({
                             </svg>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalVendors}</div>
+                            <div className="text-2xl font-bold">
+                                <AnimatedNumber value={stats.totalVendors} />
+                            </div>
                             <p className="text-xs text-muted-foreground">
                                 Total registered vendors
                             </p>
@@ -78,7 +81,9 @@ export default async function Page({
                             </svg>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{stats.activeVendors}</div>
+                            <div className="text-2xl font-bold">
+                                <AnimatedNumber value={stats.activeVendors} />
+                            </div>
                             <p className="text-xs text-muted-foreground">
                                 Currently active
                             </p>
@@ -103,10 +108,10 @@ export default async function Page({
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {new Intl.NumberFormat("en-IN", {
-                                    style: "currency",
-                                    currency: "INR",
-                                }).format(stats.totalSpend)}
+                                <AnimatedNumber
+                                    value={stats.totalSpend}
+                                    format={{ style: "currency", currency: "INR" }}
+                                />
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Lifetime spend
@@ -132,7 +137,9 @@ export default async function Page({
                             </svg>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">+{stats.newVendors}</div>
+                            <div className="text-2xl font-bold">
+                                +<AnimatedNumber value={stats.newVendors} />
+                            </div>
                             <p className="text-xs text-muted-foreground">
                                 Last 30 days
                             </p>

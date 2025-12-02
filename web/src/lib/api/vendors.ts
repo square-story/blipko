@@ -8,22 +8,33 @@ export type GetContactsParams = {
   sort?: string; // e.g., "name.asc" or "totalSpend.desc"
 };
 
+import { auth } from "@/auth";
+
 export async function getContacts({
   page = 1,
   pageSize = 10,
   search,
   sort,
 }: GetContactsParams) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { data: [], pageCount: 0, total: 0 };
+  }
+  const userId = session.user.id;
+
   const skip = (page - 1) * pageSize;
 
-  const where: Prisma.ContactWhereInput = search
-    ? {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { category: { contains: search, mode: "insensitive" } },
-        ],
-      }
-    : {};
+  const where: Prisma.ContactWhereInput = {
+    userId,
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { category: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
 
   // Handle sorting
   let orderBy: Prisma.ContactOrderByWithRelationInput = { createdAt: "desc" };
@@ -100,12 +111,24 @@ export async function getContacts({
 }
 
 export async function getContactStats() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {
+      totalVendors: 0,
+      activeVendors: 0,
+      newVendors: 0,
+      totalSpend: 0,
+    };
+  }
+  const userId = session.user.id;
+
   const [totalVendors, activeVendors, newVendors] = await Promise.all([
-    prisma.contact.count(),
+    prisma.contact.count({ where: { userId } }),
     // Use string "ACTIVE" to avoid runtime error if Enum is undefined
-    prisma.contact.count({ where: { status: "ACTIVE" as any } }),
+    prisma.contact.count({ where: { userId, status: "ACTIVE" as any } }),
     prisma.contact.count({
       where: {
+        userId,
         createdAt: {
           gte: new Date(new Date().setMonth(new Date().getMonth() - 1)),
         },
@@ -119,6 +142,7 @@ export async function getContactStats() {
       amount: true,
     },
     where: {
+      userId,
       contactId: { not: null },
     },
   });
