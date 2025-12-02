@@ -100,6 +100,18 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            {trigger ? (
+                <DialogTrigger asChild>{trigger}</DialogTrigger>
+            ) : (
+                !isControlled && (
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Vendor
+                        </Button>
+                    </DialogTrigger>
+                )
+            )}
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>{isEditing ? "Edit Vendor" : "Add Vendor"}</DialogTitle>
@@ -124,7 +136,7 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <FormField
                                 control={form.control}
                                 name="category"
@@ -164,7 +176,7 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
                                 )}
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <FormField
                                 control={form.control}
                                 name="phoneNumber"

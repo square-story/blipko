@@ -286,7 +286,7 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-x-2">
                 <div className="relative max-w-sm w-full">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
