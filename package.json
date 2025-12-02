@@ -12,7 +12,8 @@
     "test": "playwright test",
     "test:unit": "vitest",
     "lint": "eslint .",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "backup": "ts-node-dev scripts/backup-db.ts"
   },
   "lint-staged": {
     "*.ts": [
