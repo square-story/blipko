@@ -65,6 +65,7 @@ export type VendorData = {
     email?: string | null;
     address?: string | null;
     notes?: string | null;
+    currentBalance: number;
 };
 
 interface VendorTableProps {

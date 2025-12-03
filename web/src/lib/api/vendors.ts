@@ -81,10 +81,11 @@ export async function getContacts({
 
     // Remove transactions from the result to avoid passing Decimal objects to client
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { transactions, ...rest } = contact;
+    const { transactions, currentBalance, ...rest } = contact;
 
     return {
       ...rest,
+      currentBalance: Number(currentBalance),
       totalSpend,
       lastTransaction,
       transactionCount: contact._count.transactions,

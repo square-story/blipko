@@ -95,6 +95,8 @@ model Contact {
   address     String?
   notes       String?
 
+  currentBalance Decimal @default(0) @db.Decimal(10, 2)
+
   // Contacts are private to a user
   userId String
   user   User   @relation(fields: [userId], references: [id])
@@ -116,6 +118,7 @@ model Transaction {
   intent      Intent
   description String?
   category    String  @default("General")
+  receiptUrl  String?
 
   date DateTime @default(now())
 
