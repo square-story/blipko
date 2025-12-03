@@ -9,7 +9,6 @@ import {
     getCoreRowModel,
     useReactTable,
     SortingState,
-    getSortedRowModel,
 } from "@tanstack/react-table";
 import { useRouter, useSearchParams } from "next/navigation";
 import {

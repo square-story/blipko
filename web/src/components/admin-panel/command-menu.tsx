@@ -3,17 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
-    Calculator,
-    Calendar,
-    CreditCard,
-    Settings,
-    Smile,
-    User,
-    LayoutGrid,
-    ArrowRightLeft,
-    PieChart,
-    Users,
-    Tags,
     Search,
 } from "lucide-react";
 
@@ -25,7 +14,6 @@ import {
     CommandItem,
     CommandList,
     CommandSeparator,
-    CommandShortcut,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,7 +22,7 @@ import { getMenuList } from "@/lib/menu-list";
 export function CommandMenu() {
     const [open, setOpen] = React.useState(false);
     const router = useRouter();
-    const menuList = getMenuList(""); // Pathname doesn't matter for list generation
+    const menuList = getMenuList();
 
     React.useEffect(() => {
         const down = (e: KeyboardEvent) => {
