@@ -1,5 +1,4 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
@@ -9,20 +8,15 @@ export default function Loading() {
                 {/* Stats Cards Skeleton */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, i) => (
-                        <Card key={i}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    <Skeleton className="h-4 w-24" />
-                                </CardTitle>
-                                <Skeleton className="h-4 w-4 rounded-full" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    <Skeleton className="h-8 w-16 mb-1" />
-                                </div>
-                                <Skeleton className="h-3 w-32" />
-                            </CardContent>
-                        </Card>
+                        <div
+                            key={i}
+                            className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-lg border bg-card p-4 shadow-sm"
+                        >
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="row-span-2 row-start-1 h-8 w-8 rounded-md" />
+                            <Skeleton className="h-8 w-16" />
+                            <Skeleton className="col-span-2 h-4 w-32 mt-1" />
+                        </div>
                     ))}
                 </div>
 
