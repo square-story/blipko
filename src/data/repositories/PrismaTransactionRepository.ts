@@ -8,7 +8,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async create(data: CreateTransactionDTO): Promise<Transaction> {
-    return this.prisma.transaction.create({
+    const transaction = await this.prisma.transaction.create({
       data: {
         amount: data.amount,
         intent: data.intent,
@@ -18,6 +18,12 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         contactId: data.contactId ?? null,
       },
     });
+
+    if (data.contactId) {
+      await this.updateContactBalance(data.contactId);
+    }
+
+    return transaction;
   }
 
   findThreeTransactions(filter: {
@@ -68,7 +74,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       return null;
     }
 
-    return this.prisma.transaction.update({
+    const updatedTransaction = await this.prisma.transaction.update({
       where: { id: lastTransaction.id },
       data: {
         isDeleted: true,
@@ -76,6 +82,12 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         deletedByUserId: userId,
       },
     });
+
+    if (updatedTransaction.contactId) {
+      await this.updateContactBalance(updatedTransaction.contactId);
+    }
+
+    return updatedTransaction;
   }
   async findByConfirmationId(messageId: string): Promise<Transaction | null> {
     return this.prisma.transaction.findUnique({
@@ -94,6 +106,12 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   }
 
   async delete(transactionId: string): Promise<void> {
+    const transaction = await this.prisma.transaction.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!transaction) return;
+
     await this.prisma.transaction.update({
       where: { id: transactionId },
       data: {
@@ -101,6 +119,10 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         deletedAt: new Date(),
       },
     });
+
+    if (transaction.contactId) {
+      await this.updateContactBalance(transaction.contactId);
+    }
   }
 
   async update(
@@ -112,10 +134,14 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     if (data.description) updateData.description = data.description;
     if (data.amount !== undefined) updateData.amount = data.amount;
 
-    await this.prisma.transaction.update({
+    const transaction = await this.prisma.transaction.update({
       where: { id: transactionId },
       data: updateData,
     });
+
+    if (transaction.contactId) {
+      await this.updateContactBalance(transaction.contactId);
+    }
   }
 
   async getDailySummary(
@@ -163,5 +189,28 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       totalSpend,
       categoryBreakdown,
     };
+  }
+
+  private async updateContactBalance(contactId: string): Promise<void> {
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        contactId,
+        isDeleted: false,
+      },
+    });
+
+    let balance = 0;
+    for (const tx of transactions) {
+      if (tx.intent === "CREDIT") {
+        balance += Number(tx.amount);
+      } else if (tx.intent === "DEBIT") {
+        balance -= Number(tx.amount);
+      }
+    }
+
+    await this.prisma.contact.update({
+      where: { id: contactId },
+      data: { currentBalance: balance },
+    });
   }
 }

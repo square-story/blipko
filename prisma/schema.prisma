@@ -19,6 +19,12 @@ enum Status {
   FAILED
 }
 
+enum ContactStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
 model User {
   id          String   @id @default(cuid())
   email       String?  @unique
@@ -78,8 +84,18 @@ model VerificationToken {
 }
 
 model Contact {
-  id   String @id @default(cuid())
-  name String
+  id       String        @id @default(cuid())
+  name     String
+  category String        @default("General")
+  status   ContactStatus @default(ACTIVE)
+
+  // Contact Details
+  phoneNumber String?
+  email       String?
+  address     String?
+  notes       String?
+
+  currentBalance Decimal @default(0) @db.Decimal(10, 2)
 
   // Contacts are private to a user
   userId String
@@ -102,6 +118,7 @@ model Transaction {
   intent      Intent
   description String?
   category    String  @default("General")
+  receiptUrl  String?
 
   date DateTime @default(now())
 

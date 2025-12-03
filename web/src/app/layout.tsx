@@ -1,6 +1,5 @@
-import { Footer } from "@/components/Footer";
-import { Header } from "@/components/Navbar";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import {
   constructMetadata,
   generateOrganizationSchema,
@@ -91,16 +90,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <header>
-            <nav>
-              <Header />
-            </nav>
-          </header>
           {children}
-          <footer>
-            <Footer />
-          </footer>
           <Analytics />
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
