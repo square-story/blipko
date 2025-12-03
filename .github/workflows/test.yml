@@ -23,6 +23,14 @@ jobs:
     - name: Install Playwright Browsers
       run: pnpm exec playwright install --with-deps
     - name: Run Playwright tests
+      env:
+        DATABASE_URL: "postgresql://user:password@localhost:5432/dbname"
+        GEMINI_API_KEY: "dummy_gemini_key"
+        META_VERIFY_TOKEN: "dummy_verify_token"
+        META_WHATSAPP_TOKEN: "dummy_whatsapp_token"
+        WHATSAPP_PHONE_NUMBER_ID: "dummy_phone_id"
+        OPENAI_API_KEY: "dummy_openai_key"
+        SARVAM_API_KEY: "dummy_sarvam_key"
       run: pnpm exec playwright test
     - uses: actions/upload-artifact@v4
       if: always()
