@@ -12,3 +12,6 @@ prisma/migrations
 /playwright-report
 .gitignore
 .DS_Store
+
+
+/backups
