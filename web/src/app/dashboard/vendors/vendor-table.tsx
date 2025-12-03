@@ -175,10 +175,10 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
                 const amount = parseFloat(row.getValue("totalSpend"));
                 return (
                     <div className="font-medium">
-                        <AnimatedNumber
-                            value={amount}
-                            format={{ style: "currency", currency: "INR" }}
-                        />
+                        {amount.toLocaleString("en-IN", {
+                            style: "currency",
+                            currency: "INR",
+                        })}
                     </div>
                 );
             },
