@@ -114,3 +114,79 @@ export async function deleteVendor(id: string) {
     return { success: false, message: "Failed to delete vendor" };
   }
 }
+
+export async function getVendor(id: string) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, message: "Unauthorized" };
+  }
+
+  try {
+    const vendor = await prisma.contact.findUnique({
+      where: { id, userId: session.user.id },
+      include: {
+        transactions: {
+          orderBy: { date: "desc" },
+        },
+      },
+    });
+
+    if (!vendor) {
+      return { success: false, message: "Vendor not found" };
+    }
+
+    // Calculate Analytics
+    const transactions = vendor.transactions;
+
+    // 1. Spending Trend (Daily)
+    const spendingByDate = transactions.reduce(
+      (acc, tx) => {
+        if (tx.intent === "DEBIT") {
+          const date = tx.date.toLocaleDateString("en-CA", {
+            timeZone: "Asia/Kolkata",
+          });
+          acc[date] = (acc[date] || 0) + Number(tx.amount);
+        }
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const spendingTrend = Object.entries(spendingByDate)
+      .map(([date, amount]) => ({ date, amount }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-30); // Last 30 days of activity
+
+    // 2. Category Distribution
+    const categoryDistribution = transactions.reduce(
+      (acc, tx) => {
+        if (tx.intent === "DEBIT") {
+          acc[tx.category] = (acc[tx.category] || 0) + Number(tx.amount);
+        }
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const categoryStats = Object.entries(categoryDistribution).map(
+      ([name, value]) => ({
+        name,
+        value,
+      }),
+    );
+
+    return {
+      success: true,
+      data: {
+        ...vendor,
+        analytics: {
+          spendingTrend,
+          categoryStats,
+        },
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching vendor:", error);
+    return { success: false, message: "Failed to fetch vendor" };
+  }
+}

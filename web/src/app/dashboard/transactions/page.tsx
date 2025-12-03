@@ -1,10 +1,36 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { ComingSoon } from "@/components/coming-soon";
+import { TransactionTable } from "./transaction-table";
+import { getTransactions } from "@/lib/actions/transactions";
 
-export default function Page() {
+interface PageProps {
+    searchParams: Promise<{
+        page?: string;
+        search?: string;
+        sort?: string;
+    }>;
+}
+
+export default async function Page({ searchParams }: PageProps) {
+    const params = await searchParams;
+    const page = Number(params.page) || 1;
+    const search = params.search || "";
+    const sort = params.sort || "date.desc";
+
+    const { data, total, pageCount } = await getTransactions({
+        page,
+        search,
+        sort,
+    });
+
     return (
         <ContentLayout title="Transactions">
-            <ComingSoon />
+            <div className="space-y-4">
+                <TransactionTable
+                    data={data}
+                    pageCount={pageCount}
+                    total={total}
+                />
+            </div>
         </ContentLayout>
     );
 }

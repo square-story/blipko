@@ -21,62 +21,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
-import { AnimatedNumber } from "@/components/animated-number";
 import { Badge } from "@/components/ui/badge";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
-// import { ContactStatus } from "@prisma/client"; // Enum import issues
+import { TransactionData } from "@/lib/actions/transactions";
+import Link from "next/link";
 
-// Define local type to avoid import issues
-export type ContactStatus = "ACTIVE" | "INACTIVE" | "ARCHIVED";
-import { VendorDialog } from "./vendor-dialog";
-import { MoreHorizontal, Pencil, Trash, FileText } from "lucide-react";
-import { useRouter } from "next/navigation";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { deleteVendor } from "@/lib/actions/vendors";
-import { toast } from "sonner";
-import { useState } from "react";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-
-// Define the shape of our data
-export type VendorData = {
-    id: string;
-    name: string;
-    category: string;
-    status: ContactStatus;
-    totalSpend: number;
-    lastTransaction?: Date;
-    transactionCount: number;
-    phoneNumber?: string | null;
-    email?: string | null;
-    address?: string | null;
-    notes?: string | null;
-    currentBalance: number;
-};
-
-interface VendorTableProps {
-    data: VendorData[];
+interface TransactionTableProps {
+    data: TransactionData[];
     pageCount: number;
     total: number;
 }
 
-export function VendorTable({ data, pageCount, total }: VendorTableProps) {
-    const router = useRouter();
+export function TransactionTable({ data, pageCount, total }: TransactionTableProps) {
     // URL State
     const [page, setPage] = useQueryState(
         "page",
@@ -91,7 +47,7 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
         parseAsString.withOptions({ shallow: false })
     );
 
-    // Local State for immediate UI feedback (optional, but good for search input)
+    // Local State for immediate UI feedback
     const [searchValue, setSearchValue] = React.useState(search);
     const debouncedSearch = useDebounce(searchValue, 300);
 
@@ -121,55 +77,84 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
         }
     }, [debouncedSearch, search, page, setSearch, setPage]);
 
-    const columns: ColumnDef<VendorData>[] = [
+    const columns: ColumnDef<TransactionData>[] = [
         {
-            accessorKey: "name",
+            accessorKey: "date",
             header: ({ column }) => {
                 return (
                     <Button
                         variant="ghost"
                         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                     >
-                        Vendor Name
+                        Date
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );
             },
-            cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+            cell: ({ row }) => {
+                const date = row.getValue("date") as Date;
+                return <div>{new Date(date).toLocaleDateString()}</div>;
+            },
+        },
+        {
+            accessorKey: "description",
+            header: "Description",
+            cell: ({ row }) => <div className="font-medium">{row.getValue("description") || "-"}</div>,
+        },
+        {
+            accessorKey: "contact",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    >
+                        Contact
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const contactName = row.original.contactName;
+                const contactId = row.original.contactId;
+                if (!contactName) return <span className="text-muted-foreground">-</span>;
+
+                return contactId ? (
+                    <Link href={`/dashboard/vendors/${contactId}`} className="hover:underline text-primary">
+                        {contactName}
+                    </Link>
+                ) : (
+                    <span>{contactName}</span>
+                );
+            },
         },
         {
             accessorKey: "category",
             header: "Category",
+            cell: ({ row }) => <Badge variant="secondary">{row.getValue("category")}</Badge>,
         },
         {
-            accessorKey: "status",
-            header: "Status",
-            cell: ({ row }) => {
-                const status = row.getValue("status") as string;
-                return (
-                    <Badge variant={status === "ACTIVE" ? "default" : "secondary"}>
-                        {status}
-                    </Badge>
-                );
-            },
-        },
-        {
-            accessorKey: "totalSpend",
+            accessorKey: "amount",
             header: ({ column }) => {
                 return (
                     <Button
                         variant="ghost"
                         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="w-full justify-end"
                     >
-                        Total Spend
+                        Amount
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );
             },
             cell: ({ row }) => {
-                const amount = parseFloat(row.getValue("totalSpend"));
+                const amount = parseFloat(row.getValue("amount"));
+                const intent = row.original.intent;
+                const isCredit = intent === "CREDIT";
+                const isDebit = intent === "DEBIT";
+
                 return (
-                    <div className="font-medium">
+                    <div className={`font-medium text-right ${isCredit ? "text-green-600" : isDebit ? "text-red-600" : ""}`}>
                         {amount.toLocaleString("en-IN", {
                             style: "currency",
                             currency: "INR",
@@ -179,90 +164,14 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
             },
         },
         {
-            accessorKey: "lastTransaction",
-            header: "Last Transaction",
+            accessorKey: "intent",
+            header: "Type",
             cell: ({ row }) => {
-                const date = row.getValue("lastTransaction") as Date | undefined;
-                return date ? date.toLocaleDateString() : "N/A";
-            },
-        },
-        {
-            id: "actions",
-            cell: ({ row }) => {
-                const vendor = row.original;
-                const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-                const [showEditDialog, setShowEditDialog] = useState(false);
-
+                const intent = row.getValue("intent") as string;
                 return (
-                    <>
-                        <VendorDialog
-                            vendor={vendor}
-                            open={showEditDialog}
-                            onOpenChange={setShowEditDialog}
-                        />
-                        <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the
-                                        vendor and remove their data from our servers.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                        onClick={async () => {
-                                            const result = await deleteVendor(vendor.id);
-                                            if (result.success) {
-                                                toast.success(result.message);
-                                            } else {
-                                                toast.error(result.message);
-                                            }
-                                        }}
-                                    >
-                                        Delete
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem
-                                    onClick={() => navigator.clipboard.writeText(vendor.id)}
-                                >
-                                    Copy ID
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={() => router.push(`/dashboard/vendors/${vendor.id}`)}
-                                >
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    View Transactions
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onSelect={() => setTimeout(() => setShowEditDialog(true), 0)}
-                                >
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onSelect={() => setTimeout(() => setShowDeleteAlert(true), 0)}
-                                    className="text-red-600"
-                                >
-                                    <Trash className="mr-2 h-4 w-4" />
-                                    Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </>
+                    <Badge variant={intent === "CREDIT" ? "default" : intent === "DEBIT" ? "destructive" : "secondary"}>
+                        {intent}
+                    </Badge>
                 );
             },
         },
@@ -291,13 +200,12 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
                 <div className="relative max-w-sm w-full">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search vendors..."
+                        placeholder="Search transactions..."
                         value={searchValue}
                         onChange={(event) => setSearchValue(event.target.value)}
                         className="pl-8"
                     />
                 </div>
-                <VendorDialog />
             </div>
             <div className="rounded-md border">
                 <Table>
@@ -351,7 +259,7 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
             </div>
             <div className="flex items-center justify-end space-x-2 py-4">
                 <div className="flex-1 text-sm text-muted-foreground">
-                    Page {page} of {pageCount} ({total} vendors)
+                    Page {page} of {pageCount} ({total} transactions)
                 </div>
                 <div className="space-x-2">
                     <Button

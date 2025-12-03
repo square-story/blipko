@@ -5,7 +5,7 @@ loadEnv();
 
 const envSchema = z.object({
   NODE_ENV: z.string().default("development"),
-  PORT: z.coerce.number().default(3000),
+  PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().url(),
   GEMINI_API_KEY: z.string(),
   META_VERIFY_TOKEN: z.string(),
