@@ -9,6 +9,7 @@ import {
 } from "@/lib/seo";
 import { Analytics } from "@vercel/analytics/next";
 import { DM_Sans } from "next/font/google";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -90,7 +91,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <NuqsAdapter>
+            {children}
+          </NuqsAdapter>
           <Analytics />
           <Toaster />
         </ThemeProvider>

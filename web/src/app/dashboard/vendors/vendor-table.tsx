@@ -1,7 +1,5 @@
 "use client";
 
-import { AnimatedNumber } from "@/components/animated-number";
-
 import * as React from "react";
 import {
     ColumnDef,
@@ -9,8 +7,9 @@ import {
     getCoreRowModel,
     useReactTable,
     SortingState,
+    Updater,
 } from "@tanstack/react-table";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryState, parseAsInteger, parseAsString } from "nuqs";
 import {
     Table,
     TableBody,
@@ -21,6 +20,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/use-debounce";
+import { AnimatedNumber } from "@/components/animated-number";
 import { Badge } from "@/components/ui/badge";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 // import { ContactStatus } from "@prisma/client"; // Enum import issues
@@ -74,57 +75,49 @@ interface VendorTableProps {
 }
 
 export function VendorTable({ data, pageCount, total }: VendorTableProps) {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
     // URL State
-    const page = Number(searchParams.get("page")) || 1;
-    const search = searchParams.get("search") || "";
-    const sortParam = searchParams.get("sort");
+    const [page, setPage] = useQueryState(
+        "page",
+        parseAsInteger.withDefault(1).withOptions({ shallow: false })
+    );
+    const [search, setSearch] = useQueryState(
+        "search",
+        parseAsString.withDefault("").withOptions({ shallow: false })
+    );
+    const [sort, setSort] = useQueryState(
+        "sort",
+        parseAsString.withOptions({ shallow: false })
+    );
 
     // Local State for immediate UI feedback (optional, but good for search input)
     const [searchValue, setSearchValue] = React.useState(search);
+    const debouncedSearch = useDebounce(searchValue, 300);
 
-    // Sorting State
-    const [sorting, setSorting] = React.useState<SortingState>(() => {
-        if (sortParam) {
-            const [id, desc] = sortParam.split(".");
-            return [{ id, desc: desc === "desc" }];
-        }
-        return [];
-    });
+    // Derive table sorting state
+    const sorting: SortingState = React.useMemo(() => {
+        if (!sort) return [];
+        const [id, desc] = sort.split(".");
+        return [{ id, desc: desc === "desc" }];
+    }, [sort]);
 
-    // Debounce search
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchValue !== search) {
-                updateUrl({ search: searchValue, page: 1 });
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchValue]);
-
-    // Handle sorting change
-    React.useEffect(() => {
-        if (sorting.length > 0) {
-            const { id, desc } = sorting[0];
-            updateUrl({ sort: `${id}.${desc ? "desc" : "asc"}` });
+    // Handle table sorting change
+    const onSortingChange = (updater: Updater<SortingState>) => {
+        const newSorting = typeof updater === "function" ? updater(sorting) : updater;
+        if (newSorting.length > 0) {
+            const { id, desc } = newSorting[0];
+            setSort(`${id}.${desc ? "desc" : "asc"}`);
         } else {
-            updateUrl({ sort: undefined });
+            setSort(null);
         }
-    }, [sorting]);
-
-    const updateUrl = (params: Record<string, string | number | undefined>) => {
-        const newParams = new URLSearchParams(searchParams.toString());
-        Object.entries(params).forEach(([key, value]) => {
-            if (value === undefined || value === "") {
-                newParams.delete(key);
-            } else {
-                newParams.set(key, String(value));
-            }
-        });
-        router.push(`?${newParams.toString()}`);
     };
+
+    // Sync search with URL
+    React.useEffect(() => {
+        if (debouncedSearch !== search) {
+            setSearch(debouncedSearch || null);
+            if (page !== 1) setPage(1);
+        }
+    }, [debouncedSearch, search, page, setSearch, setPage]);
 
     const columns: ColumnDef<VendorData>[] = [
         {
@@ -281,7 +274,7 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
                 pageSize: 10,
             },
         },
-        onSortingChange: setSorting,
+        onSortingChange: onSortingChange,
     });
 
     return (
@@ -356,7 +349,7 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateUrl({ page: page - 1 })}
+                        onClick={() => setPage(page - 1)}
                         disabled={page <= 1}
                     >
                         <ChevronLeft className="h-4 w-4" />
@@ -365,7 +358,7 @@ export function VendorTable({ data, pageCount, total }: VendorTableProps) {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateUrl({ page: page + 1 })}
+                        onClick={() => setPage(page + 1)}
                         disabled={page >= pageCount}
                     >
                         Next
