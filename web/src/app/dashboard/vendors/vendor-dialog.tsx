@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createVendor, updateVendor } from "@/lib/actions/vendors";
 import { createVendorSchema, type CreateVendorSchema } from "@/lib/validations/vendor";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Pencil } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -63,7 +63,6 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
         defaultValues: {
             name: vendor?.name || "",
             category: vendor?.category || "",
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             status: (vendor?.status ?? "ACTIVE") as any,
             phoneNumber: vendor?.phoneNumber || "",
             email: vendor?.email || "",

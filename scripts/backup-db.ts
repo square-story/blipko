@@ -28,7 +28,7 @@ async function backup() {
 
   for (const model of models) {
     try {
-      // @ts-ignore - Dynamic access to prisma models
+      // @ts-expect-error - Dynamic access to prisma models
       const data = await prisma[model].findMany();
       const filePath = path.join(backupDir, `${model}.json`);
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
