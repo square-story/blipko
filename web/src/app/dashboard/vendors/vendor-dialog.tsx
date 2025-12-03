@@ -2,14 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+    ResponsiveModal,
+    ResponsiveModalContent,
+    ResponsiveModalDescription,
+    ResponsiveModalFooter,
+    ResponsiveModalHeader,
+    ResponsiveModalTitle,
+    ResponsiveModalTrigger,
+} from "@/components/ui/responsive-modal";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Form,
     FormControl,
@@ -98,92 +99,120 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
     }
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <ResponsiveModal open={isOpen} onOpenChange={onOpenChange}>
             {trigger ? (
-                <DialogTrigger asChild>{trigger}</DialogTrigger>
+                <ResponsiveModalTrigger asChild>{trigger}</ResponsiveModalTrigger>
             ) : (
                 !isControlled && (
-                    <DialogTrigger asChild>
+                    <ResponsiveModalTrigger asChild>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Vendor
                         </Button>
-                    </DialogTrigger>
+                    </ResponsiveModalTrigger>
                 )
             )}
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{isEditing ? "Edit Vendor" : "Add Vendor"}</DialogTitle>
-                    <DialogDescription>
+            <ResponsiveModalContent className="sm:max-w-[425px]">
+                <ResponsiveModalHeader>
+                    <ResponsiveModalTitle>{isEditing ? "Edit Vendor" : "Add Vendor"}</ResponsiveModalTitle>
+                    <ResponsiveModalDescription>
                         {isEditing
                             ? "Make changes to the vendor here. Click save when you're done."
                             : "Add a new vendor to your list. Click save when you're done."}
-                    </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Vendor Name" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    </ResponsiveModalDescription>
+                </ResponsiveModalHeader>
+                <ScrollArea className="max-h-[80vh] px-1">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-2">
                             <FormField
                                 control={form.control}
-                                name="category"
+                                name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Category</FormLabel>
+                                        <FormLabel>Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Category" {...field} />
+                                            <Input placeholder="Vendor Name" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Status</FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <FormField
+                                    control={form.control}
+                                    name="category"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Category</FormLabel>
                                             <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select status" />
-                                                </SelectTrigger>
+                                                <Input placeholder="Category" {...field} />
                                             </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="ACTIVE">Active</SelectItem>
-                                                <SelectItem value="INACTIVE">Inactive</SelectItem>
-                                                <SelectItem value="ARCHIVED">Archived</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Status</FormLabel>
+                                            <Select
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select status" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="ACTIVE">Active</SelectItem>
+                                                    <SelectItem value="INACTIVE">Inactive</SelectItem>
+                                                    <SelectItem value="ARCHIVED">Archived</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <FormField
+                                    control={form.control}
+                                    name="phoneNumber"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Phone (Optional)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="+91..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="email"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Email (Optional)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="vendor@example.com" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                             <FormField
                                 control={form.control}
-                                name="phoneNumber"
+                                name="address"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Phone (Optional)</FormLabel>
+                                        <FormLabel>Address (Optional)</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="+91..." {...field} />
+                                            <Input placeholder="Address" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -191,50 +220,24 @@ export function VendorDialog({ vendor, trigger, open: controlledOpen, onOpenChan
                             />
                             <FormField
                                 control={form.control}
-                                name="email"
+                                name="notes"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Email (Optional)</FormLabel>
+                                        <FormLabel>Notes (Optional)</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="vendor@example.com" {...field} />
+                                            <Textarea placeholder="Any additional notes..." {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                        <FormField
-                            control={form.control}
-                            name="address"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Address (Optional)</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Address" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Notes (Optional)</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Any additional notes..." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DialogFooter>
-                            <Button type="submit">{isEditing ? "Save changes" : "Create vendor"}</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
+                            <ResponsiveModalFooter className="pb-4">
+                                <Button type="submit">{isEditing ? "Save changes" : "Create vendor"}</Button>
+                            </ResponsiveModalFooter>
+                        </form>
+                    </Form>
+                </ScrollArea>
+            </ResponsiveModalContent>
+        </ResponsiveModal>
     );
 }
