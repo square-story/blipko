@@ -5,12 +5,14 @@ import { IncomeExpenseChart } from "./_components/income-expense-chart";
 import { PendingInvoicesList } from "./_components/pending-invoices-list";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
+import Onboarding from "@/components/onboarding";
 
 export default async function Page() {
-    const { totalReceivables, cashFlow, chartData, pendingInvoices } = await getDashboardData();
+    const { totalReceivables, cashFlow, chartData, pendingInvoices, hasOnboarded } = await getDashboardData();
 
     return (
         <ContentLayout title="Dashboard">
+            {!hasOnboarded && <Onboarding />}
             <div className="flex flex-col gap-4 p-4 md:p-8 pt-6">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <Stat>

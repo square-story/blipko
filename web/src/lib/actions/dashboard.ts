@@ -14,6 +14,12 @@ export async function getDashboardData() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { hasOnboarded: true },
+  });
+  const hasOnboarded = user?.hasOnboarded ?? false;
+
   // 1. Total Receivables: Sum(Contact.currentBalance) where balance < 0
   const receivablesAgg = await prisma.contact.aggregate({
     _sum: {
@@ -142,6 +148,7 @@ export async function getDashboardData() {
     },
     chartData,
     pendingInvoices: serializedPendingInvoices,
+    hasOnboarded,
   };
 }
 

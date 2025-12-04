@@ -46,6 +46,7 @@ model User {
 
   // Early Access
   isEarlyAdopter Boolean @default(true)
+  hasOnboarded   Boolean @default(false)
 }
 
 model Account {
