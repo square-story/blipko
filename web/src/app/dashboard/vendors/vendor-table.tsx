@@ -21,10 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
-import { AnimatedNumber } from "@/components/animated-number";
 import { Badge } from "@/components/ui/badge";
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
-// import { ContactStatus } from "@prisma/client"; // Enum import issues
 
 // Define local type to avoid import issues
 export type ContactStatus = "ACTIVE" | "INACTIVE" | "ARCHIVED";
