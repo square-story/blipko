@@ -3,6 +3,8 @@
 import { DIcons } from "dicons";
 import Link from "next/link";
 import ThemeToogle from "@/components/ui/theme-toogle";
+import { AuthorTooltip } from "./ui/author-tooltip";
+import { founderData } from "@/lib/founder-data";
 
 
 
@@ -64,14 +66,7 @@ export function Footer() {
           </span>
           <span>·</span>
           <span>Built By</span>
-          <Link
-            aria-label="sadik"
-            href="https://sadik.is-a.dev"
-            target="_blank"
-            className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-black dark:text-white font-semibold"
-          >
-            Sadik
-          </Link>
+          <AuthorTooltip author={founderData} isAvatarVisible />
         </div>
       </div>
     </footer>

@@ -4,6 +4,10 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
+import { AuthorTooltip } from "./ui/author-tooltip";
+import { founderData } from "@/lib/founder-data";
+
+
 
 export function FaqsSection() {
 	return (
@@ -41,9 +45,7 @@ export function FaqsSection() {
 			</Accordion>
 			<p className="text-muted-foreground">
 				Can't find what you're looking for? Contact {" "}
-				<a className="text-primary hover:underline" href="https://sadik.is-a.dev">
-					Founder
-				</a>
+				<AuthorTooltip author={founderData} />
 			</p>
 		</div>
 	);
