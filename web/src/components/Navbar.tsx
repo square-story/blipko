@@ -2,6 +2,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import React from "react";
+import { Button } from "./ui/button";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = React.useState(false);
@@ -34,9 +35,15 @@ export const Header = () => {
                 Blipko
               </p>
             </Link>
+
+            <Button className="rounded-full">
+              <Link href="/privacy-policy">
+                Privacy Policy
+              </Link>
+            </Button>
           </div>
         </div>
       </nav>
-    </header>
+    </header >
   );
 };
