@@ -5,6 +5,7 @@ import { GravityStarsBackground } from "../components/animate-ui/components/back
 import { SignInButton } from "./sign-in-button"
 import { auth } from "@/auth"
 import { WelcomeConfetti } from "./welcome-confetti"
+import { ConfettiText } from "./confetti-text"
 
 export default async function HomePageClient() {
     const session = await auth()
@@ -33,10 +34,15 @@ export default async function HomePageClient() {
                     <div className="w-full flex items-center justify-center mt-4">
                         {session?.user ? (
                             <div className="text-center">
-                                <p className="text-xl font-semibold text-green-500 mb-2">
-                                    You're on the list! 🎉
-                                    <WelcomeConfetti />
-                                </p>
+                                <div className="flex items-center justify-center gap-3">
+                                    <span className="text-xl font-semibold text-green-500 mb-2 inline-block">
+                                        You're on the list!
+                                    </span>
+                                    <ConfettiText className="mb-2 hover:scale-105 transition-transform cursor-pointer inline-block">
+                                        🎉
+                                    </ConfettiText>
+                                </div>
+                                <WelcomeConfetti />
                                 <p className="text-muted-foreground">
                                     Thanks for joining, {session.user.name}. We'll notify you when we launch.
                                 </p>
