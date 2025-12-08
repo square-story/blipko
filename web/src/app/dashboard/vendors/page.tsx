@@ -32,14 +32,20 @@ export default async function Page({
 }) {
     const params = await searchParams;
     const page = Number(params.page) || 1;
+    const pageSize = Number(params.perPage) || 10;
     const search = (params.search as string) || "";
     const sort = params.sort as string;
 
+    const status = (params.status as string) || "";
+    const category = (params.category as string) || "";
+
     const { data, pageCount, total } = await getContacts({
         page,
-        pageSize: 10,
+        pageSize,
         search,
         sort,
+        status,
+        category,
     });
 
     const stats = await getContactStats();

@@ -6,6 +6,8 @@ export type GetContactsParams = {
   pageSize?: number;
   search?: string;
   sort?: string; // e.g., "name.asc" or "totalSpend.desc"
+  status?: string; // Comma separated
+  category?: string; // Comma separated
 };
 
 import { auth } from "@/auth";
@@ -15,6 +17,8 @@ export async function getContacts({
   pageSize = 10,
   search,
   sort,
+  status,
+  category,
 }: GetContactsParams) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -35,6 +39,24 @@ export async function getContacts({
         }
       : {}),
   };
+
+  if (status) {
+    const statuses = status.split(".") as (
+      | "ACTIVE"
+      | "INACTIVE"
+      | "ARCHIVED"
+    )[];
+    if (statuses.length > 0) {
+      where.status = { in: statuses };
+    }
+  }
+
+  if (category) {
+    const categories = category.split(".");
+    if (categories.length > 0) {
+      where.category = { in: categories };
+    }
+  }
 
   // Handle sorting
   let orderBy: Prisma.ContactOrderByWithRelationInput = { createdAt: "desc" };

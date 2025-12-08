@@ -21,11 +21,19 @@ export async function getTransactions({
   limit = 10,
   search = "",
   sort = "date.desc",
+  intent,
+  category,
+  from,
+  to,
 }: {
   page?: number;
   limit?: number;
   search?: string;
   sort?: string;
+  intent?: string; // Comma separated
+  category?: string; // Comma separated
+  from?: string; // ISO date string
+  to?: string; // ISO date string
 }) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -64,6 +72,30 @@ export async function getTransactions({
         ]
       : undefined,
   };
+
+  if (from || to) {
+    where.date = {};
+    if (from) {
+      where.date.gte = new Date(Number(from));
+    }
+    if (to) {
+      where.date.lte = new Date(Number(to));
+    }
+  }
+
+  if (intent) {
+    const intents = intent.split(".") as ("CREDIT" | "DEBIT" | "UNDO")[];
+    if (intents.length > 0) {
+      where.intent = { in: intents };
+    }
+  }
+
+  if (category) {
+    const categories = category.split(".");
+    if (categories.length > 0) {
+      where.category = { in: categories };
+    }
+  }
 
   try {
     const [total, transactions] = await Promise.all([
