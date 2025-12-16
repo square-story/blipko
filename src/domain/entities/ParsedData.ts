@@ -5,8 +5,8 @@ export type ParsedIntent =
   | "START"
   | "QUICK_REPLY"
   | "UNDO"
-  | "VIEW_DAILY_SUMMARY"
-  | "UPDATE_TRANSACTION";
+  | "CHAT"
+  | "QUERY";
 
 export interface ParsedData {
   intent: ParsedIntent;
@@ -14,7 +14,18 @@ export interface ParsedData {
   name?: string;
   notes?: string;
   category?: string;
+  description?: string;
   currency?: string;
+  conversational_response?: string;
+  query_details?: {
+    type?:
+      | "TOTAL_SPEND"
+      | "TOTAL_INCOME"
+      | "NET_BALANCE"
+      | "TRANSACTION_HISTORY";
+    period?: "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "ALL_TIME";
+    category?: string;
+  };
   updatedFields?: {
     amount?: number;
     category?: string;

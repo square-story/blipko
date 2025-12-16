@@ -39,7 +39,7 @@ export class TransactionProcessor implements MessageProcessor {
     const transaction = await this.transactionRepository.create({
       amount: parsed.amount,
       intent: parsed.intent as "CREDIT" | "DEBIT",
-      description: parsed.category,
+      description: parsed.description || parsed.category || "General",
       userId: context.user.id,
       category: parsed.category,
       contactId: contact?.id,
@@ -81,9 +81,19 @@ _Add more entries or ask for your balance anytime!_`;
     userId: string,
     name: string,
   ): Promise<{ id: string; name: string }> {
-    const existing = await this.contactRepository.findByName(userId, name);
+    // 1. Try fuzzy match first (covers exact match too)
+    const existing = await this.contactRepository.findSimilarByName(
+      userId,
+      name,
+    );
+    console.log("existing", existing);
     if (existing) {
       return existing;
+    }
+    // 2. If no match, check exact strictly (redundant but safe) or just create
+    const exact = await this.contactRepository.findByName(userId, name);
+    if (exact) {
+      return exact;
     }
     return this.contactRepository.create({
       userId,

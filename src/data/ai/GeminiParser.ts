@@ -35,6 +35,11 @@ const transactionSchema: Schema = {
       description:
         "Inferred category (e.g., Food, Travel, Salary, Loan). Returns 'General' if unclear.",
     },
+    description: {
+      type: Type.STRING,
+      description:
+        "A short description or note about the transaction (e.g., 'Lunch with friends', 'Medical bills', 'Taxi to airport'). Defaults to the category name if no specific detail is found.",
+    },
     currency: {
       type: Type.STRING,
       description: "The currency code detected, defaulting to INR.",
@@ -66,7 +71,9 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - English: "Gave", "Paid", "Lent", "Spent".
    - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
    - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
-   - Example: "Rajuin 500 koduthu" -> { intent: "CREDIT", name: "Raju", amount: 500 }
+   - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
+   - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
+   - Example: "Rajuin 500 koduthu" -> { intent: "CREDIT", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
 
 2. **DEBIT (Money Coming to User):**
    - English: "Got", "Received", "Borrowed from", "Took from".
@@ -94,15 +101,29 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
 
 6. **UPDATE_TRANSACTION (Modification):**
    - User replies to a transaction confirmation to change details.
-   - Context will be provided.
    - Example: "Actually it was 600" -> { intent: "UPDATE_TRANSACTION", updatedFields: { amount: 600 } }
-   - Example: "Change category to Food" -> { intent: "UPDATE_TRANSACTION", updatedFields: { category: "Food" } }
+
+7. **CHAT (Conversational):**
+   - Greetings, thanks, or general feedback that isn't a transaction.
+   - Example INPUT: "Hi", "Good morning", "Thanks bot".
+   - Example OUTPUT: { intent: "CHAT", conversational_response: "Hello! How can I help you tracking your expenses today?" }
+   - Example INPUT: "What tech stack are you enabled with?"
+   - Example OUTPUT: { intent: "CHAT", conversational_response: "I am running on Node.js using Gemini for parsing." }
+
+8. **QUERY (Analytics/Questions):**
+   - Asking about past data, totals, or trends.
+   - Example: "How much did I spend on food this month?"
+   - Output: { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", period: "THIS_MONTH" } }
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).
 - Ignore spelling mistakes.
-- If the text is purely conversational without financial intent, default to BALANCE or return 0 amount.
-- Always output strict JSON matching the schema.
+- If the text is purely conversational, use CHAT. **CRITICAL**: Generate a relevant, helpful, and natural 'conversational_response' based SPECIFICALLY on the user's input. Do NOT use the example greeting unless the user actually said "Hi".
+- If the text is asking for data/analytics, use QUERY.
+- **IMPORTANT**: Extract a 'description' field separately from 'category'. 
+  - 'description': What happened (e.g. "Taxi to airport").
+  - 'category': Classification (e.g. "Travel").
+- Always output strict JSON.
 `;
 
 export class GeminiParser implements IAiParser {

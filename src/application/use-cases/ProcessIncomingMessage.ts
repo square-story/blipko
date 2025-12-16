@@ -14,6 +14,9 @@ import { ReplyProcessor } from "./processors/ReplyProcessor";
 import { ConfirmationProcessor } from "./processors/ConfirmationProcessor";
 import { DailySummaryProcessor } from "./processors/DailySummaryProcessor";
 
+import { ChatProcessor } from "./processors/ChatProcessor";
+import { QueryProcessor } from "./processors/QueryProcessor";
+
 export interface ProcessIncomingMessageInput {
   senderPhone: string;
   textMessage: string;
@@ -28,7 +31,6 @@ export interface ProcessIncomingMessageOutput {
 
 const QUICK_REPLIES: Record<string, string> = {
   ping: "pong",
-  hello: "Hi there! 👋",
   admin: "Sadik is here 💦",
 };
 
@@ -47,11 +49,8 @@ export class ProcessIncomingMessageUseCase {
       new StartProcessor(messageService),
       new ReplyProcessor(transactionRepository, messageService),
       new UndoProcessor(transactionRepository, messageService),
-      new BalanceProcessor(
-        transactionRepository,
-        contactRepository,
-        messageService,
-      ),
+      new ChatProcessor(messageService),
+      new QueryProcessor(transactionRepository, messageService),
       new BalanceProcessor(
         transactionRepository,
         contactRepository,

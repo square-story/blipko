@@ -3,6 +3,8 @@ import { Request, Response, NextFunction } from "express";
 import { ProcessIncomingMessageUseCase } from "../../application/use-cases/ProcessIncomingMessage";
 import { ProcessVoiceMessageUseCase } from "../../application/use-cases/ProcessVoiceMessage";
 import { GeminiParser } from "../../data/ai/GeminiParser";
+import { OpenAIParser } from "../../data/ai/OpenAIParser";
+import { FallbackAiParser } from "../../data/ai/FallbackAiParser";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
 import { PrismaContactRepository } from "../../data/repositories/PrismaContactRepository";
 import { PrismaTransactionRepository } from "../../data/repositories/PrismaTransactionRepository";
@@ -16,7 +18,10 @@ import { PrismaUserRepository } from "../../data/repositories/PrismaUserReposito
 
 import { PrismaProcessedMessageRepository } from "../../data/repositories/PrismaProcessedMessageRepository";
 
-const aiParser = new GeminiParser();
+const geminiParser = new GeminiParser();
+const openAIParser = new OpenAIParser();
+const aiParser = new FallbackAiParser(openAIParser, geminiParser);
+
 const userRepository = new PrismaUserRepository(prisma);
 const customerRepository = new PrismaContactRepository(prisma);
 const transactionRepository = new PrismaTransactionRepository(prisma);
