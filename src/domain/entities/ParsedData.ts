@@ -6,7 +6,8 @@ export type ParsedIntent =
   | "QUICK_REPLY"
   | "UNDO"
   | "CHAT"
-  | "QUERY";
+  | "QUERY"
+  | "UPDATE_TRANSACTION";
 
 export interface ParsedData {
   intent: ParsedIntent;
