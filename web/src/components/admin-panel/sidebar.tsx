@@ -6,6 +6,7 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 import { Book } from "dicons";
+import Image from "next/image";
 import Link from "next/link";
 
 export function Sidebar() {
@@ -35,7 +36,7 @@ export function Sidebar() {
           asChild
         >
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Book className="w-6 h-6 mr-1" />
+            <Image src="/icons/icon-512.png" alt="Logo" width={24} height={24} />
             <h1
               className={cn(
                 "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] italic tracking-tighter ease-in-out duration-300",

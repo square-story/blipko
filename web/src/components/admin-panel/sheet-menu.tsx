@@ -11,6 +11,7 @@ import {
   SheetTitle
 } from "@/components/ui/sheet";
 import { Book } from "dicons";
+import Image from "next/image";
 
 export function SheetMenu() {
   return (
@@ -28,7 +29,7 @@ export function SheetMenu() {
             asChild
           >
             <Link href="/dashboard" className="flex items-center gap-2">
-              <Book className="w-6 h-6 mr-1" />
+              <Image src="/icons/icon-512.png" alt="Logo" width={24} height={24} />
               <SheetTitle className="font-bold text-lg italic tracking-tighter">Blipko</SheetTitle>
             </Link>
           </Button>
