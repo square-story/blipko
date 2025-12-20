@@ -85,7 +85,7 @@ const ConfettiComponent = forwardRef<ConfettiRef, Props>((props, ref) => {
 
   useEffect(() => {
     if (!manualstart) {
-      ;(async () => {
+      ; (async () => {
         try {
           await fire()
         } catch (error) {
@@ -111,7 +111,7 @@ export const Confetti = ConfettiComponent
 
 interface ConfettiButtonProps extends React.ComponentProps<"button"> {
   options?: ConfettiOptions &
-    ConfettiGlobalOptions & { canvas?: HTMLCanvasElement }
+  ConfettiGlobalOptions & { canvas?: HTMLCanvasElement }
 }
 
 const ConfettiButtonComponent = ({
@@ -137,9 +137,9 @@ const ConfettiButtonComponent = ({
   }
 
   return (
-    <Button onClick={handleClick} {...props}>
+    <button onClick={handleClick} {...props}>
       {children}
-    </Button>
+    </button>
   )
 }
 
