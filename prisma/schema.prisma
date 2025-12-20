@@ -128,7 +128,7 @@ model Transaction {
   user   User   @relation(fields: [userId], references: [id])
 
   contactId String?
-  contact   Contact? @relation(fields: [contactId], references: [id])
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   // Link back to the raw parsed log
   parseLogId String?   @unique
