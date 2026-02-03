@@ -12,6 +12,7 @@ import { GravityStarsBackground } from "../components/animate-ui/components/back
 import { MorphingText } from "./ui/morphing-text";
 import { LineShadowText } from "./ui/line-shadow-text";
 import { ConfettiButton } from "./ui/confetti";
+import { WatchDemoButton } from "./watch-demo-button";
 
 interface HomeContentProps {
     session: any; // Using any for now to match current usage, can be refined to Session | null
@@ -83,7 +84,10 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                             </TextAnimate>
                         </ConfettiButton>
                     ) : (
-                        <SignInButton />
+                        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+                            <SignInButton />
+                            <WatchDemoButton />
+                        </div>
                     )}
                 </motion.div>
 
