@@ -4,7 +4,7 @@ import Link from "next/link"
 
 export function WatchDemoButton() {
     return (
-        <Link href="https://www.linkedin.com/posts/sadikkp_blipko-productlaunch-indiehacker-ugcPost-7401264844164730881-mF-5?utm_source=share&utm_medium=member_desktop&rcm=ACoAACASDssBQL7-MI5bgK8_8UkKIQg1seoVtSg" target="_blank">
+        <Link href="https://youtu.be/YjKOqf2Cpjw" target="_blank">
             <button
                 className="group relative flex h-12 w-[200px] items-center justify-between rounded-full font-medium border-2 text-primary"
             >
