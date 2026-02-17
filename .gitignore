@@ -13,5 +13,8 @@ prisma/migrations
 .gitignore
 .DS_Store
 
+scripts/extract_users_csv.ts
+
+
 
 /backups
