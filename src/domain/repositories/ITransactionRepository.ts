@@ -9,6 +9,13 @@ export interface CreateTransactionDTO {
   contactId?: string | undefined;
 }
 
+export interface MonthlyAnalytics {
+  month: string; // "YYYY-MM"
+  totalIn: number;
+  totalOut: number;
+  categoryBreakdown: Record<string, number>;
+}
+
 export interface ITransactionRepository {
   create(data: CreateTransactionDTO): Promise<Transaction>;
   findByUser(userId: string): Promise<Transaction[]>;
@@ -38,4 +45,15 @@ export interface ITransactionRepository {
     totalSpend: number;
     categoryBreakdown: Record<string, number>;
   }>;
+  findUnpaidContacts(userId: string): Promise<
+    {
+      contactId: string;
+      contactName: string;
+      balance: number;
+    }[]
+  >;
+  getMonthlyAnalytics(
+    userId: string,
+    months: number,
+  ): Promise<MonthlyAnalytics[]>;
 }

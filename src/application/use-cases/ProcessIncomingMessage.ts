@@ -50,7 +50,11 @@ export class ProcessIncomingMessageUseCase {
       new ReplyProcessor(transactionRepository, messageService),
       new UndoProcessor(transactionRepository, messageService),
       new ChatProcessor(messageService),
-      new QueryProcessor(transactionRepository, messageService),
+      new QueryProcessor(
+        transactionRepository,
+        contactRepository,
+        messageService,
+      ),
       new BalanceProcessor(
         transactionRepository,
         contactRepository,

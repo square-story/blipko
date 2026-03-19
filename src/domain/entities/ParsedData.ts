@@ -7,7 +7,8 @@ export type ParsedIntent =
   | "UNDO"
   | "CHAT"
   | "QUERY"
-  | "UPDATE_TRANSACTION";
+  | "UPDATE_TRANSACTION"
+  | "VIEW_DAILY_SUMMARY";
 
 export interface ParsedData {
   intent: ParsedIntent;
@@ -23,9 +24,13 @@ export interface ParsedData {
       | "TOTAL_SPEND"
       | "TOTAL_INCOME"
       | "NET_BALANCE"
-      | "TRANSACTION_HISTORY";
+      | "TRANSACTION_HISTORY"
+      | "CONTACT_BALANCE"
+      | "UNPAID_CONTACTS"
+      | "OVERDUE_DUES";
     period?: "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "ALL_TIME";
     category?: string;
+    contactName?: string; // for CONTACT_BALANCE queries
   };
   updatedFields?: {
     amount?: number;

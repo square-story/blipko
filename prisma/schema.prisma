@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
 enum Intent {
   CREDIT
   DEBIT
@@ -25,6 +27,54 @@ enum ContactStatus {
   ARCHIVED
 }
 
+// Double-entry accounting
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum LineType {
+  DEBIT
+  CREDIT
+}
+
+// Recurring charges & dues
+enum PeriodType {
+  MONTHLY
+  QUARTERLY
+  CUSTOM
+}
+
+enum DueStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+// Deposits
+enum DepositType {
+  SECURITY
+  ADVANCE
+}
+
+enum DepositStatus {
+  HELD
+  PARTIALLY_RETURNED
+  RETURNED
+}
+
+// Contributions
+enum ContributionType {
+  CAPITAL
+  LOAN
+}
+
+// ─── Auth (NextAuth) ───────────────────────────────────────────────────────────
+
 model User {
   id          String   @id @default(cuid())
   email       String?  @unique
@@ -32,11 +82,6 @@ model User {
   name        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  // Relations
-  transactions Transaction[]
-  contacts     Contact[]
-  logs         ParseLog[]
 
   // NextAuth
   emailVerified DateTime?
@@ -47,6 +92,14 @@ model User {
   // Early Access
   isEarlyAdopter Boolean @default(true)
   hasOnboarded   Boolean @default(false)
+
+  // Core relations
+  transactions   Transaction[]
+  contacts       Contact[]
+  logs           ParseLog[]
+  organizations  Organization[]
+  ledgerAccounts LedgerAccount[]
+  auditLogs      AuditLog[]
 }
 
 model Account {
@@ -84,6 +137,32 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ─── Multi-Business ────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String         @id @default(cuid())
+  name      String
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  units     BusinessUnit[]
+  contacts  Contact[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model BusinessUnit {
+  id           String       @id @default(cuid())
+  name         String
+  type         String // "cottage", "shop_room", "flat", "office", etc.
+  orgId        String
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contacts     Contact[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+// ─── Core Domain ───────────────────────────────────────────────────────────────
+
 model Contact {
   id       String        @id @default(cuid())
   name     String
@@ -102,8 +181,18 @@ model Contact {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
+  // Optional multi-business grouping
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  businessUnitId String?
+  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
   // Relations
-  transactions Transaction[]
+  transactions     Transaction[]
+  recurringCharges RecurringCharge[]
+  dueEntries       DueEntry[]
+  deposits         Deposit[]
+  contributions    Contribution[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,6 +226,9 @@ model Transaction {
   // Link to the confirmation message sent to the user (for reply handling)
   confirmationMessageId String? @unique
 
+  // Double-entry ledger lines
+  lines TransactionLine[]
+
   // Soft Delete
   isDeleted       Boolean   @default(false)
   deletedAt       DateTime?
@@ -144,6 +236,114 @@ model Transaction {
 
   @@index([userId, date])
 }
+
+// ─── Double-Entry Accounting ───────────────────────────────────────────────────
+
+model LedgerAccount {
+  id      String      @id @default(cuid())
+  code    String // e.g. "1100", "4000"
+  name    String // e.g. "Cash", "Rent Revenue"
+  type    AccountType
+  userId  String
+  user    User          @relation(fields: [userId], references: [id])
+  entries TransactionLine[]
+
+  @@unique([userId, code])
+}
+
+model TransactionLine {
+  id            String        @id @default(cuid())
+  transactionId String
+  accountId     String
+  type          LineType
+  amount        Decimal       @db.Decimal(10, 2)
+  transaction   Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  account       LedgerAccount @relation(fields: [accountId], references: [id])
+}
+
+// ─── Recurring Charges & Dues ─────────────────────────────────────────────────
+
+model RecurringCharge {
+  id         String     @id @default(cuid())
+  contactId  String
+  contact    Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  amount     Decimal    @db.Decimal(10, 2)
+  period     PeriodType
+  dayOfMonth Int // Day of month the charge is due (1-31)
+  startDate  DateTime
+  endDate    DateTime?
+  isActive   Boolean    @default(true)
+  isDeleted  Boolean    @default(false)
+  dues       DueEntry[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model DueEntry {
+  id         String          @id @default(cuid())
+  chargeId   String
+  charge     RecurringCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  contactId  String
+  contact    Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  dueDate    DateTime
+  amount     Decimal         @db.Decimal(10, 2)
+  paidAmount Decimal         @default(0) @db.Decimal(10, 2)
+  status     DueStatus       @default(PENDING)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([contactId, status])
+  @@index([dueDate, status])
+}
+
+// ─── Deposits ─────────────────────────────────────────────────────────────────
+
+model Deposit {
+  id         String        @id @default(cuid())
+  contactId  String
+  contact    Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  amount     Decimal       @db.Decimal(10, 2)
+  type       DepositType
+  receivedAt DateTime
+  returnedAt DateTime?
+  status     DepositStatus @default(HELD)
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+// ─── Contributions (Capital / Loans from partners) ────────────────────────────
+
+model Contribution {
+  id          String           @id @default(cuid())
+  contactId   String
+  contact     Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  amount      Decimal          @db.Decimal(10, 2)
+  type        ContributionType
+  receivedAt  DateTime
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String // "CREATE_TRANSACTION", "DELETE_CONTACT", etc.
+  entityType String // "Transaction", "Contact", etc.
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, entityType])
+  @@index([entityId])
+}
+
+// ─── Infra ────────────────────────────────────────────────────────────────────
 
 model ParseLog {
   id      String @id @default(cuid())

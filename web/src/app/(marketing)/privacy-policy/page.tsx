@@ -1,7 +1,7 @@
 "use client";
 
 import { GravityStarsBackground } from "@/components/animate-ui/components/backgrounds/gravity-stars";
-import { motion, useScroll, useSpring } from "framer-motion";
+import { motion, useScroll, useSpring } from "motion/react";
 import { ArrowRight, FileText, Lock, Shield, User } from "lucide-react";
 import { useEffect, useState } from "react";
 

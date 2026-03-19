@@ -16,9 +16,11 @@ const transactionSchema: Schema = {
         "UNDO",
         "VIEW_DAILY_SUMMARY",
         "UPDATE_TRANSACTION",
+        "CHAT",
+        "QUERY",
       ],
       description:
-        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction (e.g. change amount, category).",
+        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general conversation. QUERY if user asks analytics questions about past data, contacts owing money, or spending trends.",
     },
     amount: {
       type: Type.NUMBER,
@@ -56,6 +58,36 @@ const transactionSchema: Schema = {
         name: { type: Type.STRING, description: "New name if updated" },
       },
       description: "Fields to update if intent is UPDATE_TRANSACTION",
+    },
+    query_details: {
+      type: Type.OBJECT,
+      properties: {
+        type: {
+          type: Type.STRING,
+          enum: [
+            "TOTAL_SPEND",
+            "TOTAL_INCOME",
+            "NET_BALANCE",
+            "TRANSACTION_HISTORY",
+            "CONTACT_BALANCE",
+            "UNPAID_CONTACTS",
+            "OVERDUE_DUES",
+          ],
+          description:
+            "CONTACT_BALANCE: asking about a specific person's balance. UNPAID_CONTACTS: who hasn't paid / who owes me. TOTAL_SPEND: how much did I spend. TOTAL_INCOME: how much did I earn.",
+        },
+        period: {
+          type: Type.STRING,
+          enum: ["TODAY", "THIS_WEEK", "THIS_MONTH", "ALL_TIME"],
+          description: "Time period for the query",
+        },
+        category: { type: Type.STRING, description: "Category to filter by" },
+        contactName: {
+          type: Type.STRING,
+          description: "Name of the contact for CONTACT_BALANCE queries",
+        },
+      },
+      description: "Structured details when intent is QUERY",
     },
   },
   required: ["intent", "amount", "name"],
@@ -111,9 +143,11 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example OUTPUT: { intent: "CHAT", conversational_response: "I am running on Node.js using Gemini for parsing." }
 
 8. **QUERY (Analytics/Questions):**
-   - Asking about past data, totals, or trends.
-   - Example: "How much did I spend on food this month?"
-   - Output: { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", period: "THIS_MONTH" } }
+   - Asking about past data, totals, trends, or contact balances.
+   - Example: "How much did I spend on food this month?" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", period: "THIS_MONTH" } }
+   - Example: "Who hasn't paid this month?" / "Aarike paisa thannilla?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS", period: "THIS_MONTH" } }
+   - Example: "What's Raju's balance?" / "Raju ethra tharam?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
+   - Example: "Who is overdue?" / "Baaki aarike undu?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).

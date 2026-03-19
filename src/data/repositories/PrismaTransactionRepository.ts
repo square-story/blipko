@@ -2,6 +2,7 @@ import { PrismaClient, Transaction } from "@prisma/client";
 import {
   ITransactionRepository,
   CreateTransactionDTO,
+  MonthlyAnalytics,
 } from "../../domain/repositories/ITransactionRepository";
 
 export class PrismaTransactionRepository implements ITransactionRepository {
@@ -89,6 +90,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
 
     return updatedTransaction;
   }
+
   async findByConfirmationId(messageId: string): Promise<Transaction | null> {
     return this.prisma.transaction.findUnique({
       where: { confirmationMessageId: messageId },
@@ -189,6 +191,95 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       totalSpend,
       categoryBreakdown,
     };
+  }
+
+  async findUnpaidContacts(userId: string): Promise<
+    {
+      contactId: string;
+      contactName: string;
+      balance: number;
+    }[]
+  > {
+    const contacts = await this.prisma.contact.findMany({
+      where: {
+        userId,
+        currentBalance: { lt: 0 },
+      },
+      select: {
+        id: true,
+        name: true,
+        currentBalance: true,
+      },
+      orderBy: { currentBalance: "asc" },
+    });
+
+    return contacts.map((c) => ({
+      contactId: c.id,
+      contactName: c.name,
+      balance: Number(c.currentBalance),
+    }));
+  }
+
+  async getMonthlyAnalytics(
+    userId: string,
+    months: number,
+  ): Promise<MonthlyAnalytics[]> {
+    const now = new Date();
+    const startDate = new Date(
+      now.getFullYear(),
+      now.getMonth() - months + 1,
+      1,
+    );
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        userId,
+        date: { gte: startDate },
+        isDeleted: false,
+      },
+      select: {
+        date: true,
+        amount: true,
+        intent: true,
+        category: true,
+      },
+    });
+
+    const monthMap = new Map<string, MonthlyAnalytics>();
+
+    // Initialise all months in range
+    for (let i = 0; i < months; i++) {
+      const d = new Date(
+        now.getFullYear(),
+        now.getMonth() - (months - 1) + i,
+        1,
+      );
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      monthMap.set(key, {
+        month: key,
+        totalIn: 0,
+        totalOut: 0,
+        categoryBreakdown: {},
+      });
+    }
+
+    for (const tx of transactions) {
+      const key = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
+      const entry = monthMap.get(key);
+      if (!entry) continue;
+
+      const amount = Number(tx.amount);
+      if (tx.intent === "CREDIT") {
+        entry.totalIn += amount;
+        const cat = tx.category || "General";
+        entry.categoryBreakdown[cat] =
+          (entry.categoryBreakdown[cat] || 0) + amount;
+      } else if (tx.intent === "DEBIT") {
+        entry.totalOut += amount;
+      }
+    }
+
+    return Array.from(monthMap.values());
   }
 
   private async updateContactBalance(contactId: string): Promise<void> {
