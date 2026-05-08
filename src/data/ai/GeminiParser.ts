@@ -18,9 +18,11 @@ const transactionSchema: Schema = {
         "UPDATE_TRANSACTION",
         "CHAT",
         "QUERY",
+        "WALLET",
+        "SET_RECURRING",
       ],
       description:
-        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general conversation. QUERY if user asks analytics questions about past data, contacts owing money, or spending trends.",
+        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general conversation. QUERY if user asks analytics questions about past data, contacts owing money, or spending trends. WALLET if user is managing wallets (list, switch, create, show balance). SET_RECURRING if user wants to set up a recurring income or expense reminder.",
     },
     amount: {
       type: Type.NUMBER,
@@ -89,6 +91,49 @@ const transactionSchema: Schema = {
       },
       description: "Structured details when intent is QUERY",
     },
+    wallet_action: {
+      type: Type.OBJECT,
+      properties: {
+        action: {
+          type: Type.STRING,
+          enum: ["SHOW_BALANCE", "SWITCH", "LIST", "CREATE"],
+        },
+        walletName: {
+          type: Type.STRING,
+          description: "Wallet name to switch to or create",
+        },
+      },
+      description: "Structured details when intent is WALLET",
+    },
+    recurring_details: {
+      type: Type.OBJECT,
+      properties: {
+        description: {
+          type: Type.STRING,
+          description: "Label for the recurring charge",
+        },
+        amount: { type: Type.NUMBER, description: "Amount" },
+        amountMin: {
+          type: Type.NUMBER,
+          description: "Minimum amount (for variable charges)",
+        },
+        amountMax: {
+          type: Type.NUMBER,
+          description: "Maximum amount (for variable charges)",
+        },
+        direction: { type: Type.STRING, enum: ["INCOME", "EXPENSE"] },
+        dayOfMonth: {
+          type: Type.NUMBER,
+          description: "Day of month the charge is due (1-31)",
+        },
+        period: { type: Type.STRING, enum: ["MONTHLY", "QUARTERLY"] },
+        walletName: {
+          type: Type.STRING,
+          description: "Wallet to charge against",
+        },
+      },
+      description: "Structured details when intent is SET_RECURRING",
+    },
   },
   required: ["intent", "amount", "name"],
 };
@@ -146,6 +191,17 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example: "Who hasn't paid this month?" / "Aarike paisa thannilla?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS", period: "THIS_MONTH" } }
    - Example: "What's Raju's balance?" / "Raju ethra tharam?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
    - Example: "Who is overdue?" / "Baaki aarike undu?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
+
+9. **WALLET (Wallet management):**
+   - Example: "show wallets" / "list my wallets" → { intent: "WALLET", wallet_action: { action: "LIST" } }
+   - Example: "switch to Shop" / "use my business wallet" → { intent: "WALLET", wallet_action: { action: "SWITCH", walletName: "Shop" } }
+   - Example: "create savings wallet" → { intent: "WALLET", wallet_action: { action: "CREATE", walletName: "Savings" } }
+   - Example: "show shop balance" → { intent: "WALLET", wallet_action: { action: "SHOW_BALANCE", walletName: "Shop" } }
+
+10. **SET_RECURRING (Recurring reminders):**
+    - Example: "remind me rent 8000 on 1st every month" → { intent: "SET_RECURRING", recurring_details: { description: "Rent", amount: 8000, direction: "EXPENSE", dayOfMonth: 1, period: "MONTHLY" } }
+    - Example: "salary 30000 on 25th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Salary", amount: 30000, direction: "INCOME", dayOfMonth: 25, period: "MONTHLY" } }
+    - Example: "around 500 electricity on 15th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Electricity", amount: 500, amountMin: 400, amountMax: 700, direction: "EXPENSE", dayOfMonth: 15, period: "MONTHLY" } }
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).

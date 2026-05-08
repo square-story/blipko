@@ -43,6 +43,7 @@ export class TransactionProcessor implements MessageProcessor {
       userId: context.user.id,
       category: parsed.category,
       contactId: contact?.id,
+      walletId: context.walletId,
     });
 
     let newBalance = 0;

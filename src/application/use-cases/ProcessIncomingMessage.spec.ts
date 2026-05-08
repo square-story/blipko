@@ -8,6 +8,9 @@ describe("ProcessIncomingMessage", () => {
   let mockTransactionRepository: any;
   let mockAiParser: any;
   let mockMessageService: any;
+  let mockWalletRepository: any;
+  let mockRecurringChargeRepository: any;
+  let mockDueEntryRepository: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,6 +42,33 @@ describe("ProcessIncomingMessage", () => {
       sendInteractiveMessage: vi.fn(),
       sendTypingIndicator: vi.fn(),
     };
+    mockWalletRepository = {
+      create: vi.fn().mockResolvedValue({ id: "wallet-1", name: "Personal" }),
+      findDefaultByUser: vi
+        .fn()
+        .mockResolvedValue({ id: "wallet-1", name: "Personal" }),
+      findByName: vi.fn().mockResolvedValue(null),
+      findByUserId: vi.fn().mockResolvedValue([]),
+      findById: vi.fn().mockResolvedValue(null),
+      setDefault: vi.fn(),
+      delete: vi.fn(),
+    };
+    mockRecurringChargeRepository = {
+      create: vi.fn(),
+      findByUserId: vi.fn().mockResolvedValue([]),
+      findDueForNotification: vi.fn().mockResolvedValue([]),
+      markNotified: vi.fn(),
+      deactivate: vi.fn(),
+    };
+    mockDueEntryRepository = {
+      create: vi.fn(),
+      findPendingForCharge: vi.fn().mockResolvedValue([]),
+      findUnnotified: vi.fn().mockResolvedValue([]),
+      markNotified: vi.fn(),
+      markPaid: vi.fn(),
+      snooze: vi.fn(),
+      findById: vi.fn().mockResolvedValue(null),
+    };
 
     useCase = new ProcessIncomingMessageUseCase(
       mockAiParser,
@@ -46,6 +76,9 @@ describe("ProcessIncomingMessage", () => {
       mockContactRepository,
       mockTransactionRepository,
       mockMessageService,
+      mockWalletRepository,
+      mockRecurringChargeRepository,
+      mockDueEntryRepository,
     );
   });
 

@@ -8,6 +8,8 @@ export interface ProcessContext {
   parsed?: ParsedData | undefined;
   replyToMessageId?: string | undefined;
   replyTransaction?: Transaction | undefined;
+  walletId?: string | undefined;
+  walletName?: string | undefined;
 }
 
 export interface ProcessOutput {

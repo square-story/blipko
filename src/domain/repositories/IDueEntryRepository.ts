@@ -1,0 +1,31 @@
+import { DueEntry } from "@prisma/client";
+
+export interface CreateDueEntryDTO {
+  chargeId: string;
+  contactId?: string;
+  walletId?: string;
+  dueDate: Date;
+  amount: number;
+}
+
+export interface IDueEntryRepository {
+  create(data: CreateDueEntryDTO): Promise<DueEntry>;
+  findPendingForCharge(chargeId: string): Promise<DueEntry[]>;
+  findUnnotified(upToDate: Date): Promise<
+    (DueEntry & {
+      charge: RecurringChargeWithUser;
+    })[]
+  >;
+  markNotified(id: string): Promise<void>;
+  markPaid(id: string, paidAmount: number): Promise<void>;
+  snooze(id: string, days: number): Promise<void>;
+  findById(id: string): Promise<DueEntry | null>;
+}
+
+interface RecurringChargeWithUser {
+  id: string;
+  description: string;
+  amount: import("@prisma/client").Prisma.Decimal;
+  userId: string;
+  user: { telegramId: string | null; name: string | null };
+}

@@ -17,6 +17,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         userId: data.userId,
         category: data.category ?? "General",
         contactId: data.contactId ?? null,
+        walletId: data.walletId ?? null,
       },
     });
 

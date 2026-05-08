@@ -8,7 +8,9 @@ export type ParsedIntent =
   | "CHAT"
   | "QUERY"
   | "UPDATE_TRANSACTION"
-  | "VIEW_DAILY_SUMMARY";
+  | "VIEW_DAILY_SUMMARY"
+  | "WALLET"
+  | "SET_RECURRING";
 
 export interface ParsedData {
   intent: ParsedIntent;
@@ -37,5 +39,19 @@ export interface ParsedData {
     category?: string;
     description?: string;
     name?: string;
+  };
+  wallet_action?: {
+    action: "SHOW_BALANCE" | "SWITCH" | "LIST" | "CREATE";
+    walletName?: string;
+  };
+  recurring_details?: {
+    description: string;
+    amount: number;
+    amountMin?: number;
+    amountMax?: number;
+    direction: "INCOME" | "EXPENSE";
+    dayOfMonth: number;
+    period: "MONTHLY" | "QUARTERLY";
+    walletName?: string;
   };
 }

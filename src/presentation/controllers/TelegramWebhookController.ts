@@ -11,6 +11,9 @@ import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionSer
 import { PrismaContactRepository } from "../../data/repositories/PrismaContactRepository";
 import { PrismaTransactionRepository } from "../../data/repositories/PrismaTransactionRepository";
 import { PrismaUserRepository } from "../../data/repositories/PrismaUserRepository";
+import { PrismaWalletRepository } from "../../data/repositories/PrismaWalletRepository";
+import { PrismaRecurringChargeRepository } from "../../data/repositories/PrismaRecurringChargeRepository";
+import { PrismaDueEntryRepository } from "../../data/repositories/PrismaDueEntryRepository";
 import { prisma } from "../../data/prisma/client";
 import { env } from "../../config/env";
 
@@ -47,6 +50,9 @@ const userRepository = new PrismaUserRepository(prisma);
 const contactRepository = new PrismaContactRepository(prisma);
 const transactionRepository = new PrismaTransactionRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
+const walletRepository = new PrismaWalletRepository(prisma);
+const recurringChargeRepository = new PrismaRecurringChargeRepository(prisma);
+const dueEntryRepository = new PrismaDueEntryRepository(prisma);
 
 const processIncomingMessage = new ProcessIncomingMessageUseCase(
   aiParser,
@@ -54,6 +60,9 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   contactRepository,
   transactionRepository,
   messageService,
+  walletRepository,
+  recurringChargeRepository,
+  dueEntryRepository,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(
@@ -192,4 +201,10 @@ export const telegramWebhookController = new TelegramWebhookController(
   processedMessageRepository,
   messageService,
   env.TELEGRAM_WEBHOOK_SECRET,
+);
+
+import { SendDueNotificationsUseCase } from "../../application/use-cases/SendDueNotifications";
+export const sendDueNotifications = new SendDueNotificationsUseCase(
+  dueEntryRepository,
+  messageService,
 );

@@ -41,11 +41,24 @@ enum LineType {
   CREDIT
 }
 
+// Wallets
+enum WalletType {
+  PERSONAL
+  BUSINESS
+  SAVINGS
+  CUSTOM
+}
+
 // Recurring charges & dues
 enum PeriodType {
   MONTHLY
   QUARTERLY
   CUSTOM
+}
+
+enum RecurringDirection {
+  INCOME
+  EXPENSE
 }
 
 enum DueStatus {
@@ -97,12 +110,14 @@ model User {
   hasOnboarded   Boolean @default(false)
 
   // Core relations
-  transactions   Transaction[]
-  contacts       Contact[]
-  logs           ParseLog[]
-  organizations  Organization[]
-  ledgerAccounts LedgerAccount[]
-  auditLogs      AuditLog[]
+  transactions     Transaction[]
+  contacts         Contact[]
+  logs             ParseLog[]
+  organizations    Organization[]
+  ledgerAccounts   LedgerAccount[]
+  auditLogs        AuditLog[]
+  wallets          Wallet[]
+  recurringCharges RecurringCharge[]
 }
 
 model Account {
@@ -222,6 +237,9 @@ model Transaction {
   contactId String?
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
+  walletId String?
+  wallet   Wallet? @relation(fields: [walletId], references: [id])
+
   // Link back to the raw parsed log
   parseLogId String?   @unique
   parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
@@ -264,34 +282,72 @@ model TransactionLine {
   account       LedgerAccount @relation(fields: [accountId], references: [id])
 }
 
+// ─── Wallets ──────────────────────────────────────────────────────────────────
+
+model Wallet {
+  id        String     @id @default(cuid())
+  name      String
+  emoji     String     @default("💰")
+  type      WalletType @default(PERSONAL)
+  isDefault Boolean    @default(false)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions     Transaction[]
+  recurringCharges RecurringCharge[]
+  dueEntries       DueEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId, isDefault])
+}
+
 // ─── Recurring Charges & Dues ─────────────────────────────────────────────────
 
 model RecurringCharge {
-  id         String     @id @default(cuid())
-  contactId  String
-  contact    Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  amount     Decimal    @db.Decimal(10, 2)
-  period     PeriodType
-  dayOfMonth Int // Day of month the charge is due (1-31)
-  startDate  DateTime
-  endDate    DateTime?
-  isActive   Boolean    @default(true)
-  isDeleted  Boolean    @default(false)
-  dues       DueEntry[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id])
+  contactId   String?
+  contact     Contact?           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  walletId    String?
+  wallet      Wallet?            @relation(fields: [walletId], references: [id])
+  amount      Decimal            @db.Decimal(10, 2)
+  amountMin   Decimal?           @db.Decimal(10, 2)
+  amountMax   Decimal?           @db.Decimal(10, 2)
+  direction   RecurringDirection @default(EXPENSE)
+  description String             @default("Recurring charge")
+  period      PeriodType
+  dayOfMonth  Int
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean            @default(true)
+  isDeleted   Boolean            @default(false)
+
+  notifyDaysBefore Int       @default(2)
+  lastNotifiedAt   DateTime?
+
+  dues      DueEntry[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model DueEntry {
   id         String          @id @default(cuid())
   chargeId   String
   charge     RecurringCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
-  contactId  String
-  contact    Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contactId  String?
+  contact    Contact?        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  walletId   String?
+  wallet     Wallet?         @relation(fields: [walletId], references: [id])
   dueDate    DateTime
   amount     Decimal         @db.Decimal(10, 2)
   paidAmount Decimal         @default(0) @db.Decimal(10, 2)
   status     DueStatus       @default(PENDING)
+  notifiedAt DateTime?
+  paidAt     DateTime?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 

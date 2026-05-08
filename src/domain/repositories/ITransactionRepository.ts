@@ -7,6 +7,7 @@ export interface CreateTransactionDTO {
   category?: string | undefined;
   userId: string;
   contactId?: string | undefined;
+  walletId?: string | undefined;
 }
 
 export interface MonthlyAnalytics {

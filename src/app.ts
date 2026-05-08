@@ -2,6 +2,8 @@ import express, { Application, NextFunction, Request, Response } from "express";
 
 import { env } from "./config/env";
 import { telegramRoutes } from "./presentation/routes/telegramRoutes";
+import { sendDueNotifications } from "./presentation/controllers/TelegramWebhookController";
+import { startScheduler } from "./infrastructure/scheduler";
 
 const app: Application = express();
 
@@ -28,6 +30,7 @@ if (process.env.NODE_ENV !== "test") {
   const message = `🚀 AI Ledger server listening on port ${port}\n`;
   process.stdout.write(message);
   app.listen(port);
+  startScheduler(sendDueNotifications);
 }
 
 export { app };

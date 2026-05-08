@@ -2,6 +2,9 @@ import { IAiParser } from "../../domain/services/IAiParser";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { IContactRepository } from "../../domain/repositories/IContactRepository";
 import { ITransactionRepository } from "../../domain/repositories/ITransactionRepository";
+import { IWalletRepository } from "../../domain/repositories/IWalletRepository";
+import { IRecurringChargeRepository } from "../../domain/repositories/IRecurringChargeRepository";
+import { IDueEntryRepository } from "../../domain/repositories/IDueEntryRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData } from "../../domain/entities/ParsedData";
 import { User, Transaction } from "@prisma/client";
@@ -15,6 +18,9 @@ import { ConfirmationProcessor } from "./processors/ConfirmationProcessor";
 import { DailySummaryProcessor } from "./processors/DailySummaryProcessor";
 import { ChatProcessor } from "./processors/ChatProcessor";
 import { QueryProcessor } from "./processors/QueryProcessor";
+import { WalletProcessor } from "./processors/WalletProcessor";
+import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
+import { DuePaymentProcessor } from "./processors/DuePaymentProcessor";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -33,6 +39,9 @@ const QUICK_REPLIES: Record<string, string> = {
   admin: "Sadik is here 💦",
 };
 
+// "Shop: paid 500 supplies" → walletName = "Shop", strippedText = "paid 500 supplies"
+const WALLET_PREFIX_RE = /^([a-zA-Z][a-zA-Z0-9 ]{0,19}):\s*/;
+
 export class ProcessIncomingMessageUseCase {
   private processors: MessageProcessor[];
 
@@ -42,13 +51,24 @@ export class ProcessIncomingMessageUseCase {
     private readonly contactRepository: IContactRepository,
     private readonly transactionRepository: ITransactionRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly walletRepository: IWalletRepository,
+    private readonly recurringChargeRepository: IRecurringChargeRepository,
+    private readonly dueEntryRepository: IDueEntryRepository,
   ) {
     this.processors = [
+      new DuePaymentProcessor(dueEntryRepository, messageService),
       new ConfirmationProcessor(transactionRepository, messageService),
       new StartProcessor(messageService),
       new ReplyProcessor(transactionRepository, messageService),
       new UndoProcessor(transactionRepository, messageService),
       new ChatProcessor(messageService),
+      new WalletProcessor(walletRepository, messageService),
+      new RecurringSetupProcessor(
+        recurringChargeRepository,
+        dueEntryRepository,
+        walletRepository,
+        messageService,
+      ),
       new QueryProcessor(
         transactionRepository,
         contactRepository,
@@ -104,16 +124,35 @@ export class ProcessIncomingMessageUseCase {
       };
     }
 
+    // Extract optional wallet prefix: "Shop: paid 500 supplies"
+    let walletId: string | undefined;
+    let walletName: string | undefined;
+    let textMessage = payload.textMessage;
+
+    const walletMatch = payload.textMessage.match(WALLET_PREFIX_RE);
+    if (walletMatch && walletMatch[1]) {
+      const candidate = walletMatch[1].trim();
+      const wallet = await this.walletRepository.findByName(user.id, candidate);
+      if (wallet) {
+        walletId = wallet.id;
+        walletName = wallet.name;
+        textMessage = payload.textMessage.slice(walletMatch[0].length);
+      }
+    }
+
     const contextWithoutParse = {
       user,
       platformUserId: payload.platformUserId,
-      textMessage: payload.textMessage,
+      textMessage,
       replyToMessageId: payload.replyToMessageId,
       replyTransaction: replyTransaction ?? undefined,
+      walletId,
+      walletName,
     };
 
     for (const processor of this.processors) {
       if (
+        processor instanceof DuePaymentProcessor ||
         processor instanceof StartProcessor ||
         processor instanceof ConfirmationProcessor
       ) {
@@ -130,10 +169,7 @@ export class ProcessIncomingMessageUseCase {
     }
 
     console.log("Parsing message with AI...");
-    const parsed = await this.aiParser.parseText(
-      payload.textMessage,
-      replyTransaction,
-    );
+    const parsed = await this.aiParser.parseText(textMessage, replyTransaction);
     console.log("AI Parsed result:", JSON.stringify(parsed, null, 2));
 
     const contextWithParse = {
@@ -158,9 +194,20 @@ export class ProcessIncomingMessageUseCase {
     if (existing) return existing;
 
     console.log(`Creating new user for Telegram ID ${telegramId}`);
-    return this.userRepository.create({
+    const user = await this.userRepository.create({
       telegramId,
       ...(name !== undefined && { name }),
     });
+
+    // Auto-create a default Personal wallet for new users
+    await this.walletRepository.create({
+      name: "Personal",
+      emoji: "👤",
+      type: "PERSONAL",
+      isDefault: true,
+      userId: user.id,
+    });
+
+    return user;
   }
 }

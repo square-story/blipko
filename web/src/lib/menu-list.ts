@@ -6,6 +6,8 @@ import {
   Users,
   Tags,
   Settings,
+  Wallet,
+  RefreshCw,
 } from "lucide-react";
 
 type Submenu = {
@@ -52,6 +54,20 @@ export function getMenuList(): Group[] {
           href: "/dashboard/analytics",
           label: "Analytics",
           icon: PieChart,
+        },
+        {
+          href: "/dashboard/wallets",
+          label: "Wallets",
+          icon: Wallet,
+        },
+        {
+          href: "/dashboard/recurring",
+          label: "Recurring",
+          icon: RefreshCw,
+          submenus: [
+            { href: "/dashboard/recurring", label: "Charges" },
+            { href: "/dashboard/recurring/dues", label: "Upcoming Dues" },
+          ],
         },
       ],
     },
