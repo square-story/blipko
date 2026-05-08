@@ -53,7 +53,7 @@ describe("ProcessIncomingMessage", () => {
     const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
     const mockContact = { id: "contact-1", name: "Raju", userId: "user-1" };
     const mockParsedData = {
-      intent: "CREDIT",
+      intent: "PAID",
       amount: 500,
       name: "Raju",
       category: "Food",
@@ -71,7 +71,7 @@ describe("ProcessIncomingMessage", () => {
     mockTransactionRepository.create.mockResolvedValue({
       id: "tx-1",
       amount: 500,
-      intent: "CREDIT",
+      intent: "PAID",
       description: "Food",
     });
     mockTransactionRepository.findByContact.mockResolvedValue([]);
@@ -118,7 +118,7 @@ describe("ProcessIncomingMessage", () => {
     const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
     const mockContact = { id: "contact-1", name: "NewGuy", userId: "user-1" };
     const mockParsedData = {
-      intent: "DEBIT",
+      intent: "RECEIVED",
       amount: 100,
       name: "NewGuy",
       category: "General",
@@ -137,7 +137,7 @@ describe("ProcessIncomingMessage", () => {
     mockTransactionRepository.create.mockResolvedValue({
       id: "tx-2",
       amount: 100,
-      intent: "DEBIT",
+      intent: "RECEIVED",
     });
     mockTransactionRepository.findByContact.mockResolvedValue([]);
 
@@ -188,8 +188,8 @@ describe("ProcessIncomingMessage", () => {
     const mockParsedData = { intent: "VIEW_DAILY_SUMMARY" };
     const mockSummary = {
       transactions: [
-        { intent: "CREDIT", amount: 500, category: "Food" },
-        { intent: "CREDIT", amount: 200, category: "Travel" },
+        { intent: "PAID", amount: 500, category: "Food" },
+        { intent: "PAID", amount: 200, category: "Travel" },
       ],
       totalSpend: 700,
       categoryBreakdown: { Food: 500, Travel: 200 },

@@ -38,7 +38,7 @@ export class DailySummaryProcessor implements MessageProcessor {
     if (summary.transactions.length > 0) {
       response += `📝 *Recent Entries:*\n`;
       summary.transactions.slice(0, 5).forEach((tx) => {
-        const icon = tx.intent === "CREDIT" ? "🔴" : "🟢";
+        const icon = tx.intent === "PAID" ? "🔴" : "🟢";
         response += `${icon} ₹${tx.amount} (${tx.category || "General"})\n`;
       });
     } else {

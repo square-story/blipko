@@ -81,7 +81,7 @@ export class QueryProcessor implements MessageProcessor {
         const transactions =
           await this.transactionRepository.findByUser(userId);
         const filtered = transactions.filter(
-          (tx) => tx.intent === "CREDIT" && new Date(tx.date) >= startDate,
+          (tx) => tx.intent === "PAID" && new Date(tx.date) >= startDate,
         );
         const total = filtered.reduce((sum, tx) => sum + Number(tx.amount), 0);
         const periodLabel = this.periodLabel(period);
@@ -107,7 +107,7 @@ export class QueryProcessor implements MessageProcessor {
         const transactions =
           await this.transactionRepository.findByUser(userId);
         const filtered = transactions.filter(
-          (tx) => tx.intent === "DEBIT" && new Date(tx.date) >= startDate,
+          (tx) => tx.intent === "RECEIVED" && new Date(tx.date) >= startDate,
         );
         const total = filtered.reduce((sum, tx) => sum + Number(tx.amount), 0);
         responseText = `Total income ${this.periodLabel(period)}: ₹${total.toFixed(2)}.`;
@@ -119,8 +119,8 @@ export class QueryProcessor implements MessageProcessor {
           await this.transactionRepository.findByUser(userId);
         let net = 0;
         for (const tx of transactions) {
-          if (tx.intent === "CREDIT") net += Number(tx.amount);
-          else if (tx.intent === "DEBIT") net -= Number(tx.amount);
+          if (tx.intent === "PAID") net += Number(tx.amount);
+          else if (tx.intent === "RECEIVED") net -= Number(tx.amount);
         }
         responseText =
           net >= 0

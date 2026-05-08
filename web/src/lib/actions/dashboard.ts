@@ -58,9 +58,9 @@ export async function getDashboardData() {
 
   cashFlowAgg.forEach((group) => {
     const amount = group._sum.amount?.toNumber() || 0;
-    if (group.intent === "CREDIT") {
+    if (group.intent === "PAID") {
       totalIn += amount;
-    } else if (group.intent === "DEBIT") {
+    } else if (group.intent === "RECEIVED") {
       totalOut += amount;
     }
   });
@@ -106,9 +106,9 @@ export async function getDashboardData() {
 
     const entry = chartDataMap.get(dateStr)!;
 
-    if (t.intent === "CREDIT") {
+    if (t.intent === "PAID") {
       entry.income += amount;
-    } else if (t.intent === "DEBIT") {
+    } else if (t.intent === "RECEIVED") {
       entry.expense += amount;
     }
   });

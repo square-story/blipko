@@ -59,7 +59,7 @@ export class BalanceProcessor implements MessageProcessor {
 
 ${threeTransactions
   .map((t) => {
-    const type = t.intent === "CREDIT" ? "Gave" : "Received";
+    const type = t.intent === "PAID" ? "Paid" : "Received";
     return `- ${type} ₹${t.amount.toFixed(2)} on ${t.date.toISOString().split("T")[0]}${t.description ? ` (${t.description})` : ""}`;
   })
   .join("\n\n")}

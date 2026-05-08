@@ -66,8 +66,8 @@ export default async function VendorDetailsPage({
                                 <TableHead>Date</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Category</TableHead>
-                                <TableHead className="text-right text-green-600">Received (Credit)</TableHead>
-                                <TableHead className="text-right text-red-600">Spent (Debit)</TableHead>
+                                <TableHead className="text-right text-red-600">Paid Out</TableHead>
+                                <TableHead className="text-right text-green-600">Received</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -79,8 +79,8 @@ export default async function VendorDetailsPage({
                                 </TableRow>
                             ) : (
                                 transactions.map((tx) => {
-                                    const isCredit = tx.intent === "CREDIT";
-                                    const isDebit = tx.intent === "DEBIT";
+                                    const isCredit = tx.intent === "PAID";
+                                    const isDebit = tx.intent === "RECEIVED";
 
                                     return (
                                         <TableRow key={tx.id}>

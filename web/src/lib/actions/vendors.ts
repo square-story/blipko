@@ -141,7 +141,7 @@ export async function getVendor(id: string) {
     // 1. Spending Trend (Daily)
     const spendingByDate = transactions.reduce(
       (acc, tx) => {
-        if (tx.intent === "DEBIT") {
+        if (tx.intent === "RECEIVED") {
           const date = tx.date.toLocaleDateString("en-CA", {
             timeZone: "Asia/Kolkata",
           });
@@ -160,7 +160,7 @@ export async function getVendor(id: string) {
     // 2. Category Distribution
     const categoryDistribution = transactions.reduce(
       (acc, tx) => {
-        if (tx.intent === "DEBIT") {
+        if (tx.intent === "RECEIVED") {
           acc[tx.category] = (acc[tx.category] || 0) + Number(tx.amount);
         }
         return acc;

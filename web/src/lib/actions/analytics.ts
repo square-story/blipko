@@ -57,12 +57,12 @@ export async function getAnalyticsData(months: number = 6) {
     const entry = monthMap.get(key);
     if (!entry) continue;
     const amount = tx.amount.toNumber();
-    if (tx.intent === "CREDIT") {
+    if (tx.intent === "PAID") {
       entry.totalIn += amount;
       const cat = tx.category || "General";
       entry.categoryBreakdown[cat] =
         (entry.categoryBreakdown[cat] || 0) + amount;
-    } else if (tx.intent === "DEBIT") {
+    } else if (tx.intent === "RECEIVED") {
       entry.totalOut += amount;
     }
   }
@@ -100,7 +100,7 @@ export async function getAnalyticsData(months: number = 6) {
     where: {
       userId,
       date: { gte: thisMonthStart },
-      intent: "CREDIT",
+      intent: "PAID",
       isDeleted: false,
     },
     select: { category: true, amount: true },

@@ -10,8 +10,8 @@ datasource db {
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum Intent {
-  CREDIT
-  DEBIT
+  PAID
+  RECEIVED
   UNDO
 }
 

@@ -176,7 +176,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     const categoryBreakdown: Record<string, number> = {};
 
     for (const tx of transactions) {
-      if (tx.intent === "CREDIT") {
+      if (tx.intent === "PAID") {
         const amount = Number(tx.amount);
         totalSpend += amount;
 
@@ -269,12 +269,12 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       if (!entry) continue;
 
       const amount = Number(tx.amount);
-      if (tx.intent === "CREDIT") {
+      if (tx.intent === "PAID") {
         entry.totalIn += amount;
         const cat = tx.category || "General";
         entry.categoryBreakdown[cat] =
           (entry.categoryBreakdown[cat] || 0) + amount;
-      } else if (tx.intent === "DEBIT") {
+      } else if (tx.intent === "RECEIVED") {
         entry.totalOut += amount;
       }
     }
@@ -292,9 +292,9 @@ export class PrismaTransactionRepository implements ITransactionRepository {
 
     let balance = 0;
     for (const tx of transactions) {
-      if (tx.intent === "CREDIT") {
+      if (tx.intent === "PAID") {
         balance += Number(tx.amount);
-      } else if (tx.intent === "DEBIT") {
+      } else if (tx.intent === "RECEIVED") {
         balance -= Number(tx.amount);
       }
     }

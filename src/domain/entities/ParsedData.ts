@@ -1,6 +1,6 @@
 export type ParsedIntent =
-  | "CREDIT"
-  | "DEBIT"
+  | "PAID"
+  | "RECEIVED"
   | "BALANCE"
   | "START"
   | "QUICK_REPLY"

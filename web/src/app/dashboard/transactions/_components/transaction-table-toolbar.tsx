@@ -32,8 +32,8 @@ export function TransactionTableToolbar<TData>({
                     column={table.getColumn("intent")}
                     title="Type"
                     options={[
-                        { label: "Credit", value: "CREDIT" },
-                        { label: "Debit", value: "DEBIT" },
+                        { label: "Paid", value: "PAID" },
+                        { label: "Received", value: "RECEIVED" },
                         { label: "Undo", value: "UNDO" },
                     ]}
                 />

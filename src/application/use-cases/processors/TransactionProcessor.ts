@@ -11,8 +11,8 @@ import { ParsedIntent } from "../../../domain/entities/ParsedData";
 
 const isTransactionIntent = (
   intent: ParsedIntent,
-): intent is Extract<ParsedIntent, "CREDIT" | "DEBIT"> =>
-  intent === "CREDIT" || intent === "DEBIT";
+): intent is Extract<ParsedIntent, "PAID" | "RECEIVED"> =>
+  intent === "PAID" || intent === "RECEIVED";
 
 export class TransactionProcessor implements MessageProcessor {
   constructor(
@@ -38,7 +38,7 @@ export class TransactionProcessor implements MessageProcessor {
 
     const transaction = await this.transactionRepository.create({
       amount: parsed.amount,
-      intent: parsed.intent as "CREDIT" | "DEBIT",
+      intent: parsed.intent as "PAID" | "RECEIVED",
       description: parsed.description || parsed.category || "General",
       userId: context.user.id,
       category: parsed.category,
@@ -55,8 +55,8 @@ export class TransactionProcessor implements MessageProcessor {
 
     const response = `✅ *Entry Added*
 
-${parsed.intent === "CREDIT" ? "🔻 *Gave:*" : "🟩 *Received:*"} ₹${transaction.amount.toFixed(2)}
-👤 ${parsed.intent === "CREDIT" ? "To" : "From"}: ${contact ? contact.name : "Unknown"}
+${parsed.intent === "PAID" ? "🔻 *Paid:*" : "🟩 *Received:*"} ₹${transaction.amount.toFixed(2)}
+👤 ${parsed.intent === "PAID" ? "To" : "From"}: ${contact ? contact.name : "Unknown"}
 📝 *Note:* ${transaction.description || "None"}
 
 💰 *New Balance:* ₹${newBalance.toFixed(2)} ${newBalance < 0 ? "🔴 (Due)" : "🟢 (Credit)"}

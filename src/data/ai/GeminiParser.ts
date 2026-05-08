@@ -10,8 +10,8 @@ const transactionSchema: Schema = {
     intent: {
       type: Type.STRING,
       enum: [
-        "CREDIT",
-        "DEBIT",
+        "PAID",
+        "RECEIVED",
         "BALANCE",
         "UNDO",
         "VIEW_DAILY_SUMMARY",
@@ -20,7 +20,7 @@ const transactionSchema: Schema = {
         "QUERY",
       ],
       description:
-        "CREDIT if user GAVE/SPENT money. DEBIT if user RECEIVED/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general conversation. QUERY if user asks analytics questions about past data, contacts owing money, or spending trends.",
+        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general conversation. QUERY if user asks analytics questions about past data, contacts owing money, or spending trends.",
     },
     amount: {
       type: Type.NUMBER,
@@ -99,19 +99,17 @@ You are an expert AI Financial Parser specialized in Indian transactions.
 Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or Hinglish and extract structured financial data.
 
 ### LINGUISTIC LOGIC (Indian Context):
-1. **CREDIT (Money Leaving User):**
+1. **PAID (Money Leaving User — you spent/gave):**
    - English: "Gave", "Paid", "Lent", "Spent".
    - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
    - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
-   - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
-   - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
-   - Example: "Rajuin 500 koduthu" -> { intent: "CREDIT", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
+   - Example: "Rajuin 500 koduthu" -> { intent: "PAID", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
 
-2. **DEBIT (Money Coming to User):**
+2. **RECEIVED (Money Coming to User — you got/earned):**
    - English: "Got", "Received", "Borrowed from", "Took from".
    - Manglish/Malayalam: "Thannu", "Kitti", "Medichu" (if received), "Vangi" (if received cash).
    - Hinglish/Hindi: "Mila", "Liya", "Aaya".
-   - Example: "Raju 500 thannu" (Raju gave me) -> { intent: "DEBIT", name: "Raju", amount: 500 }
+   - Example: "Raju 500 thannu" (Raju gave me) -> { intent: "RECEIVED", name: "Raju", amount: 500 }
 
 3. **BALANCE (Inquiry):**
    - Queries about owing, dues, or status.
