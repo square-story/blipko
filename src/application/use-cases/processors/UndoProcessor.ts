@@ -4,12 +4,12 @@ import {
   ProcessOutput,
 } from "./MessageProcessor";
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 export class UndoProcessor implements MessageProcessor {
   constructor(
     private readonly transactionRepository: ITransactionRepository,
-    private readonly messageService: IMessageService,
+    private readonly messageService: IMessagingPlatform,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -23,7 +23,7 @@ export class UndoProcessor implements MessageProcessor {
     if (!deletedTransaction) {
       const response = "⚠️ No recent transaction found to delete.";
       await this.messageService.sendMessage({
-        to: context.user.phoneNumber!,
+        to: context.platformUserId,
         body: response,
       });
       return { response: response, parsed: context.parsed! };
@@ -36,7 +36,7 @@ Removed: ₹${Number(deletedTransaction.amount).toFixed(2)} (${deletedTransactio
 🔄 Balance reverted to previous state.`;
 
     await this.messageService.sendMessage({
-      to: context.user.phoneNumber!,
+      to: context.platformUserId,
       body: response,
     });
 

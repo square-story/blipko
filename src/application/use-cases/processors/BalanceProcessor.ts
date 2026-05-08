@@ -5,13 +5,13 @@ import {
 } from "./MessageProcessor";
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
 import { IContactRepository } from "../../../domain/repositories/IContactRepository";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 export class BalanceProcessor implements MessageProcessor {
   constructor(
     private readonly transactionRepository: ITransactionRepository,
     private readonly contactRepository: IContactRepository,
-    private readonly messageService: IMessageService,
+    private readonly messageService: IMessagingPlatform,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -24,7 +24,7 @@ export class BalanceProcessor implements MessageProcessor {
       const response =
         "Please specify a contact name to check balance (e.g., 'Balance for Raju')";
       await this.messageService.sendMessage({
-        to: context.user.phoneNumber!,
+        to: context.platformUserId,
         body: response,
       });
       return { response, parsed };
@@ -38,7 +38,7 @@ export class BalanceProcessor implements MessageProcessor {
     if (!contact) {
       const response = `You don't have any records with ${parsed.name} yet.`;
       await this.messageService.sendMessage({
-        to: context.user.phoneNumber!,
+        to: context.platformUserId,
         body: response,
       });
       return { response, parsed };
@@ -67,7 +67,7 @@ ${threeTransactions
 _Reply with "Statement ${contact.name}" for full PDF._
 `;
     await this.messageService.sendMessage({
-      to: context.user.phoneNumber!,
+      to: context.platformUserId,
       body: response,
     });
 

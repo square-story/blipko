@@ -5,7 +5,7 @@ import {
 } from "./MessageProcessor";
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
 import { IContactRepository } from "../../../domain/repositories/IContactRepository";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 import { ParsedIntent } from "../../../domain/entities/ParsedData";
 
@@ -18,7 +18,7 @@ export class TransactionProcessor implements MessageProcessor {
   constructor(
     private readonly transactionRepository: ITransactionRepository,
     private readonly contactRepository: IContactRepository,
-    private readonly messageService: IMessageService,
+    private readonly messageService: IMessagingPlatform,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -64,7 +64,7 @@ ${parsed.intent === "CREDIT" ? "🔻 *Gave:*" : "🟩 *Received:*"} ₹${transac
 _Add more entries or ask for your balance anytime!_`;
 
     const messageId = await this.messageService.sendMessage({
-      to: context.user.phoneNumber!,
+      to: context.platformUserId,
       body: response,
     });
 

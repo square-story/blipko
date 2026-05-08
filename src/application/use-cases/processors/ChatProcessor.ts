@@ -3,10 +3,10 @@ import {
   ProcessContext,
   ProcessOutput,
 } from "./MessageProcessor";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 export class ChatProcessor implements MessageProcessor {
-  constructor(private readonly messageService: IMessageService) {}
+  constructor(private readonly messageService: IMessagingPlatform) {}
 
   canHandle(context: ProcessContext): boolean {
     return context.parsed?.intent === "CHAT";
@@ -18,7 +18,7 @@ export class ChatProcessor implements MessageProcessor {
       "Hello! I am here to help you track your finances.";
 
     await this.messageService.sendMessage({
-      to: context.user.phoneNumber!,
+      to: context.platformUserId,
       body: responseText,
     });
 

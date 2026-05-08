@@ -1,10 +1,10 @@
-import { WhatsAppMediaService } from "../../data/messaging/WhatsAppMediaService";
+import { IMediaService } from "../interfaces/IMediaService";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
 import { ProcessIncomingMessageUseCase } from "./ProcessIncomingMessage";
 
 export interface ProcessVoiceMessageInput {
-  senderPhone: string;
-  mediaId: string;
+  platformUserId: string;
+  audioFileId: string;
   replyToMessageId?: string | undefined;
 }
 
@@ -15,7 +15,7 @@ export interface ProcessVoiceMessageOutput {
 
 export class ProcessVoiceMessageUseCase {
   constructor(
-    private readonly mediaService: WhatsAppMediaService,
+    private readonly mediaService: IMediaService,
     private readonly transcriptionService: SarvamTranscriptionService,
     private readonly processMessageUseCase: ProcessIncomingMessageUseCase,
   ) {}
@@ -24,38 +24,28 @@ export class ProcessVoiceMessageUseCase {
     input: ProcessVoiceMessageInput,
   ): Promise<ProcessVoiceMessageOutput> {
     console.log(
-      `Processing voice message from ${input.senderPhone}, media ID: ${input.mediaId}`,
+      `Processing voice message from ${input.platformUserId}, file ID: ${input.audioFileId}`,
     );
 
-    // Step 1: Download the audio file from WhatsApp
-    const { buffer, metadata } = await this.mediaService.downloadMediaById(
-      input.mediaId,
+    const { buffer, mimeType } = await this.mediaService.downloadByFileId(
+      input.audioFileId,
     );
-    console.log(
-      `Downloaded audio: ${metadata.mime_type}, ${metadata.file_size} bytes`,
-    );
+    console.log(`Downloaded audio: ${mimeType}, ${buffer.length} bytes`);
 
-    // Step 2: Transcribe using Sarvam AI
-    const fileName = `audio_${input.mediaId}.${this.getFileExtension(metadata.mime_type)}`;
+    const fileName = `audio_${input.audioFileId}.${this.getFileExtension(mimeType)}`;
     const transcription = await this.transcriptionService.transcribe(
       buffer,
       fileName,
     );
-
     console.log(
-      `Transcription complete: "${transcription.text}" (${transcription.language})`,
+      `Transcription: "${transcription.text}" (${transcription.language})`,
     );
 
-    // Step 3: Process the transcribed text through existing message pipeline
     const result = await this.processMessageUseCase.execute({
-      senderPhone: input.senderPhone,
+      platformUserId: input.platformUserId,
       textMessage: transcription.text,
       replyToMessageId: input.replyToMessageId,
     });
-
-    console.log(
-      `Voice message processed successfully. Response: ${result.response}`,
-    );
 
     return {
       transcribedText: transcription.text,
@@ -63,9 +53,6 @@ export class ProcessVoiceMessageUseCase {
     };
   }
 
-  /**
-   * Helper to extract file extension from MIME type
-   */
   private getFileExtension(mimeType: string): string {
     const extensions: Record<string, string> = {
       "audio/ogg": "ogg",
@@ -75,7 +62,6 @@ export class ProcessVoiceMessageUseCase {
       "audio/wav": "wav",
       "audio/webm": "webm",
     };
-
-    return extensions[mimeType] || "ogg";
+    return extensions[mimeType] ?? "ogg";
   }
 }

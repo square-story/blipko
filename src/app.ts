@@ -1,7 +1,7 @@
 import express, { Application, NextFunction, Request, Response } from "express";
 
 import { env } from "./config/env";
-import { webhookRoutes } from "./presentation/routes/webhookRoutes";
+import { telegramRoutes } from "./presentation/routes/telegramRoutes";
 
 const app: Application = express();
 
@@ -11,7 +11,7 @@ app.get("/health", (_req, res) =>
   res.status(200).json({ success: true, message: "OK", data: null }),
 );
 
-app.use("/api/webhooks/whatsapp", webhookRoutes);
+app.use("/api/webhooks/telegram", telegramRoutes);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Global Error Handler:", err);

@@ -5,13 +5,13 @@ import {
 } from "./MessageProcessor";
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
 import { IContactRepository } from "../../../domain/repositories/IContactRepository";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 export class QueryProcessor implements MessageProcessor {
   constructor(
     private readonly transactionRepository: ITransactionRepository,
     private readonly contactRepository: IContactRepository,
-    private readonly messageService: IMessageService,
+    private readonly messageService: IMessagingPlatform,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -26,7 +26,7 @@ export class QueryProcessor implements MessageProcessor {
 
     if (!details?.type) {
       await this.messageService.sendMessage({
-        to: context.user.phoneNumber!,
+        to: context.platformUserId,
         body: responseText,
       });
       return { response: responseText, parsed: context.parsed! };
@@ -135,7 +135,7 @@ export class QueryProcessor implements MessageProcessor {
     }
 
     await this.messageService.sendMessage({
-      to: context.user.phoneNumber!,
+      to: context.platformUserId,
       body: responseText,
     });
 
