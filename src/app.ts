@@ -2,6 +2,7 @@ import express, { Application, NextFunction, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 
 import { env } from "./config/env";
+import { prisma } from "./data/prisma/client";
 import { telegramRoutes } from "./presentation/routes/telegramRoutes";
 import { sendDueNotifications } from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
@@ -36,10 +37,25 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 const port = env.PORT;
 
 if (process.env.NODE_ENV !== "test") {
-  const message = `🚀 AI Ledger server listening on port ${port}\n`;
-  process.stdout.write(message);
-  app.listen(port);
-  startScheduler(sendDueNotifications);
+  const server = app.listen(port, () => {
+    process.stdout.write(`🚀 AI Ledger server listening on port ${port}\n`);
+    startScheduler(sendDueNotifications);
+  });
+
+  function shutdown() {
+    console.log("Shutting down gracefully...");
+    server.close(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  }
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+  process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled rejection:", reason);
+  });
 }
 
 export { app };

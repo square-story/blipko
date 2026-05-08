@@ -13,7 +13,8 @@
     "test:unit": "vitest",
     "lint": "eslint .",
     "prepare": "husky install",
-    "backup": "ts-node-dev scripts/backup-db.ts"
+    "backup": "ts-node-dev scripts/backup-db.ts",
+    "webhook:set": "curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook -d url=$WEBHOOK_URL/api/webhooks/telegram -d secret_token=$TELEGRAM_WEBHOOK_SECRET | jq"
   },
   "lint-staged": {
     "*.ts": [
