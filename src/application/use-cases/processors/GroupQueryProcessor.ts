@@ -6,6 +6,7 @@ import {
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
 import { IGroupRepository } from "../../../domain/repositories/IGroupRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
+import { escapeMarkdown } from "../../../utils/escapeMarkdown";
 
 export class GroupQueryProcessor implements MessageProcessor {
   constructor(
@@ -58,7 +59,7 @@ export class GroupQueryProcessor implements MessageProcessor {
 
     const lines = summaries.map(
       (s) =>
-        `👤 *${s.memberName}*\n  📤 Spent: ₹${s.totalSpend.toFixed(2)}  📥 Received: ₹${s.totalReceived.toFixed(2)}  (${s.transactionCount} txns)`,
+        `👤 *${escapeMarkdown(s.memberName)}*\n  📤 Spent: ₹${s.totalSpend.toFixed(2)}  📥 Received: ₹${s.totalReceived.toFixed(2)}  (${s.transactionCount} txns)`,
     );
 
     const response = `👨‍👩‍👧 *Family Summary*\n\n${lines.join("\n\n")}`;
@@ -111,7 +112,7 @@ export class GroupQueryProcessor implements MessageProcessor {
       return { response, parsed };
     }
 
-    const response = `📊 *${match.memberName}'s spending*\n\n📤 Spent: ₹${match.totalSpend.toFixed(2)}\n📥 Received: ₹${match.totalReceived.toFixed(2)}\n🔢 Transactions: ${match.transactionCount}`;
+    const response = `📊 *${escapeMarkdown(match.memberName)}'s spending*\n\n📤 Spent: ₹${match.totalSpend.toFixed(2)}\n📥 Received: ₹${match.totalReceived.toFixed(2)}\n🔢 Transactions: ${match.transactionCount}`;
     await this.messageService.sendMessage({
       to: context.platformUserId,
       body: response,

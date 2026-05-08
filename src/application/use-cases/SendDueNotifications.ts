@@ -1,5 +1,6 @@
 import { IDueEntryRepository } from "../../domain/repositories/IDueEntryRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
+import { resolvePlatformUserId } from "../../utils/resolvePlatformUserId";
 
 export class SendDueNotificationsUseCase {
   constructor(
@@ -19,8 +20,13 @@ export class SendDueNotificationsUseCase {
 
     for (const entry of entries) {
       const { charge } = entry;
-      const telegramId = charge.user.telegramId;
-      if (!telegramId) continue;
+      const platformUserId = resolvePlatformUserId(charge.user);
+      if (!platformUserId) continue;
+
+      // Mark notified BEFORE sending — prevents duplicate notifications
+      // if multiple instances run concurrently. Prefer a silent miss over a
+      // duplicate send.
+      await this.dueEntryRepository.markNotified(entry.id);
 
       const daysUntil = Math.ceil(
         (entry.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
@@ -38,13 +44,13 @@ export class SendDueNotificationsUseCase {
         `📅 Due ${whenLabel} (${entry.dueDate.toLocaleDateString("en-IN")})`;
 
       try {
-        await this.messageService.sendInteractiveMessage(telegramId, body, [
+        await this.messageService.sendInteractiveMessage(platformUserId, body, [
           { id: `mark_paid_${entry.id}`, title: "Mark as Paid" },
           { id: `snooze_${entry.id}`, title: "Snooze 3 Days" },
         ]);
-        await this.dueEntryRepository.markNotified(entry.id);
       } catch (err) {
         console.error(`Failed to notify due entry ${entry.id}:`, err);
+        // Do NOT unmark — prefer silent miss over duplicate send
       }
     }
   }

@@ -8,6 +8,7 @@ import { IContactRepository } from "../../../domain/repositories/IContactReposit
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 import { ParsedIntent } from "../../../domain/entities/ParsedData";
+import { escapeMarkdown } from "../../../utils/escapeMarkdown";
 
 const isTransactionIntent = (
   intent: ParsedIntent,
@@ -29,6 +30,16 @@ export class TransactionProcessor implements MessageProcessor {
     const parsed = context.parsed!;
     if (typeof parsed.amount !== "number") {
       throw new Error("Amount is required for CREDIT or DEBIT intents");
+    }
+
+    const MAX_AMOUNT = 10_000_000;
+    if (parsed.amount <= 0 || parsed.amount > MAX_AMOUNT) {
+      const response = "Amount looks off. Try again with a valid number.";
+      await this.messageService.sendMessage({
+        to: context.platformUserId,
+        body: response,
+      });
+      return { response, parsed };
     }
 
     let contact = null;
@@ -58,11 +69,14 @@ export class TransactionProcessor implements MessageProcessor {
       }
     }
 
+    const safeContactName = escapeMarkdown(contact ? contact.name : "Unknown");
+    const safeDescription = escapeMarkdown(transaction.description || "None");
+
     const response = `✅ *Entry Added*
 
 ${parsed.intent === "PAID" ? "🔻 *Paid:*" : "🟩 *Received:*"} ₹${transaction.amount.toFixed(2)}
-👤 ${parsed.intent === "PAID" ? "To" : "From"}: ${contact ? contact.name : "Unknown"}
-📝 *Note:* ${transaction.description || "None"}
+👤 ${parsed.intent === "PAID" ? "To" : "From"}: ${safeContactName}
+📝 *Note:* ${safeDescription}
 
 💰 *New Balance:* ₹${newBalance.toFixed(2)} ${newBalance < 0 ? "🔴 (Due)" : "🟢 (Credit)"}
 
@@ -87,11 +101,11 @@ _Add more entries or ask for your balance anytime!_`;
     ) {
       const directionLabel =
         parsed.intent === "PAID" ? "📤 Paid" : "📥 Received";
-      const memberName = context.user.name ?? "A member";
+      const memberName = escapeMarkdown(context.user.name ?? "A member");
       this.messageService
         .sendMessage({
           to: context.groupContext.headPlatformUserId,
-          body: `👨‍👩‍👧 *${memberName}* added: ${directionLabel} ₹${parsed.amount}\n📝 ${transaction.description ?? ""}`,
+          body: `👨‍👩‍👧 *${memberName}* added: ${directionLabel} ₹${parsed.amount}\n📝 ${escapeMarkdown(transaction.description ?? "")}`,
         })
         .catch(console.error);
     }

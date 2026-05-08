@@ -6,6 +6,7 @@ import {
   MemberSpendSummary,
 } from "../../domain/entities/Group";
 import { randomBytes } from "crypto";
+import { resolvePlatformUserId } from "../../utils/resolvePlatformUserId";
 
 function generateInviteCode(): string {
   return randomBytes(4).toString("hex").toUpperCase(); // e.g. "A3F9C2B1"
@@ -89,10 +90,7 @@ export class PrismaGroupRepository implements IGroupRepository {
       groupName: membership.group.name,
       role: membership.role as "ADMIN" | "MEMBER",
       headUserId: admin.userId,
-      // headPlatformUserId is platform-agnostic: telegramId for now.
-      // Future connectors (WhatsApp, Signal) will populate their own field
-      // on User and this resolver will pick whichever is non-null.
-      headPlatformUserId: admin.user.telegramId ?? "",
+      headPlatformUserId: resolvePlatformUserId(admin.user) ?? "",
     };
   }
 
@@ -120,36 +118,32 @@ export class PrismaGroupRepository implements IGroupRepository {
   }
 
   async getGroupSummary(groupId: string): Promise<MemberSpendSummary[]> {
-    const members = await this.prisma.groupMember.findMany({
-      where: { groupId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            groupMemberTransactions: {
-              where: { groupId, isDeleted: false },
-              select: { intent: true, amount: true },
-            },
-          },
-        },
-      },
-    });
+    const [members, agg] = await Promise.all([
+      this.prisma.groupMember.findMany({
+        where: { groupId },
+        include: { user: { select: { id: true, name: true } } },
+      }),
+      this.prisma.transaction.groupBy({
+        by: ["groupMemberId", "intent"],
+        where: { groupId, isDeleted: false },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+    ]);
 
     return members.map((m) => {
-      const txs = m.user.groupMemberTransactions;
-      const totalSpend = txs
-        .filter((t) => t.intent === "PAID")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-      const totalReceived = txs
-        .filter((t) => t.intent === "RECEIVED")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
+      const paid = agg.find(
+        (a) => a.groupMemberId === m.userId && a.intent === "PAID",
+      );
+      const received = agg.find(
+        (a) => a.groupMemberId === m.userId && a.intent === "RECEIVED",
+      );
       return {
         memberId: m.userId,
         memberName: m.user.name ?? "Unknown",
-        totalSpend,
-        totalReceived,
-        transactionCount: txs.length,
+        totalSpend: Number(paid?._sum.amount ?? 0),
+        totalReceived: Number(received?._sum.amount ?? 0),
+        transactionCount: (paid?._count.id ?? 0) + (received?._count.id ?? 0),
       };
     });
   }

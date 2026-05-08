@@ -6,6 +6,7 @@ import {
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
 import { IContactRepository } from "../../../domain/repositories/IContactRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
+import { escapeMarkdown } from "../../../utils/escapeMarkdown";
 
 export class QueryProcessor implements MessageProcessor {
   constructor(
@@ -44,16 +45,17 @@ export class QueryProcessor implements MessageProcessor {
           name,
         );
         if (!contact) {
-          responseText = `I couldn't find a contact named "${name}".`;
+          responseText = `I couldn't find a contact named "${escapeMarkdown(name)}".`;
           break;
         }
         const balance = Number(contact.currentBalance);
+        const safeName = escapeMarkdown(contact.name);
         if (balance > 0) {
-          responseText = `${contact.name}'s balance: ₹${balance.toFixed(2)} (you paid them more than received).`;
+          responseText = `${safeName}'s balance: ₹${balance.toFixed(2)} (you paid them more than received).`;
         } else if (balance < 0) {
-          responseText = `${contact.name} owes you ₹${Math.abs(balance).toFixed(2)}.`;
+          responseText = `${safeName} owes you ₹${Math.abs(balance).toFixed(2)}.`;
         } else {
-          responseText = `${contact.name} is fully settled — balance is ₹0.`;
+          responseText = `${safeName} is fully settled — balance is ₹0.`;
         }
         break;
       }
@@ -69,7 +71,7 @@ export class QueryProcessor implements MessageProcessor {
           .slice(0, 10)
           .map(
             (c) =>
-              `• ${c.contactName}: owes ₹${Math.abs(c.balance).toFixed(2)}`,
+              `• ${escapeMarkdown(c.contactName)}: owes ₹${Math.abs(c.balance).toFixed(2)}`,
           );
         responseText = `Contacts with pending balances:\n${lines.join("\n")}`;
         break;

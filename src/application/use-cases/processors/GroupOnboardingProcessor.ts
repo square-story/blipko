@@ -5,6 +5,7 @@ import {
 } from "./MessageProcessor";
 import { IGroupRepository } from "../../../domain/repositories/IGroupRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
+import { escapeMarkdown } from "../../../utils/escapeMarkdown";
 
 const CREATE_GROUP_RE = /^create\s+(family|group|family\s+group)\b/i;
 const INVITE_CODE_RE = /^[A-Za-z0-9]{6,10}$/;
@@ -54,6 +55,7 @@ export class GroupOnboardingProcessor implements MessageProcessor {
     await this.groupRepository.addMember(group.id, context.user.id, "ADMIN");
 
     const response = `👨‍👩‍👧 *Group created!*\n\nInvite code: \`${group.inviteCode}\`\n\nShare this code with family members — they send it to the bot to join. Their transactions will appear in your dashboard.`;
+    // group.inviteCode is system-generated hex — no escaping needed
     await this.messageService.sendMessage({
       to: context.platformUserId,
       body: response,
@@ -114,12 +116,12 @@ export class GroupOnboardingProcessor implements MessageProcessor {
       this.messageService
         .sendMessage({
           to: headMembership.headPlatformUserId,
-          body: `👋 *${context.user.name ?? "A new member"}* joined your group! Their transactions will now appear in your family dashboard.`,
+          body: `👋 *${escapeMarkdown(context.user.name ?? "A new member")}* joined your group! Their transactions will now appear in your family dashboard.`,
         })
         .catch(console.error);
     }
 
-    const response = `✅ You've joined *${group.name}*!\n\nYour transactions will appear in the admin's dashboard. Keep tracking as usual!`;
+    const response = `✅ You've joined *${escapeMarkdown(group.name)}*!\n\nYour transactions will appear in the admin's dashboard. Keep tracking as usual!`;
     await this.messageService.sendMessage({
       to: context.platformUserId,
       body: response,

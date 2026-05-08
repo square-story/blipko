@@ -1,4 +1,5 @@
-import { IAiParser } from "../../domain/services/IAiParser";
+import { Transaction } from "@prisma/client";
+import { IAiParser, ConversationTurn } from "../../domain/services/IAiParser";
 import { ParsedData } from "../../domain/entities/ParsedData";
 
 export class FallbackAiParser implements IAiParser {
@@ -7,10 +8,14 @@ export class FallbackAiParser implements IAiParser {
     private readonly secondary: IAiParser,
   ) {}
 
-  async parseText(text: string, context?: any): Promise<ParsedData> {
+  async parseText(
+    text: string,
+    replyTransaction?: Transaction | null,
+    history: ConversationTurn[] = [],
+  ): Promise<ParsedData> {
     try {
       // Try primary parser (OpenAI)
-      return await this.primary.parseText(text, context);
+      return await this.primary.parseText(text, replyTransaction, history);
     } catch (error) {
       console.warn(
         "Primary AI Parser (OpenAI) failed. Falling back to Secondary (Gemini).",
@@ -19,7 +24,7 @@ export class FallbackAiParser implements IAiParser {
 
       try {
         // Fallback to secondary parser (Gemini)
-        return await this.secondary.parseText(text, context);
+        return await this.secondary.parseText(text, replyTransaction, history);
       } catch (secondaryError) {
         console.error(
           "Secondary AI Parser (Gemini) also failed.",

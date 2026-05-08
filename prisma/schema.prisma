@@ -131,6 +131,19 @@ model User {
 
   // Transactions where this user acted as group member
   groupMemberTransactions Transaction[] @relation("GroupMemberTransactions")
+
+  conversationMessages ConversationMessage[]
+}
+
+model ConversationMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 model Account {
@@ -275,6 +288,11 @@ model Transaction {
   deletedByUserId String?
 
   @@index([userId, date])
+  @@index([userId, date, isDeleted])
+  @@index([groupId])
+  @@index([groupMemberId])
+  @@index([contactId, date])
+  @@index([walletId, date])
 }
 
 // ─── Double-Entry Accounting ───────────────────────────────────────────────────

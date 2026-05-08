@@ -6,6 +6,7 @@ import { IWalletRepository } from "../../domain/repositories/IWalletRepository";
 import { IRecurringChargeRepository } from "../../domain/repositories/IRecurringChargeRepository";
 import { IDueEntryRepository } from "../../domain/repositories/IDueEntryRepository";
 import { IGroupRepository } from "../../domain/repositories/IGroupRepository";
+import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData } from "../../domain/entities/ParsedData";
 import { User, Transaction } from "@prisma/client";
@@ -58,6 +59,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly recurringChargeRepository: IRecurringChargeRepository,
     private readonly dueEntryRepository: IDueEntryRepository,
     private readonly groupRepository: IGroupRepository,
+    private readonly conversationRepository: IConversationRepository,
   ) {
     this.processors = [
       new DuePaymentProcessor(dueEntryRepository, messageService),
@@ -112,9 +114,11 @@ export class ProcessIncomingMessageUseCase {
     );
     console.log(`User identified: ${user.id}`);
 
-    const groupContext =
-      (await this.groupRepository.findGroupContextForUser(user.id)) ??
-      undefined;
+    const [groupContextRaw, conversationHistory] = await Promise.all([
+      this.groupRepository.findGroupContextForUser(user.id),
+      this.conversationRepository.getRecent(user.id, 6),
+    ]);
+    const groupContext = groupContextRaw ?? undefined;
 
     let replyTransaction: Transaction | null = null;
     if (payload.replyToMessageId) {
@@ -185,7 +189,15 @@ export class ProcessIncomingMessageUseCase {
     }
 
     console.log("Parsing message with AI...");
-    const parsed = await this.aiParser.parseText(textMessage, replyTransaction);
+    const history = conversationHistory.map((h) => ({
+      role: h.role as "user" | "model",
+      content: h.content,
+    }));
+    const parsed = await this.aiParser.parseText(
+      textMessage,
+      replyTransaction,
+      history,
+    );
     console.log("AI Parsed result:", JSON.stringify(parsed, null, 2));
 
     const contextWithParse = {
@@ -195,7 +207,15 @@ export class ProcessIncomingMessageUseCase {
 
     for (const processor of this.processors) {
       if (processor.canHandle(contextWithParse)) {
-        return processor.process(contextWithParse);
+        const output = await processor.process(contextWithParse);
+        // Save conversation turns (fire-and-forget — don't block reply)
+        this.conversationRepository
+          .append(user.id, "user", textMessage)
+          .catch(console.error);
+        this.conversationRepository
+          .append(user.id, "model", output.response)
+          .catch(console.error);
+        return output;
       }
     }
 

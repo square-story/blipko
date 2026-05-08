@@ -6,6 +6,7 @@ import {
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
 import { IContactRepository } from "../../../domain/repositories/IContactRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
+import { escapeMarkdown } from "../../../utils/escapeMarkdown";
 
 export class BalanceProcessor implements MessageProcessor {
   constructor(
@@ -36,7 +37,7 @@ export class BalanceProcessor implements MessageProcessor {
     );
 
     if (!contact) {
-      const response = `You don't have any records with ${parsed.name} yet.`;
+      const response = `You don't have any records with ${escapeMarkdown(parsed.name)} yet.`;
       await this.messageService.sendMessage({
         to: context.platformUserId,
         body: response,
@@ -52,7 +53,7 @@ export class BalanceProcessor implements MessageProcessor {
 
     const balance = Number(contact.currentBalance);
 
-    const response = `👤 *Customer Report: ${contact.name}*
+    const response = `👤 *Customer Report: ${escapeMarkdown(contact.name)}*
 
 💰 *Current Balance:* ₹${balance.toFixed(2)} ${balance < 0 ? "🔴 (Due)" : "🟢 (Credit)"}
 📉 *Recent History:*
@@ -60,7 +61,7 @@ export class BalanceProcessor implements MessageProcessor {
 ${threeTransactions
   .map((t) => {
     const type = t.intent === "PAID" ? "Paid" : "Received";
-    return `- ${type} ₹${t.amount.toFixed(2)} on ${t.date.toISOString().split("T")[0]}${t.description ? ` (${t.description})` : ""}`;
+    return `- ${type} ₹${t.amount.toFixed(2)} on ${t.date.toISOString().split("T")[0]}${t.description ? ` (${escapeMarkdown(t.description)})` : ""}`;
   })
   .join("\n\n")}
 

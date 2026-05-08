@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { IAiParser } from "../../domain/services/IAiParser";
+import { Transaction } from "@prisma/client";
+import { IAiParser, ConversationTurn } from "../../domain/services/IAiParser";
 import { ParsedData } from "../../domain/entities/ParsedData";
 import { env } from "../../config/env";
 
@@ -69,20 +70,30 @@ export class OpenAIParser implements IAiParser {
     this.client = new OpenAI({ apiKey: this.apiKey });
   }
 
-  async parseText(text: string, context?: any): Promise<ParsedData> {
+  async parseText(
+    text: string,
+    replyTransaction?: Transaction | null,
+    history: ConversationTurn[] = [],
+  ): Promise<ParsedData> {
     try {
       let promptText = text;
-      if (context) {
-        promptText = `Context: User is replying to a message/transaction. 
-  Transaction Details: ${JSON.stringify(context)}
+      if (replyTransaction) {
+        promptText = `Context: User is replying to a message/transaction.
+  Transaction Details: ${JSON.stringify(replyTransaction)}
   User Reply: "${text}"
   Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
       }
+
+      const historyMessages = history.map((h) => ({
+        role: h.role as "user" | "assistant",
+        content: h.content,
+      }));
 
       const completion = await this.client.chat.completions.create({
         model: "gpt-4o-mini", // Cost-effective and fast
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
+          ...historyMessages,
           { role: "user", content: promptText },
         ],
         response_format: { type: "json_object" }, // Enforce valid JSON

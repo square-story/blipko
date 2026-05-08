@@ -11,6 +11,7 @@ describe("ProcessIncomingMessage", () => {
   let mockWalletRepository: any;
   let mockRecurringChargeRepository: any;
   let mockDueEntryRepository: any;
+  let mockConversationRepository: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,6 +70,10 @@ describe("ProcessIncomingMessage", () => {
       snooze: vi.fn(),
       findById: vi.fn().mockResolvedValue(null),
     };
+    mockConversationRepository = {
+      getRecent: vi.fn().mockResolvedValue([]),
+      append: vi.fn().mockResolvedValue(undefined),
+    };
     const mockGroupRepository = {
       create: vi.fn(),
       findById: vi.fn().mockResolvedValue(null),
@@ -93,6 +98,7 @@ describe("ProcessIncomingMessage", () => {
       mockRecurringChargeRepository,
       mockDueEntryRepository,
       mockGroupRepository,
+      mockConversationRepository,
     );
   });
 
@@ -134,6 +140,7 @@ describe("ProcessIncomingMessage", () => {
     expect(mockAiParser.parseText).toHaveBeenCalledWith(
       "Rajuin 500 koduthu",
       null,
+      [],
     );
     expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
       to: "1234567890",

@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { IAiParser } from "../../domain/services/IAiParser";
+import { Transaction } from "@prisma/client";
+import { IAiParser, ConversationTurn } from "../../domain/services/IAiParser";
 import { ParsedData } from "../../domain/entities/ParsedData"; // Assuming this matches the schema below
 import { env } from "../../config/env";
 
@@ -231,19 +232,29 @@ export class GeminiParser implements IAiParser {
     this.client = new GoogleGenAI({ apiKey: this.apiKey });
   }
 
-  async parseText(text: string, context?: any): Promise<ParsedData> {
+  async parseText(
+    text: string,
+    replyTransaction?: Transaction | null,
+    history: ConversationTurn[] = [],
+  ): Promise<ParsedData> {
     try {
       let promptText = text;
-      if (context) {
-        promptText = `Context: User is replying to a message/transaction. 
-Transaction Details: ${JSON.stringify(context)}
+      if (replyTransaction) {
+        promptText = `Context: User is replying to a message/transaction.
+Transaction Details: ${JSON.stringify(replyTransaction)}
 User Reply: "${text}"
 Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
       }
 
+      const historyContents = history.map((h) => ({
+        role: h.role,
+        parts: [{ text: h.content }],
+      }));
+
       const response = await this.client.models.generateContent({
         model: this.modelName,
         contents: [
+          ...historyContents,
           {
             role: "user",
             parts: [{ text: promptText }],
