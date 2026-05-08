@@ -44,6 +44,10 @@ export class TransactionProcessor implements MessageProcessor {
       category: parsed.category,
       contactId: contact?.id,
       walletId: context.walletId,
+      ...(context.groupContext && {
+        groupId: context.groupContext.groupId,
+        groupMemberId: context.user.id,
+      }),
     });
 
     let newBalance = 0;
@@ -74,6 +78,23 @@ _Add more entries or ask for your balance anytime!_`;
       transaction.id,
       messageId,
     );
+
+    // Notify the group head (fire-and-forget; platform-agnostic via IMessagingPlatform)
+    if (
+      context.groupContext &&
+      context.groupContext.headPlatformUserId &&
+      context.groupContext.headPlatformUserId !== context.platformUserId
+    ) {
+      const directionLabel =
+        parsed.intent === "PAID" ? "📤 Paid" : "📥 Received";
+      const memberName = context.user.name ?? "A member";
+      this.messageService
+        .sendMessage({
+          to: context.groupContext.headPlatformUserId,
+          body: `👨‍👩‍👧 *${memberName}* added: ${directionLabel} ₹${parsed.amount}\n📝 ${transaction.description ?? ""}`,
+        })
+        .catch(console.error);
+    }
 
     return { response, parsed };
   }

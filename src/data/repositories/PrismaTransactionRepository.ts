@@ -18,6 +18,8 @@ export class PrismaTransactionRepository implements ITransactionRepository {
         category: data.category ?? "General",
         contactId: data.contactId ?? null,
         walletId: data.walletId ?? null,
+        groupId: data.groupId ?? null,
+        groupMemberId: data.groupMemberId ?? null,
       },
     });
 
@@ -281,6 +283,23 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     }
 
     return Array.from(monthMap.values());
+  }
+
+  async findByGroup(groupId: string): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      where: { groupId, isDeleted: false },
+      orderBy: { date: "desc" },
+    });
+  }
+
+  async findByGroupAndMember(
+    groupId: string,
+    memberId: string,
+  ): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      where: { groupId, groupMemberId: memberId, isDeleted: false },
+      orderBy: { date: "desc" },
+    });
   }
 
   private async updateContactBalance(contactId: string): Promise<void> {

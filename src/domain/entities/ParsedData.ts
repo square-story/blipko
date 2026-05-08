@@ -29,7 +29,9 @@ export interface ParsedData {
       | "TRANSACTION_HISTORY"
       | "CONTACT_BALANCE"
       | "UNPAID_CONTACTS"
-      | "OVERDUE_DUES";
+      | "OVERDUE_DUES"
+      | "GROUP_SUMMARY"
+      | "MEMBER_SPEND";
     period?: "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "ALL_TIME";
     category?: string;
     contactName?: string; // for CONTACT_BALANCE queries

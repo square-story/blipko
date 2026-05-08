@@ -1,5 +1,6 @@
 import { User, Transaction } from "@prisma/client";
 import { ParsedData } from "../../../domain/entities/ParsedData";
+import { GroupContext } from "../../../domain/entities/Group";
 
 export interface ProcessContext {
   user: User;
@@ -10,6 +11,7 @@ export interface ProcessContext {
   replyTransaction?: Transaction | undefined;
   walletId?: string | undefined;
   walletName?: string | undefined;
+  groupContext?: GroupContext | undefined;
 }
 
 export interface ProcessOutput {

@@ -5,6 +5,7 @@ import { ITransactionRepository } from "../../domain/repositories/ITransactionRe
 import { IWalletRepository } from "../../domain/repositories/IWalletRepository";
 import { IRecurringChargeRepository } from "../../domain/repositories/IRecurringChargeRepository";
 import { IDueEntryRepository } from "../../domain/repositories/IDueEntryRepository";
+import { IGroupRepository } from "../../domain/repositories/IGroupRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData } from "../../domain/entities/ParsedData";
 import { User, Transaction } from "@prisma/client";
@@ -21,6 +22,8 @@ import { QueryProcessor } from "./processors/QueryProcessor";
 import { WalletProcessor } from "./processors/WalletProcessor";
 import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
 import { DuePaymentProcessor } from "./processors/DuePaymentProcessor";
+import { GroupOnboardingProcessor } from "./processors/GroupOnboardingProcessor";
+import { GroupQueryProcessor } from "./processors/GroupQueryProcessor";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -54,9 +57,11 @@ export class ProcessIncomingMessageUseCase {
     private readonly walletRepository: IWalletRepository,
     private readonly recurringChargeRepository: IRecurringChargeRepository,
     private readonly dueEntryRepository: IDueEntryRepository,
+    private readonly groupRepository: IGroupRepository,
   ) {
     this.processors = [
       new DuePaymentProcessor(dueEntryRepository, messageService),
+      new GroupOnboardingProcessor(groupRepository, messageService),
       new ConfirmationProcessor(transactionRepository, messageService),
       new StartProcessor(messageService),
       new ReplyProcessor(transactionRepository, messageService),
@@ -67,6 +72,11 @@ export class ProcessIncomingMessageUseCase {
         recurringChargeRepository,
         dueEntryRepository,
         walletRepository,
+        messageService,
+      ),
+      new GroupQueryProcessor(
+        transactionRepository,
+        groupRepository,
         messageService,
       ),
       new QueryProcessor(
@@ -101,6 +111,10 @@ export class ProcessIncomingMessageUseCase {
       payload.platformUsername,
     );
     console.log(`User identified: ${user.id}`);
+
+    const groupContext =
+      (await this.groupRepository.findGroupContextForUser(user.id)) ??
+      undefined;
 
     let replyTransaction: Transaction | null = null;
     if (payload.replyToMessageId) {
@@ -148,11 +162,13 @@ export class ProcessIncomingMessageUseCase {
       replyTransaction: replyTransaction ?? undefined,
       walletId,
       walletName,
+      groupContext,
     };
 
     for (const processor of this.processors) {
       if (
         processor instanceof DuePaymentProcessor ||
+        processor instanceof GroupOnboardingProcessor ||
         processor instanceof StartProcessor ||
         processor instanceof ConfirmationProcessor
       ) {

@@ -69,6 +69,19 @@ describe("ProcessIncomingMessage", () => {
       snooze: vi.fn(),
       findById: vi.fn().mockResolvedValue(null),
     };
+    const mockGroupRepository = {
+      create: vi.fn(),
+      findById: vi.fn().mockResolvedValue(null),
+      findByInviteCode: vi.fn().mockResolvedValue(null),
+      addMember: vi.fn(),
+      removeMember: vi.fn(),
+      findMembership: vi.fn().mockResolvedValue(null),
+      findMembershipByUser: vi.fn().mockResolvedValue(null),
+      findGroupContextForUser: vi.fn().mockResolvedValue(null),
+      findGroupsByHead: vi.fn().mockResolvedValue([]),
+      getGroupSummary: vi.fn().mockResolvedValue([]),
+      regenerateInviteCode: vi.fn(),
+    };
 
     useCase = new ProcessIncomingMessageUseCase(
       mockAiParser,
@@ -79,6 +92,7 @@ describe("ProcessIncomingMessage", () => {
       mockWalletRepository,
       mockRecurringChargeRepository,
       mockDueEntryRepository,
+      mockGroupRepository,
     );
   });
 

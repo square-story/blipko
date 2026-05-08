@@ -86,6 +86,12 @@ enum ContributionType {
   LOAN
 }
 
+// Family / Group
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
+
 // ─── Auth (NextAuth) ───────────────────────────────────────────────────────────
 
 model User {
@@ -118,6 +124,13 @@ model User {
   auditLogs        AuditLog[]
   wallets          Wallet[]
   recurringCharges RecurringCharge[]
+
+  // Group relations
+  createdGroups    Group[]       @relation("GroupCreator")
+  groupMemberships GroupMember[]
+
+  // Transactions where this user acted as group member
+  groupMemberTransactions Transaction[] @relation("GroupMemberTransactions")
 }
 
 model Account {
@@ -239,6 +252,12 @@ model Transaction {
 
   walletId String?
   wallet   Wallet? @relation(fields: [walletId], references: [id])
+
+  // Group tracking
+  groupId       String?
+  group         Group?  @relation(fields: [groupId], references: [id])
+  groupMemberId String?
+  groupMember   User?   @relation("GroupMemberTransactions", fields: [groupMemberId], references: [id])
 
   // Link back to the raw parsed log
   parseLogId String?   @unique
@@ -421,4 +440,31 @@ model ProcessedMessage {
   id          String   @id @default(cuid())
   messageId   String   @unique
   processedAt DateTime @default(now())
+}
+
+// ─── Family / Group Accounts ──────────────────────────────────────────────────
+
+model Group {
+  id          String        @id @default(cuid())
+  name        String
+  inviteCode  String        @unique @default(cuid())
+  createdById String
+  createdBy   User          @relation("GroupCreator", fields: [createdById], references: [id])
+  members     GroupMember[]
+  transactions Transaction[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model GroupMember {
+  id       String    @id @default(cuid())
+  groupId  String
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
 }

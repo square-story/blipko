@@ -63,6 +63,7 @@ export async function getTransactions({
 
   const where: Prisma.TransactionWhereInput = {
     userId: session.user.id,
+    groupId: null,
     isDeleted: false,
     OR: search
       ? [

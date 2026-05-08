@@ -8,6 +8,7 @@ import {
   Settings,
   Wallet,
   RefreshCw,
+  Home,
 } from "lucide-react";
 
 type Submenu = {
@@ -74,6 +75,11 @@ export function getMenuList(): Group[] {
     {
       groupLabel: "Management",
       menus: [
+        {
+          href: "/dashboard/family",
+          label: "Family",
+          icon: Home,
+        },
         {
           href: "/dashboard/vendors",
           label: "Vendors",

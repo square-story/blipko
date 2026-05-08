@@ -8,6 +8,8 @@ export interface CreateTransactionDTO {
   userId: string;
   contactId?: string | undefined;
   walletId?: string | undefined;
+  groupId?: string | undefined;
+  groupMemberId?: string | undefined;
 }
 
 export interface MonthlyAnalytics {
@@ -46,6 +48,11 @@ export interface ITransactionRepository {
     totalSpend: number;
     categoryBreakdown: Record<string, number>;
   }>;
+  findByGroup(groupId: string): Promise<Transaction[]>;
+  findByGroupAndMember(
+    groupId: string,
+    memberId: string,
+  ): Promise<Transaction[]>;
   findUnpaidContacts(userId: string): Promise<
     {
       contactId: string;

@@ -14,6 +14,7 @@ import { PrismaUserRepository } from "../../data/repositories/PrismaUserReposito
 import { PrismaWalletRepository } from "../../data/repositories/PrismaWalletRepository";
 import { PrismaRecurringChargeRepository } from "../../data/repositories/PrismaRecurringChargeRepository";
 import { PrismaDueEntryRepository } from "../../data/repositories/PrismaDueEntryRepository";
+import { PrismaGroupRepository } from "../../data/repositories/PrismaGroupRepository";
 import { prisma } from "../../data/prisma/client";
 import { env } from "../../config/env";
 
@@ -53,6 +54,7 @@ const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const walletRepository = new PrismaWalletRepository(prisma);
 const recurringChargeRepository = new PrismaRecurringChargeRepository(prisma);
 const dueEntryRepository = new PrismaDueEntryRepository(prisma);
+const groupRepository = new PrismaGroupRepository(prisma);
 
 const processIncomingMessage = new ProcessIncomingMessageUseCase(
   aiParser,
@@ -63,6 +65,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   walletRepository,
   recurringChargeRepository,
   dueEntryRepository,
+  groupRepository,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(

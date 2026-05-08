@@ -74,6 +74,8 @@ const transactionSchema: Schema = {
             "CONTACT_BALANCE",
             "UNPAID_CONTACTS",
             "OVERDUE_DUES",
+            "GROUP_SUMMARY",
+            "MEMBER_SPEND",
           ],
           description:
             "CONTACT_BALANCE: asking about a specific person's balance. UNPAID_CONTACTS: who hasn't paid / who owes me. TOTAL_SPEND: how much did I spend. TOTAL_INCOME: how much did I earn.",
@@ -191,6 +193,8 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example: "Who hasn't paid this month?" / "Aarike paisa thannilla?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS", period: "THIS_MONTH" } }
    - Example: "What's Raju's balance?" / "Raju ethra tharam?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
    - Example: "Who is overdue?" / "Baaki aarike undu?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
+   - Example: "family summary" / "sabka kitna hua" → { intent: "QUERY", query_details: { type: "GROUP_SUMMARY" } }
+   - Example: "show Priya's spending" / "Priya ne kitna kharch kiya" → { intent: "QUERY", query_details: { type: "MEMBER_SPEND", contactName: "Priya" } }
 
 9. **WALLET (Wallet management):**
    - Example: "show wallets" / "list my wallets" → { intent: "WALLET", wallet_action: { action: "LIST" } }
