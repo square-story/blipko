@@ -8,6 +8,7 @@ import { sendDueNotifications } from "./presentation/controllers/TelegramWebhook
 import { startScheduler } from "./infrastructure/scheduler";
 
 const app: Application = express();
+app.set("trust proxy", 1);
 
 app.use(express.json());
 

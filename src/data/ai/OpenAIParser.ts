@@ -85,7 +85,9 @@ export class OpenAIParser implements IAiParser {
       }
 
       const historyMessages = history.map((h) => ({
-        role: h.role as "user" | "assistant",
+        role: (h.role === "model" ? "assistant" : h.role) as
+          | "user"
+          | "assistant",
         content: h.content,
       }));
 
