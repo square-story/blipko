@@ -1,23 +1,20 @@
 FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
-
+FROM base AS build
+COPY package.json pnpm-lock.yaml ./
+COPY prisma ./prisma
+RUN pnpm install --frozen-lockfile
+RUN pnpm prisma generate
 COPY . .
+RUN pnpm build
 
-RUN npm run build
-
-FROM node:20-alpine AS runner
+FROM base AS runner
 WORKDIR /app
-
-COPY --from=base /app/package*.json ./
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/prisma ./prisma
-
-EXPOSE 3000
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
+COPY --from=build /app/prisma ./prisma
 
 CMD ["node", "dist/app.js"]
-
-
