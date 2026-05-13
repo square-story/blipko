@@ -4,12 +4,12 @@ import {
   ProcessOutput,
 } from "./MessageProcessor";
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 export class ReplyProcessor implements MessageProcessor {
   constructor(
     private readonly transactionRepository: ITransactionRepository,
-    private readonly messageService: IMessageService,
+    private readonly messageService: IMessagingPlatform,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -87,7 +87,7 @@ export class ReplyProcessor implements MessageProcessor {
 ₹${Number(transaction.amount).toFixed(2)} (${transaction.intent})`;
 
       await this.messageService.sendInteractiveMessage(
-        context.user.phoneNumber!,
+        context.platformUserId,
         response,
         [
           { id: `confirm_delete_${transaction.id}`, title: "Delete" },
@@ -120,7 +120,7 @@ export class ReplyProcessor implements MessageProcessor {
         if (updates.name) updateMsg += `Name: ${updates.name}\n`;
 
         await this.messageService.sendMessage({
-          to: context.user.phoneNumber!,
+          to: context.platformUserId,
           body: updateMsg,
         });
 
@@ -146,7 +146,7 @@ export class ReplyProcessor implements MessageProcessor {
 New Category: ${newCategory}`;
 
         await this.messageService.sendMessage({
-          to: context.user.phoneNumber!,
+          to: context.platformUserId,
           body: response,
         });
 
@@ -165,7 +165,7 @@ New Category: ${newCategory}`;
     const response =
       "❓ I see you replied to a transaction, but I didn't understand. Try 'delete' or 'update category to [name]'.";
     await this.messageService.sendMessage({
-      to: context.user.phoneNumber!,
+      to: context.platformUserId,
       body: response,
     });
 

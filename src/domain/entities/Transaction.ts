@@ -1,4 +1,4 @@
-export type TransactionType = 'CREDIT' | 'DEBIT';
+export type TransactionType = "PAID" | "RECEIVED";
 
 export interface Transaction {
   id: string;
@@ -8,4 +8,3 @@ export interface Transaction {
   customerId: string;
   createdAt: Date;
 }
-

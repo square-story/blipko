@@ -43,6 +43,8 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    ".next",
+    "web"
   ],
 }

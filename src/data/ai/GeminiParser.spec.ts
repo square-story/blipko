@@ -29,10 +29,10 @@ describe("GeminiParser", () => {
     parser = new GeminiParser("fake-api-key", "fake-model");
   });
 
-  it("should parse a credit transaction correctly", async () => {
+  it("should parse a paid transaction correctly", async () => {
     const mockResponse = {
       text: JSON.stringify({
-        intent: "CREDIT",
+        intent: "PAID",
         amount: 500,
         name: "Raju",
         category: "Food",
@@ -45,7 +45,7 @@ describe("GeminiParser", () => {
     const result = await parser.parseText("Rajuin 500 koduthu");
 
     expect(result).toEqual({
-      intent: "CREDIT",
+      intent: "PAID",
       amount: 500,
       name: "Raju",
       category: "Food",
@@ -54,10 +54,10 @@ describe("GeminiParser", () => {
     expect(mocks.generateContent).toHaveBeenCalledTimes(1);
   });
 
-  it("should parse a debit transaction correctly", async () => {
+  it("should parse a received transaction correctly", async () => {
     const mockResponse = {
       text: JSON.stringify({
-        intent: "DEBIT",
+        intent: "RECEIVED",
         amount: 1000,
         name: "Amit",
         category: "Salary",
@@ -70,7 +70,7 @@ describe("GeminiParser", () => {
     const result = await parser.parseText("Amit 1000 thannu");
 
     expect(result).toEqual({
-      intent: "DEBIT",
+      intent: "RECEIVED",
       amount: 1000,
       name: "Amit",
       category: "Salary",

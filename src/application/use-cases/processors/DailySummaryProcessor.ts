@@ -1,61 +1,55 @@
-import { MessageProcessor } from "./MessageProcessor";
 import {
-    ProcessIncomingMessageInput,
-    ProcessIncomingMessageOutput,
-} from "../ProcessIncomingMessage";
+  MessageProcessor,
+  ProcessContext,
+  ProcessOutput,
+} from "./MessageProcessor";
 import { ITransactionRepository } from "../../../domain/repositories/ITransactionRepository";
-import { IMessageService } from "../../interfaces/IMessageService";
+import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 
 export class DailySummaryProcessor implements MessageProcessor {
-    constructor(
-        private readonly transactionRepository: ITransactionRepository,
-        private readonly messageService: IMessageService,
-    ) { }
+  constructor(
+    private readonly transactionRepository: ITransactionRepository,
+    private readonly messageService: IMessagingPlatform,
+  ) {}
 
-    canHandle(context: any): boolean {
-        return context.parsed?.intent === "VIEW_DAILY_SUMMARY";
+  canHandle(context: ProcessContext): boolean {
+    return context.parsed?.intent === "VIEW_DAILY_SUMMARY";
+  }
+
+  async process(context: ProcessContext): Promise<ProcessOutput> {
+    const summary = await this.transactionRepository.getDailySummary(
+      context.user.id,
+      new Date(),
+    );
+
+    let response = `📅 *Today's Summary*\n\n`;
+    response += `💸 *Total Spend:* ₹${summary.totalSpend}\n\n`;
+
+    if (Object.keys(summary.categoryBreakdown).length > 0) {
+      response += `📊 *Category Breakdown:*\n`;
+      for (const [category, amount] of Object.entries(
+        summary.categoryBreakdown,
+      )) {
+        response += `- ${category}: ₹${amount}\n`;
+      }
+      response += `\n`;
     }
 
-    async process(
-        context: ProcessIncomingMessageInput & { parsed: any; user: any },
-    ): Promise<ProcessIncomingMessageOutput> {
-        const { user, parsed } = context;
-
-        const summary = await this.transactionRepository.getDailySummary(
-            user.id,
-            new Date(),
-        );
-
-        let response = `📅 *Today's Summary*\n\n`;
-        response += `💸 *Total Spend:* ₹${summary.totalSpend}\n\n`;
-
-        if (Object.keys(summary.categoryBreakdown).length > 0) {
-            response += `📊 *Category Breakdown:*\n`;
-            for (const [category, amount] of Object.entries(summary.categoryBreakdown)) {
-                response += `- ${category}: ₹${amount}\n`;
-            }
-            response += `\n`;
-        }
-
-        if (summary.transactions.length > 0) {
-            response += `📝 *Recent Entries:*\n`;
-            // Show last 5 transactions
-            summary.transactions.slice(0, 5).forEach((tx) => {
-                const icon = tx.intent === "CREDIT" ? "🔴" : "🟢";
-                response += `${icon} ₹${tx.amount} (${tx.category || "General"})\n`;
-            });
-        } else {
-            response += `_No transactions recorded today._`;
-        }
-
-        await this.messageService.sendMessage({
-            to: user.phoneNumber!,
-            body: response,
-        });
-
-        return {
-            response,
-            parsed,
-        };
+    if (summary.transactions.length > 0) {
+      response += `📝 *Recent Entries:*\n`;
+      summary.transactions.slice(0, 5).forEach((tx) => {
+        const icon = tx.intent === "PAID" ? "🔴" : "🟢";
+        response += `${icon} ₹${tx.amount} (${tx.category || "General"})\n`;
+      });
+    } else {
+      response += `_No transactions recorded today._`;
     }
+
+    await this.messageService.sendMessage({
+      to: context.platformUserId,
+      body: response,
+    });
+
+    return { response, parsed: context.parsed! };
+  }
 }

@@ -13,7 +13,8 @@
     "test:unit": "vitest",
     "lint": "eslint .",
     "prepare": "husky install",
-    "backup": "ts-node-dev scripts/backup-db.ts"
+    "backup": "ts-node-dev scripts/backup-db.ts",
+    "webhook:set": "curl -s -X POST https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook -d url=$WEBHOOK_URL/api/webhooks/telegram -d secret_token=$TELEGRAM_WEBHOOK_SECRET | jq"
   },
   "lint-staged": {
     "*.ts": [
@@ -29,6 +30,8 @@
     "@prisma/client": "^5.19.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.5.1",
+    "node-cron": "^4.2.1",
     "openai": "^6.9.1",
     "sarvamai": "^0.1.10",
     "undici": "^6.19.2",
@@ -39,6 +42,7 @@
     "@playwright/test": "^1.57.0",
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
+    "@types/node-cron": "^3.0.11",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "husky": "^9.1.7",

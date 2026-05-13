@@ -8,7 +8,7 @@ export type TransactionData = {
   id: string;
   amount: number;
   currency: string;
-  intent: "CREDIT" | "DEBIT" | "UNDO";
+  intent: "PAID" | "RECEIVED" | "UNDO";
   description: string | null;
   category: string;
   date: Date;
@@ -63,6 +63,7 @@ export async function getTransactions({
 
   const where: Prisma.TransactionWhereInput = {
     userId: session.user.id,
+    groupId: null,
     isDeleted: false,
     OR: search
       ? [
@@ -84,7 +85,7 @@ export async function getTransactions({
   }
 
   if (intent) {
-    const intents = intent.split(".") as ("CREDIT" | "DEBIT" | "UNDO")[];
+    const intents = intent.split(".") as ("PAID" | "RECEIVED" | "UNDO")[];
     if (intents.length > 0) {
       where.intent = { in: intents };
     }

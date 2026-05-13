@@ -92,12 +92,12 @@ export const columns: ColumnDef<TransactionData>[] = [
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("amount"));
             const intent = row.original.intent;
-            const isCredit = intent === "CREDIT";
-            const isDebit = intent === "DEBIT";
+            const isPaid = intent === "PAID";
+            const isReceived = intent === "RECEIVED";
 
             return (
                 <div
-                    className={`font-medium ${isCredit ? "text-green-600" : isDebit ? "text-red-600" : ""
+                    className={`font-medium ${isPaid ? "text-red-600" : isReceived ? "text-green-600" : ""
                         }`}
                 >
                     {amount.toLocaleString("en-IN", {
@@ -118,10 +118,10 @@ export const columns: ColumnDef<TransactionData>[] = [
             return (
                 <Badge
                     variant={
-                        intent === "CREDIT"
-                            ? "default"
-                            : intent === "DEBIT"
-                                ? "destructive"
+                        intent === "PAID"
+                            ? "destructive"
+                            : intent === "RECEIVED"
+                                ? "default"
                                 : "secondary"
                     }
                 >

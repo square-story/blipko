@@ -39,6 +39,7 @@ export async function getDashboardData() {
   const totalReceivables = receivablesAgg._sum.currentBalance?.toNumber() || 0;
 
   // 2. Cash Flow (This Month): Total In vs. Total Out
+  // groupId: null ensures personal transactions only (group member txns excluded)
   const cashFlowAgg = await prisma.transaction.groupBy({
     by: ["intent"],
     _sum: {
@@ -46,6 +47,7 @@ export async function getDashboardData() {
     },
     where: {
       userId,
+      groupId: null,
       date: {
         gte: startOfMonth,
       },
@@ -58,9 +60,9 @@ export async function getDashboardData() {
 
   cashFlowAgg.forEach((group) => {
     const amount = group._sum.amount?.toNumber() || 0;
-    if (group.intent === "CREDIT") {
+    if (group.intent === "PAID") {
       totalIn += amount;
-    } else if (group.intent === "DEBIT") {
+    } else if (group.intent === "RECEIVED") {
       totalOut += amount;
     }
   });
@@ -69,6 +71,7 @@ export async function getDashboardData() {
   const transactions = await prisma.transaction.findMany({
     where: {
       userId,
+      groupId: null,
       date: {
         gte: startOfMonth,
       },
@@ -106,9 +109,9 @@ export async function getDashboardData() {
 
     const entry = chartDataMap.get(dateStr)!;
 
-    if (t.intent === "CREDIT") {
+    if (t.intent === "PAID") {
       entry.income += amount;
-    } else if (t.intent === "DEBIT") {
+    } else if (t.intent === "RECEIVED") {
       entry.expense += amount;
     }
   });

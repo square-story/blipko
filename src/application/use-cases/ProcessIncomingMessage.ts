@@ -2,7 +2,12 @@ import { IAiParser } from "../../domain/services/IAiParser";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { IContactRepository } from "../../domain/repositories/IContactRepository";
 import { ITransactionRepository } from "../../domain/repositories/ITransactionRepository";
-import { IMessageService } from "../interfaces/IMessageService";
+import { IWalletRepository } from "../../domain/repositories/IWalletRepository";
+import { IRecurringChargeRepository } from "../../domain/repositories/IRecurringChargeRepository";
+import { IDueEntryRepository } from "../../domain/repositories/IDueEntryRepository";
+import { IGroupRepository } from "../../domain/repositories/IGroupRepository";
+import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
+import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData } from "../../domain/entities/ParsedData";
 import { User, Transaction } from "@prisma/client";
 import { MessageProcessor } from "./processors/MessageProcessor";
@@ -13,14 +18,18 @@ import { UndoProcessor } from "./processors/UndoProcessor";
 import { ReplyProcessor } from "./processors/ReplyProcessor";
 import { ConfirmationProcessor } from "./processors/ConfirmationProcessor";
 import { DailySummaryProcessor } from "./processors/DailySummaryProcessor";
-
 import { ChatProcessor } from "./processors/ChatProcessor";
 import { QueryProcessor } from "./processors/QueryProcessor";
+import { WalletProcessor } from "./processors/WalletProcessor";
+import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
+import { DuePaymentProcessor } from "./processors/DuePaymentProcessor";
+import { GroupOnboardingProcessor } from "./processors/GroupOnboardingProcessor";
+import { GroupQueryProcessor } from "./processors/GroupQueryProcessor";
 
 export interface ProcessIncomingMessageInput {
-  senderPhone: string;
+  platformUserId: string;
   textMessage: string;
-  senderName?: string | undefined;
+  platformUsername?: string | undefined;
   replyToMessageId?: string | undefined;
 }
 
@@ -34,6 +43,9 @@ const QUICK_REPLIES: Record<string, string> = {
   admin: "Sadik is here 💦",
 };
 
+// "Shop: paid 500 supplies" → walletName = "Shop", strippedText = "paid 500 supplies"
+const WALLET_PREFIX_RE = /^([a-zA-Z][a-zA-Z0-9 ]{0,19}):\s*/;
+
 export class ProcessIncomingMessageUseCase {
   private processors: MessageProcessor[];
 
@@ -42,15 +54,38 @@ export class ProcessIncomingMessageUseCase {
     private readonly userRepository: IUserRepository,
     private readonly contactRepository: IContactRepository,
     private readonly transactionRepository: ITransactionRepository,
-    private readonly messageService: IMessageService,
+    private readonly messageService: IMessagingPlatform,
+    private readonly walletRepository: IWalletRepository,
+    private readonly recurringChargeRepository: IRecurringChargeRepository,
+    private readonly dueEntryRepository: IDueEntryRepository,
+    private readonly groupRepository: IGroupRepository,
+    private readonly conversationRepository: IConversationRepository,
   ) {
     this.processors = [
+      new DuePaymentProcessor(dueEntryRepository, messageService),
+      new GroupOnboardingProcessor(groupRepository, messageService),
       new ConfirmationProcessor(transactionRepository, messageService),
       new StartProcessor(messageService),
       new ReplyProcessor(transactionRepository, messageService),
       new UndoProcessor(transactionRepository, messageService),
       new ChatProcessor(messageService),
-      new QueryProcessor(transactionRepository, messageService),
+      new WalletProcessor(walletRepository, messageService),
+      new RecurringSetupProcessor(
+        recurringChargeRepository,
+        dueEntryRepository,
+        walletRepository,
+        messageService,
+      ),
+      new GroupQueryProcessor(
+        transactionRepository,
+        groupRepository,
+        messageService,
+      ),
+      new QueryProcessor(
+        transactionRepository,
+        contactRepository,
+        messageService,
+      ),
       new BalanceProcessor(
         transactionRepository,
         contactRepository,
@@ -70,17 +105,21 @@ export class ProcessIncomingMessageUseCase {
   ): Promise<ProcessIncomingMessageOutput> {
     const normalizedMessage = payload.textMessage.trim().toLowerCase();
     console.log(
-      `Executing ProcessIncomingMessage for ${payload.senderPhone} with message: "${normalizedMessage}"`,
+      `Executing ProcessIncomingMessage for ${payload.platformUserId} with message: "${normalizedMessage}"`,
     );
 
-    // 1. Identify or Create User
     const user = await this.ensureUserExists(
-      payload.senderPhone,
-      payload.senderName,
+      payload.platformUserId,
+      payload.platformUsername,
     );
     console.log(`User identified: ${user.id}`);
 
-    // 2. Prepare Context
+    const [groupContextRaw, conversationHistory] = await Promise.all([
+      this.groupRepository.findGroupContextForUser(user.id),
+      this.conversationRepository.getRecent(user.id, 6),
+    ]);
+    const groupContext = groupContextRaw ?? undefined;
+
     let replyTransaction: Transaction | null = null;
     if (payload.replyToMessageId) {
       replyTransaction = await this.transactionRepository.findByConfirmationId(
@@ -88,11 +127,10 @@ export class ProcessIncomingMessageUseCase {
       );
     }
 
-    // Quick check for quick replies before AI parsing
     const quickReply = QUICK_REPLIES[normalizedMessage];
     if (quickReply) {
       await this.messageService.sendMessage({
-        to: user.phoneNumber!,
+        to: payload.platformUserId,
         body: quickReply,
       });
       return {
@@ -104,20 +142,37 @@ export class ProcessIncomingMessageUseCase {
       };
     }
 
-    // Only parse if not a simple command handled by processors without parsing (like Start or Confirmation)
-    // However, our processors might need parsed data.
-    // Optimization: Check if any processor can handle WITHOUT parsing first.
-    // StartProcessor and ConfirmationProcessor don't need AI parsing.
+    // Extract optional wallet prefix: "Shop: paid 500 supplies"
+    let walletId: string | undefined;
+    let walletName: string | undefined;
+    let textMessage = payload.textMessage;
+
+    const walletMatch = payload.textMessage.match(WALLET_PREFIX_RE);
+    if (walletMatch && walletMatch[1]) {
+      const candidate = walletMatch[1].trim();
+      const wallet = await this.walletRepository.findByName(user.id, candidate);
+      if (wallet) {
+        walletId = wallet.id;
+        walletName = wallet.name;
+        textMessage = payload.textMessage.slice(walletMatch[0].length);
+      }
+    }
 
     const contextWithoutParse = {
       user,
-      textMessage: payload.textMessage, // Use original case for some checks if needed, but processors handle it
+      platformUserId: payload.platformUserId,
+      textMessage,
       replyToMessageId: payload.replyToMessageId,
       replyTransaction: replyTransaction ?? undefined,
+      walletId,
+      walletName,
+      groupContext,
     };
 
     for (const processor of this.processors) {
       if (
+        processor instanceof DuePaymentProcessor ||
+        processor instanceof GroupOnboardingProcessor ||
         processor instanceof StartProcessor ||
         processor instanceof ConfirmationProcessor
       ) {
@@ -125,7 +180,6 @@ export class ProcessIncomingMessageUseCase {
           return processor.process(contextWithoutParse);
         }
       }
-      // ReplyProcessor might need parsing if it's complex, but for now it checks text.
       if (
         processor instanceof ReplyProcessor &&
         processor.canHandle(contextWithoutParse)
@@ -134,11 +188,15 @@ export class ProcessIncomingMessageUseCase {
       }
     }
 
-    // If no "simple" processor handled it, run AI Parser
     console.log("Parsing message with AI...");
+    const history = conversationHistory.map((h) => ({
+      role: h.role as "user" | "model",
+      content: h.content,
+    }));
     const parsed = await this.aiParser.parseText(
-      payload.textMessage,
+      textMessage,
       replyTransaction,
+      history,
     );
     console.log("AI Parsed result:", JSON.stringify(parsed, null, 2));
 
@@ -149,7 +207,15 @@ export class ProcessIncomingMessageUseCase {
 
     for (const processor of this.processors) {
       if (processor.canHandle(contextWithParse)) {
-        return processor.process(contextWithParse);
+        const output = await processor.process(contextWithParse);
+        // Save conversation turns (fire-and-forget — don't block reply)
+        this.conversationRepository
+          .append(user.id, "user", textMessage)
+          .catch(console.error);
+        this.conversationRepository
+          .append(user.id, "model", output.response)
+          .catch(console.error);
+        return output;
       }
     }
 
@@ -157,22 +223,27 @@ export class ProcessIncomingMessageUseCase {
   }
 
   private async ensureUserExists(
-    phoneNumber: string,
+    telegramId: string,
     name?: string,
   ): Promise<User> {
-    const existing = await this.userRepository.findByPhone(phoneNumber);
-    if (existing) {
-      return existing;
-    }
-    console.log(`Creating new user for phone ${phoneNumber} with name ${name}`);
+    const existing = await this.userRepository.findByTelegramId(telegramId);
+    if (existing) return existing;
 
-    const userData: any = {
-      phoneNumber: phoneNumber,
-    };
-    if (name) {
-      userData.name = name;
-    }
+    console.log(`Creating new user for Telegram ID ${telegramId}`);
+    const user = await this.userRepository.create({
+      telegramId,
+      ...(name !== undefined && { name }),
+    });
 
-    return this.userRepository.create(userData);
+    // Auto-create a default Personal wallet for new users
+    await this.walletRepository.create({
+      name: "Personal",
+      emoji: "👤",
+      type: "PERSONAL",
+      isDefault: true,
+      userId: user.id,
+    });
+
+    return user;
   }
 }

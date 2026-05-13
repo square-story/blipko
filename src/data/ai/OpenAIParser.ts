@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import { IAiParser } from "../../domain/services/IAiParser";
+import { Transaction } from "@prisma/client";
+import { IAiParser, ConversationTurn } from "../../domain/services/IAiParser";
 import { ParsedData } from "../../domain/entities/ParsedData";
 import { env } from "../../config/env";
 
@@ -8,17 +9,17 @@ You are an expert AI Financial Parser specialized in Indian transactions.
 Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or Hinglish and extract structured financial data.
 
 ### LINGUISTIC LOGIC (Indian Context):
-1. **CREDIT (Money Leaving User):**
+1. **PAID (Money Leaving User — you spent/gave):**
    - English: "Gave", "Paid", "Lent", "Spent".
    - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
    - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
-   - Example: "Rajuin 500 koduthu" -> { intent: "CREDIT", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
+   - Example: "Rajuin 500 koduthu" -> { intent: "PAID", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
 
-2. **DEBIT (Money Coming to User):**
+2. **RECEIVED (Money Coming to User — you got/earned):**
    - English: "Got", "Received", "Borrowed from", "Took from".
    - Manglish/Malayalam: "Thannu", "Kitti", "Medichu" (if received), "Vangi" (if received cash).
    - Hinglish/Hindi: "Mila", "Liya", "Aaya".
-   - Example: "Raju 500 thannu" (Raju gave me) -> { intent: "DEBIT", name: "Raju", amount: 500 }
+   - Example: "Raju 500 thannu" (Raju gave me) -> { intent: "RECEIVED", name: "Raju", amount: 500 }
 
 3. **BALANCE (Inquiry):**
    - Queries about owing, dues, or status.
@@ -69,20 +70,32 @@ export class OpenAIParser implements IAiParser {
     this.client = new OpenAI({ apiKey: this.apiKey });
   }
 
-  async parseText(text: string, context?: any): Promise<ParsedData> {
+  async parseText(
+    text: string,
+    replyTransaction?: Transaction | null,
+    history: ConversationTurn[] = [],
+  ): Promise<ParsedData> {
     try {
       let promptText = text;
-      if (context) {
-        promptText = `Context: User is replying to a message/transaction. 
-  Transaction Details: ${JSON.stringify(context)}
+      if (replyTransaction) {
+        promptText = `Context: User is replying to a message/transaction.
+  Transaction Details: ${JSON.stringify(replyTransaction)}
   User Reply: "${text}"
   Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
       }
+
+      const historyMessages = history.map((h) => ({
+        role: (h.role === "model" ? "assistant" : h.role) as
+          | "user"
+          | "assistant",
+        content: h.content,
+      }));
 
       const completion = await this.client.chat.completions.create({
         model: "gpt-4o-mini", // Cost-effective and fast
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
+          ...historyMessages,
           { role: "user", content: promptText },
         ],
         response_format: { type: "json_object" }, // Enforce valid JSON
