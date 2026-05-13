@@ -1,6 +1,6 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm build"
+buildCommand = "pnpm build"
 
 [deploy]
 startCommand = "pnpm start"
