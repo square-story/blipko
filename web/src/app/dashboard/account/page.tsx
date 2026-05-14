@@ -19,6 +19,7 @@ import {
 import { useUserStore } from "@/hooks/use-user-store";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { TelegramCard } from "@/components/telegram-card";
 
 export default function Page() {
     const { user, updatePreferences } = useUserStore();
@@ -112,6 +113,8 @@ export default function Page() {
                         </div>
                     </CardContent>
                 </Card>
+
+                <TelegramCard />
             </div>
         </ContentLayout>
     );

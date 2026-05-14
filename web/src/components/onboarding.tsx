@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, SendIcon } from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -13,11 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { completeOnboarding } from "@/lib/actions/user";
+import { completeOnboarding, generateTelegramLinkToken } from "@/lib/actions/user";
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [open, setOpen] = useState(true);
+  const [telegramLoading, setTelegramLoading] = useState(false);
 
   const stepContent = [
     {
@@ -40,9 +41,15 @@ export default function Onboarding() {
       description:
         "Get insights into your cash flow and never miss a payment. Blipko helps you make informed financial decisions.",
     },
+    {
+      title: "Connect Telegram",
+      description:
+        "Use Blipko as a bot on Telegram — just type to log payments, check balances, and get reminders. Tap below to link your account.",
+    },
   ];
 
   const totalSteps = stepContent.length;
+  const isTelegramStep = step === totalSteps;
 
   const handleContinue = () => {
     if (step < totalSteps) {
@@ -55,6 +62,17 @@ export default function Onboarding() {
   const handleComplete = async () => {
     setOpen(false);
     await completeOnboarding();
+  };
+
+  const handleOpenTelegram = async () => {
+    setTelegramLoading(true);
+    try {
+      const url = await generateTelegramLinkToken();
+      window.open(url, "_blank");
+    } finally {
+      setTelegramLoading(false);
+      await handleComplete();
+    }
   };
 
   return (
@@ -90,22 +108,32 @@ export default function Onboarding() {
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={handleComplete}>
-                Skip
+                {isTelegramStep ? "Skip" : "Skip"}
               </Button>
-              <Button
-                className="group"
-                onClick={handleContinue}
-                type="button"
-              >
-                {step < totalSteps ? "Next" : "Get Started"}
-                {step < totalSteps && (
+              {isTelegramStep ? (
+                <Button
+                  className="group"
+                  onClick={handleOpenTelegram}
+                  type="button"
+                  disabled={telegramLoading}
+                >
+                  <SendIcon className="mr-2 size-4" aria-hidden="true" />
+                  {telegramLoading ? "Opening…" : "Open Telegram Bot"}
+                </Button>
+              ) : (
+                <Button
+                  className="group"
+                  onClick={handleContinue}
+                  type="button"
+                >
+                  {step < totalSteps - 1 ? "Next" : "Next"}
                   <ArrowRightIcon
                     aria-hidden="true"
                     className="-me-1 ml-2 opacity-60 transition-transform group-hover:translate-x-0.5"
                     size={16}
                   />
-                )}
-              </Button>
+                </Button>
+              )}
             </DialogFooter>
           </div>
         </div>

@@ -133,6 +133,7 @@ model User {
   groupMemberTransactions Transaction[] @relation("GroupMemberTransactions")
 
   conversationMessages ConversationMessage[]
+  telegramLinkToken    TelegramLinkToken?
 }
 
 model ConversationMessage {
@@ -485,4 +486,13 @@ model GroupMember {
 
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+model TelegramLinkToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

@@ -108,9 +108,11 @@ export class ProcessIncomingMessageUseCase {
       `Executing ProcessIncomingMessage for ${payload.platformUserId} with message: "${normalizedMessage}"`,
     );
 
+    const linkToken = payload.textMessage?.match(/^\/?\s*start\s+(\S+)/i)?.[1];
     const user = await this.ensureUserExists(
       payload.platformUserId,
       payload.platformUsername,
+      linkToken,
     );
     console.log(`User identified: ${user.id}`);
 
@@ -225,9 +227,24 @@ export class ProcessIncomingMessageUseCase {
   private async ensureUserExists(
     telegramId: string,
     name?: string,
+    linkToken?: string,
   ): Promise<User> {
     const existing = await this.userRepository.findByTelegramId(telegramId);
     if (existing) return existing;
+
+    if (linkToken) {
+      const linked = await this.userRepository.linkTelegramByToken(
+        linkToken,
+        telegramId,
+      );
+      if (linked) {
+        await this.messageService.sendMessage({
+          to: telegramId,
+          body: `✅ Account linked! Your Telegram is now connected to Blipko. Try saying "Gave 500 to Raju" to track a payment.`,
+        });
+        return linked;
+      }
+    }
 
     console.log(`Creating new user for Telegram ID ${telegramId}`);
     const user = await this.userRepository.create({
