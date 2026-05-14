@@ -4,7 +4,7 @@ buildCommand = "pnpm install --frozen-lockfile && pnpm prisma generate && pnpm b
 
 [deploy]
 startCommand = "node dist/app.js"
-preDeployCommand = ["npx", "prisma", "migrate", "deploy"]
+preDeployCommand = ["sh", "-c", "./node_modules/.bin/prisma migrate deploy"]
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
