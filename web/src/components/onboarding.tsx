@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ArrowRightIcon, SendIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -84,9 +85,9 @@ export default function Onboarding() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="gap-0 p-0 [&>button:last-child]:text-white sm:max-w-[425px]" showCloseButton={false}>
         <div className="p-2">
-          <img
+          <Image
             alt="Blipko Onboarding"
-            className="w-full rounded-md object-cover h-[216px]"
+            className="w-full rounded-md object-cover"
             src="/origin/dialog-content.png"
             width={382}
             height={216}

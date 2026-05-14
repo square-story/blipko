@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { createRecurringChargeSchema } from "@/lib/validations/recurring";
 
 export async function getRecurringCharges() {
   const session = await auth();
@@ -120,4 +121,74 @@ export async function deactivateRecurringCharge(chargeId: string) {
 
   revalidatePath("/dashboard/recurring");
   return { success: true };
+}
+
+export async function createRecurringCharge(data: unknown) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const result = createRecurringChargeSchema.safeParse(data);
+  if (!result.success) return { success: false, message: "Invalid data" };
+
+  const {
+    description,
+    amount,
+    direction,
+    period,
+    dayOfMonth,
+    walletId,
+    notifyDaysBefore,
+  } = result.data;
+
+  const charge = await prisma.recurringCharge.create({
+    data: {
+      userId: session.user.id,
+      description,
+      amount,
+      direction,
+      period,
+      dayOfMonth,
+      walletId: walletId || null,
+      notifyDaysBefore,
+      startDate: new Date(),
+    },
+  });
+
+  const dueDates = generateNextDues(dayOfMonth, period, 3);
+  await prisma.dueEntry.createMany({
+    data: dueDates.map((d) => ({
+      chargeId: charge.id,
+      dueDate: d,
+      amount,
+      walletId: walletId || null,
+    })),
+  });
+
+  revalidatePath("/dashboard/recurring");
+  return { success: true, message: "Recurring charge created" };
+}
+
+function generateNextDues(
+  day: number,
+  period: "MONTHLY" | "QUARTERLY",
+  count: number,
+): Date[] {
+  const dates: Date[] = [];
+  const now = new Date();
+  let year = now.getFullYear();
+  let month = now.getMonth();
+
+  if (now.getDate() >= day) {
+    month += period === "MONTHLY" ? 1 : 3;
+  }
+
+  for (let i = 0; i < count; i++) {
+    while (month > 11) {
+      month -= 12;
+      year++;
+    }
+    dates.push(new Date(year, month, day));
+    month += period === "MONTHLY" ? 1 : 3;
+  }
+  return dates;
 }
