@@ -109,12 +109,23 @@ export class ProcessIncomingMessageUseCase {
     );
 
     const linkToken = payload.textMessage?.match(/^\/?\s*start\s+(\S+)/i)?.[1];
-    const user = await this.ensureUserExists(
+    const { user, wasLinked } = await this.ensureUserExists(
       payload.platformUserId,
       payload.platformUsername,
       linkToken,
     );
     console.log(`User identified: ${user.id}`);
+
+    // Linking message already handled — confirmation sent, nothing else to do
+    if (wasLinked) {
+      return {
+        response: "✅ Account linked!",
+        parsed: {
+          intent: "START",
+          notes: "Telegram account linked via web token",
+        },
+      };
+    }
 
     const [groupContextRaw, conversationHistory] = await Promise.all([
       this.groupRepository.findGroupContextForUser(user.id),
@@ -228,9 +239,9 @@ export class ProcessIncomingMessageUseCase {
     telegramId: string,
     name?: string,
     linkToken?: string,
-  ): Promise<User> {
+  ): Promise<{ user: User; wasLinked: boolean }> {
     const existing = await this.userRepository.findByTelegramId(telegramId);
-    if (existing) return existing;
+    if (existing) return { user: existing, wasLinked: false };
 
     if (linkToken) {
       const linked = await this.userRepository.linkTelegramByToken(
@@ -242,7 +253,7 @@ export class ProcessIncomingMessageUseCase {
           to: telegramId,
           body: `✅ Account linked! Your Telegram is now connected to Blipko. Try saying "Gave 500 to Raju" to track a payment.`,
         });
-        return linked;
+        return { user: linked, wasLinked: true };
       }
     }
 
@@ -261,6 +272,6 @@ export class ProcessIncomingMessageUseCase {
       userId: user.id,
     });
 
-    return user;
+    return { user, wasLinked: false };
   }
 }

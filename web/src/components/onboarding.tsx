@@ -66,9 +66,14 @@ export default function Onboarding() {
 
   const handleOpenTelegram = async () => {
     setTelegramLoading(true);
+    // Open blank window NOW (inside click handler) so browser doesn't block it as a popup
+    const win = window.open("", "_blank");
     try {
       const url = await generateTelegramLinkToken();
-      window.open(url, "_blank");
+      if (win) win.location.href = url;
+      else window.location.href = url;
+    } catch {
+      win?.close();
     } finally {
       setTelegramLoading(false);
       await handleComplete();
