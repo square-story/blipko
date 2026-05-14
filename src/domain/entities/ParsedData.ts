@@ -21,6 +21,8 @@ export interface ParsedData {
   description?: string;
   currency?: string;
   conversational_response?: string;
+  // Multi-person: populated when >1 participant in one message
+  participants?: Array<{ name: string; amount: number }>;
   query_details?: {
     type?:
       | "TOTAL_SPEND"
@@ -32,9 +34,11 @@ export interface ParsedData {
       | "OVERDUE_DUES"
       | "GROUP_SUMMARY"
       | "MEMBER_SPEND";
-    period?: "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "ALL_TIME";
+    // ISO date strings replacing the period enum — AI calculates these from natural language
+    from_date?: string; // YYYY-MM-DD
+    to_date?: string; // YYYY-MM-DD
     category?: string;
-    contactName?: string; // for CONTACT_BALANCE queries
+    contactName?: string;
   };
   updatedFields?: {
     amount?: number;

@@ -5,6 +5,7 @@ import { PrismaProcessedMessageRepository } from "../../data/repositories/Prisma
 import { TelegramMessageService } from "../../data/messaging/TelegramMessageService";
 import { TelegramMediaService } from "../../data/messaging/TelegramMediaService";
 import { GeminiParser } from "../../data/ai/GeminiParser";
+import { GeminiQueryAgent } from "../../data/ai/GeminiQueryAgent";
 import { OpenAIParser } from "../../data/ai/OpenAIParser";
 import { FallbackAiParser } from "../../data/ai/FallbackAiParser";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
@@ -51,6 +52,10 @@ const aiParser = new FallbackAiParser(new OpenAIParser(), new GeminiParser());
 const userRepository = new PrismaUserRepository(prisma);
 const contactRepository = new PrismaContactRepository(prisma);
 const transactionRepository = new PrismaTransactionRepository(prisma);
+const queryAgent = new GeminiQueryAgent(
+  transactionRepository,
+  contactRepository,
+);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const walletRepository = new PrismaWalletRepository(prisma);
 const recurringChargeRepository = new PrismaRecurringChargeRepository(prisma);
@@ -69,6 +74,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   dueEntryRepository,
   groupRepository,
   conversationRepository,
+  queryAgent,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(

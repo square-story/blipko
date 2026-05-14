@@ -1,6 +1,7 @@
 import { User, Transaction } from "@prisma/client";
 import { ParsedData } from "../../../domain/entities/ParsedData";
 import { GroupContext } from "../../../domain/entities/Group";
+import { ConversationTurn } from "../../../domain/services/IAiParser";
 
 export interface ProcessContext {
   user: User;
@@ -12,6 +13,7 @@ export interface ProcessContext {
   walletId?: string | undefined;
   walletName?: string | undefined;
   groupContext?: GroupContext | undefined;
+  conversationHistory?: ConversationTurn[];
 }
 
 export interface ProcessOutput {

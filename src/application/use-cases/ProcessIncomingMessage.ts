@@ -19,7 +19,7 @@ import { ReplyProcessor } from "./processors/ReplyProcessor";
 import { ConfirmationProcessor } from "./processors/ConfirmationProcessor";
 import { DailySummaryProcessor } from "./processors/DailySummaryProcessor";
 import { ChatProcessor } from "./processors/ChatProcessor";
-import { QueryProcessor } from "./processors/QueryProcessor";
+import { QueryProcessor, IQueryAgent } from "./processors/QueryProcessor";
 import { WalletProcessor } from "./processors/WalletProcessor";
 import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
 import { DuePaymentProcessor } from "./processors/DuePaymentProcessor";
@@ -60,6 +60,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly dueEntryRepository: IDueEntryRepository,
     private readonly groupRepository: IGroupRepository,
     private readonly conversationRepository: IConversationRepository,
+    queryAgent?: IQueryAgent,
   ) {
     this.processors = [
       new DuePaymentProcessor(dueEntryRepository, messageService),
@@ -81,11 +82,7 @@ export class ProcessIncomingMessageUseCase {
         groupRepository,
         messageService,
       ),
-      new QueryProcessor(
-        transactionRepository,
-        contactRepository,
-        messageService,
-      ),
+      new QueryProcessor(queryAgent ?? null, messageService),
       new BalanceProcessor(
         transactionRepository,
         contactRepository,
@@ -171,6 +168,11 @@ export class ProcessIncomingMessageUseCase {
       }
     }
 
+    const history = conversationHistory.map((h) => ({
+      role: h.role as "user" | "model",
+      content: h.content,
+    }));
+
     const contextWithoutParse = {
       user,
       platformUserId: payload.platformUserId,
@@ -180,6 +182,7 @@ export class ProcessIncomingMessageUseCase {
       walletId,
       walletName,
       groupContext,
+      conversationHistory: history,
     };
 
     for (const processor of this.processors) {
@@ -202,10 +205,6 @@ export class ProcessIncomingMessageUseCase {
     }
 
     console.log("Parsing message with AI...");
-    const history = conversationHistory.map((h) => ({
-      role: h.role as "user" | "model",
-      content: h.content,
-    }));
     const parsed = await this.aiParser.parseText(
       textMessage,
       replyTransaction,

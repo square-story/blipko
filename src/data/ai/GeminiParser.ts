@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Transaction } from "@prisma/client";
 import { IAiParser, ConversationTurn } from "../../domain/services/IAiParser";
-import { ParsedData } from "../../domain/entities/ParsedData"; // Assuming this matches the schema below
+import { ParsedData } from "../../domain/entities/ParsedData";
 import { env } from "../../config/env";
 
 // 1. Define the Schema strictly using the SDK types
@@ -23,7 +23,7 @@ const transactionSchema: Schema = {
         "SET_RECURRING",
       ],
       description:
-        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general conversation. QUERY if user asks analytics questions about past data, contacts owing money, or spending trends. WALLET if user is managing wallets (list, switch, create, show balance). SET_RECURRING if user wants to set up a recurring income or expense reminder.",
+        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general NON-FINANCIAL conversation only. QUERY if user asks anything about their money, spending, income, balances, or contacts. WALLET if user is managing wallets. SET_RECURRING if user wants to set up a recurring income or expense reminder.",
     },
     amount: {
       type: Type.NUMBER,
@@ -48,6 +48,19 @@ const transactionSchema: Schema = {
     currency: {
       type: Type.STRING,
       description: "The currency code detected, defaulting to INR.",
+    },
+    participants: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING, description: "Contact name" },
+          amount: { type: Type.NUMBER, description: "Amount for this person" },
+        },
+        required: ["name", "amount"],
+      },
+      description:
+        "Populated when multiple people are involved in one message. Leave empty for single-person transactions.",
     },
     updatedFields: {
       type: Type.OBJECT,
@@ -79,12 +92,17 @@ const transactionSchema: Schema = {
             "MEMBER_SPEND",
           ],
           description:
-            "CONTACT_BALANCE: asking about a specific person's balance. UNPAID_CONTACTS: who hasn't paid / who owes me. TOTAL_SPEND: how much did I spend. TOTAL_INCOME: how much did I earn.",
+            "CONTACT_BALANCE: asking about a specific person's balance. UNPAID_CONTACTS: who hasn't paid / who owes me. TOTAL_SPEND: how much did I spend. TOTAL_INCOME: how much did I earn. NET_BALANCE: overall net position.",
         },
-        period: {
+        from_date: {
           type: Type.STRING,
-          enum: ["TODAY", "THIS_WEEK", "THIS_MONTH", "ALL_TIME"],
-          description: "Time period for the query",
+          description:
+            "Start date in YYYY-MM-DD format. Calculate from the user's natural language (e.g. 'last 3 months' → 90 days before today). Leave empty for all-time queries.",
+        },
+        to_date: {
+          type: Type.STRING,
+          description:
+            "End date in YYYY-MM-DD format. Usually today unless the user specifies otherwise.",
         },
         category: { type: Type.STRING, description: "Category to filter by" },
         contactName: {
@@ -143,7 +161,7 @@ const transactionSchema: Schema = {
 
 // 2. The Robust System Prompt for Indian Contexts
 const SYSTEM_PROMPT = `
-You are an expert AI Financial Parser specialized in Indian transactions. 
+You are an expert AI Financial Parser specialized in Indian transactions.
 Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or Hinglish and extract structured financial data.
 
 ### LINGUISTIC LOGIC (Indian Context):
@@ -152,6 +170,12 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
    - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
    - Example: "Rajuin 500 koduthu" -> { intent: "PAID", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
+
+   MULTI-PERSON: When multiple people are involved in the same transaction direction:
+   - "Samsul and Faisal paid me 300 each" → { intent: "RECEIVED", amount: 300, name: "Samsul", participants: [{ name: "Samsul", amount: 300 }, { name: "Faisal", amount: 300 }] }
+   - "Paid 500 to Raju and 200 to Priya" → { intent: "PAID", amount: 500, name: "Raju", participants: [{ name: "Raju", amount: 500 }, { name: "Priya", amount: 200 }] }
+   - "Samsul 200, Faisal 300, David 150 koduthu" → { intent: "PAID", participants: [{ name: "Samsul", amount: 200 }, { name: "Faisal", amount: 300 }, { name: "David", amount: 150 }] }
+   Only populate participants when >1 person. For single-person, leave participants empty.
 
 2. **RECEIVED (Money Coming to User — you got/earned):**
    - English: "Got", "Received", "Borrowed from", "Took from".
@@ -181,21 +205,25 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - User replies to a transaction confirmation to change details.
    - Example: "Actually it was 600" -> { intent: "UPDATE_TRANSACTION", updatedFields: { amount: 600 } }
 
-7. **CHAT (Conversational):**
-   - Greetings, thanks, or general feedback that isn't a transaction.
+7. **CHAT (Conversational — NON-FINANCIAL ONLY):**
+   - ONLY for purely social messages: greetings, thanks, jokes, tech questions, compliments.
    - Example INPUT: "Hi", "Good morning", "Thanks bot".
    - Example OUTPUT: { intent: "CHAT", conversational_response: "Hello! How can I help you tracking your expenses today?" }
    - Example INPUT: "What tech stack are you enabled with?"
    - Example OUTPUT: { intent: "CHAT", conversational_response: "I am running on Node.js using Gemini for parsing." }
 
-8. **QUERY (Analytics/Questions):**
-   - Asking about past data, totals, trends, or contact balances.
-   - Example: "How much did I spend on food this month?" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", period: "THIS_MONTH" } }
-   - Example: "Who hasn't paid this month?" / "Aarike paisa thannilla?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS", period: "THIS_MONTH" } }
+8. **QUERY (Analytics/Financial Questions — USE FOR ALL MONEY QUESTIONS):**
+   - ANY question about money, spending, income, balances, transactions, or contacts → ALWAYS QUERY.
+   - Use from_date and to_date (YYYY-MM-DD) calculated from today's date for time-based queries.
+   - Example: "How much did I spend on food this month?" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", from_date: "[first day of current month]", to_date: "[today]" } }
+   - Example: "expenses in the last 3 months" / "pichle teen mahine ka kharcha" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", from_date: "[90 days ago]", to_date: "[today]" } }
+   - Example: "how much did I earn this year" → { intent: "QUERY", query_details: { type: "TOTAL_INCOME", from_date: "[Jan 1 of current year]", to_date: "[today]" } }
+   - Example: "last year total spend" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", from_date: "[Jan 1 last year]", to_date: "[Dec 31 last year]" } }
+   - Example: "Who hasn't paid this month?" / "Aarike paisa thannilla?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
    - Example: "What's Raju's balance?" / "Raju ethra tharam?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
-   - Example: "Who is overdue?" / "Baaki aarike undu?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
    - Example: "family summary" / "sabka kitna hua" → { intent: "QUERY", query_details: { type: "GROUP_SUMMARY" } }
-   - Example: "show Priya's spending" / "Priya ne kitna kharch kiya" → { intent: "QUERY", query_details: { type: "MEMBER_SPEND", contactName: "Priya" } }
+   - Casual financial queries also use QUERY: "Bhai kitna kharch hua?" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", from_date: "[first day of current month]", to_date: "[today]" } }
+   - "Paise ka hisab dikhao" → { intent: "QUERY", query_details: { type: "NET_BALANCE" } }
 
 9. **WALLET (Wallet management):**
    - Example: "show wallets" / "list my wallets" → { intent: "WALLET", wallet_action: { action: "LIST" } }
@@ -209,11 +237,11 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
     - Example: "around 500 electricity on 15th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Electricity", amount: 500, amountMin: 400, amountMax: 700, direction: "EXPENSE", dayOfMonth: 15, period: "MONTHLY" } }
 
 ### RULES:
-- Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).
+- Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (RECEIVED).
 - Ignore spelling mistakes.
-- If the text is purely conversational, use CHAT. **CRITICAL**: Generate a relevant, helpful, and natural 'conversational_response' based SPECIFICALLY on the user's input. Do NOT use the example greeting unless the user actually said "Hi".
-- If the text is asking for data/analytics, use QUERY.
-- **IMPORTANT**: Extract a 'description' field separately from 'category'. 
+- CHAT is ONLY for social/non-financial messages. ANY message about money, spending, income, balances, or contacts — even in a casual tone — MUST use QUERY (or PAID/RECEIVED). Never use CHAT for financial questions.
+- If the text is asking for data/analytics about finances, ALWAYS use QUERY — even if it sounds casual.
+- **IMPORTANT**: Extract a 'description' field separately from 'category'.
   - 'description': What happened (e.g. "Taxi to airport").
   - 'category': Classification (e.g. "Travel").
 - Always output strict JSON.
@@ -224,7 +252,7 @@ export class GeminiParser implements IAiParser {
 
   constructor(
     private readonly apiKey: string = env.GEMINI_API_KEY,
-    private readonly modelName: string = env.GEMINI_MODEL, // Use a newer model for better JSON adherence
+    private readonly modelName: string = env.GEMINI_MODEL,
   ) {
     if (!this.apiKey) {
       throw new Error("GeminiParser: API Key is missing.");
@@ -238,9 +266,11 @@ export class GeminiParser implements IAiParser {
     history: ConversationTurn[] = [],
   ): Promise<ParsedData> {
     try {
-      let promptText = text;
+      const today = new Date().toISOString().split("T")[0];
+      let promptText = `[Today: ${today}]\n${text}`;
       if (replyTransaction) {
-        promptText = `Context: User is replying to a message/transaction.
+        promptText = `[Today: ${today}]
+Context: User is replying to a message/transaction.
 Transaction Details: ${JSON.stringify(replyTransaction)}
 User Reply: "${text}"
 Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
@@ -264,7 +294,7 @@ Analyze the reply based on the context. If they are correcting something, use UP
           systemInstruction: SYSTEM_PROMPT,
           responseMimeType: "application/json",
           responseSchema: transactionSchema,
-          temperature: 0.1, // Low temperature for deterministic data extraction
+          temperature: 0.1,
         },
       });
 
@@ -274,15 +304,10 @@ Analyze the reply based on the context. If they are correcting something, use UP
         throw new Error("GeminiParser: Empty response from AI.");
       }
 
-      // The SDK guarantees JSON structure due to responseSchema,
-      // but we parse it to ensure it matches our application type.
       const parsed = JSON.parse(responseText) as ParsedData;
-
       return parsed;
     } catch (error) {
       console.error("GeminiParser Error:", error);
-
-      // Fallback for graceful failure
       return {
         intent: "BALANCE",
         amount: 0,

@@ -28,6 +28,15 @@ export class TransactionProcessor implements MessageProcessor {
 
   async process(context: ProcessContext): Promise<ProcessOutput> {
     const parsed = context.parsed!;
+
+    if (parsed.participants && parsed.participants.length > 1) {
+      return this.processMultiple(
+        context,
+        parsed.participants,
+        parsed.intent as "PAID" | "RECEIVED",
+      );
+    }
+
     if (typeof parsed.amount !== "number") {
       throw new Error("Amount is required for CREDIT or DEBIT intents");
     }
@@ -109,6 +118,45 @@ _Add more entries or ask for your balance anytime!_`;
         })
         .catch(console.error);
     }
+
+    return { response, parsed };
+  }
+
+  private async processMultiple(
+    context: ProcessContext,
+    participants: Array<{ name: string; amount: number }>,
+    intent: "PAID" | "RECEIVED",
+  ): Promise<ProcessOutput> {
+    const parsed = context.parsed!;
+    const results: Array<{ name: string; amount: number }> = [];
+    let totalAmount = 0;
+
+    for (const p of participants) {
+      if (p.amount <= 0 || p.amount > 10_000_000) continue;
+      const contact = await this.ensureContactExists(context.user.id, p.name);
+      await this.transactionRepository.create({
+        amount: p.amount,
+        intent,
+        description: parsed.description || parsed.category || "General",
+        userId: context.user.id,
+        category: parsed.category,
+        contactId: contact.id,
+        walletId: context.walletId,
+      });
+      results.push({ name: contact.name, amount: p.amount });
+      totalAmount += p.amount;
+    }
+
+    const directionLabel = intent === "PAID" ? "Paid" : "Received";
+    const lines = results
+      .map((r) => `• ${escapeMarkdown(r.name)}: ₹${r.amount.toFixed(2)}`)
+      .join("\n");
+    const response = `✅ *${results.length} Entries Added \\(${directionLabel}\\)*\n\n${lines}\n\n*Total: ₹${totalAmount.toFixed(2)}*`;
+
+    await this.messageService.sendMessage({
+      to: context.platformUserId,
+      body: response,
+    });
 
     return { response, parsed };
   }

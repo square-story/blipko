@@ -5,7 +5,7 @@ import { ParsedData } from "../../domain/entities/ParsedData";
 import { env } from "../../config/env";
 
 const SYSTEM_PROMPT = `
-You are an expert AI Financial Parser specialized in Indian transactions. 
+You are an expert AI Financial Parser specialized in Indian transactions.
 Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or Hinglish and extract structured financial data.
 
 ### LINGUISTIC LOGIC (Indian Context):
@@ -14,6 +14,11 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Manglish/Malayalam: "Koduthu", "Ayachu", "Chilayi", "Njan koduthu".
    - Hinglish/Hindi: "Diya", "De diya", "Kharch kiya", "Bheja".
    - Example: "Rajuin 500 koduthu" -> { intent: "PAID", name: "Raju", amount: 500, description: "Payment to Raju", category: "General" }
+
+   MULTI-PERSON: When multiple people are involved in the same transaction direction:
+   - "Samsul and Faisal paid me 300 each" → { intent: "RECEIVED", amount: 300, name: "Samsul", participants: [{ name: "Samsul", amount: 300 }, { name: "Faisal", amount: 300 }] }
+   - "Paid 500 to Raju and 200 to Priya" → { intent: "PAID", amount: 500, name: "Raju", participants: [{ name: "Raju", amount: 500 }, { name: "Priya", amount: 200 }] }
+   Only populate participants when >1 person. For single-person, leave participants empty.
 
 2. **RECEIVED (Money Coming to User — you got/earned):**
    - English: "Got", "Received", "Borrowed from", "Took from".
@@ -30,31 +35,35 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example: "Delete last entry" -> { intent: "UNDO", name: "Unknown", amount: 0 }
 
 5. **VIEW_DAILY_SUMMARY (Report):**
-   - requests to see today's spending or entries.
+   - Requests to see today's spending or entries.
    - Example: "Show me today's spend" -> { intent: "VIEW_DAILY_SUMMARY", name: "Unknown", amount: 0 }
 
 6. **UPDATE_TRANSACTION (Modification):**
    - User replies to a transaction confirmation to change details.
    - Example: "Actually it was 600" -> { intent: "UPDATE_TRANSACTION", updatedFields: { amount: 600 } }
 
-7. **CHAT (Conversational):**
-   - Greetings, thanks, or general feedback that isn't a transaction.
+7. **CHAT (Conversational — NON-FINANCIAL ONLY):**
+   - ONLY for purely social messages: greetings, thanks, jokes, tech questions, compliments.
    - Example INPUT: "Hi", "Good morning", "Thanks bot".
    - Example OUTPUT: { intent: "CHAT", conversational_response: "Hello! How can I help you tracking your expenses today?" }
    - Example INPUT: "What tech stack are you enabled with?"
    - Example OUTPUT: { intent: "CHAT", conversational_response: "I am running on Node.js using OpenAI for parsing." }
 
-8. **QUERY (Analytics/Questions):**
-   - Asking about past data, totals, or trends.
-   - Example: "How much did I spend on food this month?"
-   - Output: { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", period: "THIS_MONTH" } }
+8. **QUERY (Analytics/Financial Questions — USE FOR ALL MONEY QUESTIONS):**
+   - ANY question about money, spending, income, balances, transactions, or contacts → ALWAYS QUERY.
+   - Use from_date and to_date (YYYY-MM-DD) calculated from today's date for time-based queries.
+   - Example: "How much did I spend on food this month?" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", category: "Food", from_date: "[first day of current month]", to_date: "[today]" } }
+   - Example: "expenses in the last 3 months" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", from_date: "[90 days ago]", to_date: "[today]" } }
+   - Example: "how much did I earn this year" → { intent: "QUERY", query_details: { type: "TOTAL_INCOME", from_date: "[Jan 1 of current year]", to_date: "[today]" } }
+   - Example: "Who hasn't paid?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
+   - Example: "What's Raju's balance?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
 
 ### RULES:
-- Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (DEBIT).
+- Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (RECEIVED).
 - Ignore spelling mistakes.
-- If the text is purely conversational, use CHAT. **CRITICAL**: Generate a relevant, helpful, and natural 'conversational_response' based SPECIFICALLY on the user's input. Do NOT use the example greeting unless the user actually said "Hi".
-- If the text is asking for data/analytics, use QUERY.
-- **IMPORTANT**: Extract a 'description' field separately from 'category'. 
+- CHAT is ONLY for social/non-financial messages. ANY message about money, spending, income, balances, or contacts — even in a casual tone — MUST use QUERY (or PAID/RECEIVED). Never use CHAT for financial questions.
+- If the text is asking for data/analytics about finances, ALWAYS use QUERY — even if it sounds casual.
+- **IMPORTANT**: Extract a 'description' field separately from 'category'.
   - 'description': What happened (e.g. "Taxi to airport").
   - 'category': Classification (e.g. "Travel").
 - Always output strict JSON.
@@ -76,12 +85,14 @@ export class OpenAIParser implements IAiParser {
     history: ConversationTurn[] = [],
   ): Promise<ParsedData> {
     try {
-      let promptText = text;
+      const today = new Date().toISOString().split("T")[0];
+      let promptText = `[Today: ${today}]\n${text}`;
       if (replyTransaction) {
-        promptText = `Context: User is replying to a message/transaction.
-  Transaction Details: ${JSON.stringify(replyTransaction)}
-  User Reply: "${text}"
-  Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
+        promptText = `[Today: ${today}]
+Context: User is replying to a message/transaction.
+Transaction Details: ${JSON.stringify(replyTransaction)}
+User Reply: "${text}"
+Analyze the reply based on the context. If they are correcting something, use UPDATE_TRANSACTION.`;
       }
 
       const historyMessages = history.map((h) => ({

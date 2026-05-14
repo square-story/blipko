@@ -48,6 +48,17 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     });
   }
 
+  async findByDateRange(
+    userId: string,
+    from: Date,
+    to: Date,
+  ): Promise<Transaction[]> {
+    return this.prisma.transaction.findMany({
+      where: { userId, isDeleted: false, date: { gte: from, lte: to } },
+      orderBy: { date: "desc" },
+    });
+  }
+
   async findByContact(contactId: string): Promise<Transaction[]> {
     return this.prisma.transaction.findMany({
       where: { contactId, isDeleted: false },

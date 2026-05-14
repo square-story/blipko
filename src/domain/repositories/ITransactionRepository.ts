@@ -64,4 +64,5 @@ export interface ITransactionRepository {
     userId: string,
     months: number,
   ): Promise<MonthlyAnalytics[]>;
+  findByDateRange(userId: string, from: Date, to: Date): Promise<Transaction[]>;
 }
