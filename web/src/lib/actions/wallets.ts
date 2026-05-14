@@ -80,7 +80,7 @@ export async function deleteWallet(walletId: string) {
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
 
-  const wallet = await prisma.wallet.findUnique({
+  const wallet = await prisma.wallet.findFirst({
     where: { id: walletId, userId: session.user.id },
   });
   if (!wallet) return { success: false, message: "Wallet not found" };

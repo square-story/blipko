@@ -20,7 +20,7 @@ export async function getDashboardData() {
   });
   const hasOnboarded = user?.hasOnboarded ?? false;
 
-  // 1. Total Receivables: Sum(Contact.currentBalance) where balance < 0
+  // Receivables: contacts where currentBalance > 0 means they owe the user
   const receivablesAgg = await prisma.contact.aggregate({
     _sum: {
       currentBalance: true,
@@ -28,14 +28,10 @@ export async function getDashboardData() {
     where: {
       userId,
       currentBalance: {
-        lt: 0,
+        gt: 0,
       },
     },
   });
-  // Result is negative, so we might want to display it as a positive "Receivable" amount or keep it negative.
-  // Usually "Receivables" implies money owed TO us.
-  // If balance < 0 means they owe us (based on "Pending Invoices" logic), then the sum is negative.
-  // I'll return the raw value and handle display in UI.
   const totalReceivables = receivablesAgg._sum.currentBalance?.toNumber() || 0;
 
   // 2. Cash Flow (This Month): Total In vs. Total Out
@@ -60,9 +56,9 @@ export async function getDashboardData() {
 
   cashFlowAgg.forEach((group) => {
     const amount = group._sum.amount?.toNumber() || 0;
-    if (group.intent === "PAID") {
+    if (group.intent === "RECEIVED") {
       totalIn += amount;
-    } else if (group.intent === "RECEIVED") {
+    } else if (group.intent === "PAID") {
       totalOut += amount;
     }
   });
@@ -109,9 +105,9 @@ export async function getDashboardData() {
 
     const entry = chartDataMap.get(dateStr)!;
 
-    if (t.intent === "PAID") {
+    if (t.intent === "RECEIVED") {
       entry.income += amount;
-    } else if (t.intent === "RECEIVED") {
+    } else if (t.intent === "PAID") {
       entry.expense += amount;
     }
   });
@@ -124,16 +120,16 @@ export async function getDashboardData() {
       expense: values.expense,
     }));
 
-  // 4. Pending Invoices: Contacts with high negative balances
+  // Pending Invoices: contacts who owe the user (currentBalance > 0)
   const pendingInvoices = await prisma.contact.findMany({
     where: {
       userId,
       currentBalance: {
-        lt: -1000, // Threshold
+        gt: 0,
       },
     },
     orderBy: {
-      currentBalance: "asc", // Most negative first
+      currentBalance: "desc",
     },
     take: 5,
   });
@@ -155,10 +151,6 @@ export async function getDashboardData() {
   };
 }
 
-export async function sendWhatsAppReminder(contactId: string) {
-  // Placeholder for bot integration
-  console.log(`Sending WhatsApp reminder to contact ${contactId}`);
-  // In a real app, this would call an external API or trigger a bot event
-  await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate delay
-  return { success: true, message: "Reminder sent successfully" };
+export async function sendWhatsAppReminder(_contactId: string) {
+  return { success: false, message: "Reminder feature not yet available" };
 }

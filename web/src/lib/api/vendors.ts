@@ -81,6 +81,7 @@ export async function getContacts({
           select: { transactions: true },
         },
         transactions: {
+          where: { intent: "PAID", isDeleted: false },
           select: {
             amount: true,
             date: true,
@@ -159,7 +160,7 @@ export async function getContactStats() {
     }),
   ]);
 
-  // Total spend across all contacts
+  // Total spend across all contacts (PAID = money user paid out)
   const totalSpendResult = await prisma.transaction.aggregate({
     _sum: {
       amount: true,
@@ -167,6 +168,8 @@ export async function getContactStats() {
     where: {
       userId,
       contactId: { not: null },
+      intent: "PAID",
+      isDeleted: false,
     },
   });
 

@@ -57,23 +57,23 @@ export async function getAnalyticsData(months: number = 6) {
     const entry = monthMap.get(key);
     if (!entry) continue;
     const amount = tx.amount.toNumber();
-    if (tx.intent === "PAID") {
+    if (tx.intent === "RECEIVED") {
       entry.totalIn += amount;
+    } else if (tx.intent === "PAID") {
+      entry.totalOut += amount;
       const cat = tx.category || "General";
       entry.categoryBreakdown[cat] =
         (entry.categoryBreakdown[cat] || 0) + amount;
-    } else if (tx.intent === "RECEIVED") {
-      entry.totalOut += amount;
     }
   }
 
   const monthlyTrend = Array.from(monthMap.values());
 
-  // Overdue contacts (negative balance = they owe us)
+  // Overdue contacts: currentBalance > 0 means they owe the user
   const overdueContacts = await prisma.contact.findMany({
     where: {
       userId,
-      currentBalance: { lt: 0 },
+      currentBalance: { gt: 0 },
     },
     select: {
       id: true,
@@ -82,7 +82,7 @@ export async function getAnalyticsData(months: number = 6) {
       currentBalance: true,
       updatedAt: true,
     },
-    orderBy: { currentBalance: "asc" },
+    orderBy: { currentBalance: "desc" },
     take: 20,
   });
 

@@ -141,7 +141,7 @@ export async function getVendor(id: string) {
     // 1. Spending Trend (Daily)
     const spendingByDate = transactions.reduce(
       (acc, tx) => {
-        if (tx.intent === "RECEIVED") {
+        if (tx.intent === "PAID") {
           const date = tx.date.toLocaleDateString("en-CA", {
             timeZone: "Asia/Kolkata",
           });
@@ -155,12 +155,12 @@ export async function getVendor(id: string) {
     const spendingTrend = Object.entries(spendingByDate)
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(-30); // Last 30 days of activity
+      .slice(-30);
 
     // 2. Category Distribution
     const categoryDistribution = transactions.reduce(
       (acc, tx) => {
-        if (tx.intent === "RECEIVED") {
+        if (tx.intent === "PAID") {
           acc[tx.category] = (acc[tx.category] || 0) + Number(tx.amount);
         }
         return acc;

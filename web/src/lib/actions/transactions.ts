@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 
 export type TransactionData = {
   id: string;
@@ -144,4 +145,19 @@ export async function getTransactions({
       pageCount: 0,
     };
   }
+}
+
+export async function deleteTransactions(ids: string[]) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+  if (!ids.length)
+    return { success: false, message: "No transactions selected" };
+
+  await prisma.transaction.updateMany({
+    where: { id: { in: ids }, userId: session.user.id },
+    data: { isDeleted: true },
+  });
+
+  revalidatePath("/dashboard/transactions");
+  return { success: true };
 }

@@ -10,7 +10,7 @@ import {
     DataTableActionBarSelection,
 } from "@/components/data-table/data-table-action-bar";
 import { toast } from "sonner";
-import { TransactionData } from "@/lib/actions/transactions";
+import { TransactionData, deleteTransactions } from "@/lib/actions/transactions";
 
 interface TransactionTableFloatingBarProps {
     table: Table<TransactionData>;
@@ -27,10 +27,12 @@ export function TransactionTableFloatingBar({
                 const selectedRows = table.getFilteredSelectedRowModel().rows;
                 const ids = selectedRows.map((row) => row.original.id);
 
-                // Mock action for now as deleteTransaction bulk is not implemented
-                toast.info(`Deleting ${ids.length} transactions... (Not implemented)`);
-
-                // await deleteTransactions(ids);
+                const result = await deleteTransactions(ids);
+                if (result.success) {
+                    toast.success(`Deleted ${ids.length} transaction${ids.length !== 1 ? "s" : ""}`);
+                } else {
+                    toast.error(result.message ?? "Failed to delete");
+                }
                 table.toggleAllRowsSelected(false);
             });
         },

@@ -80,13 +80,30 @@ export async function markDueAsPaid(dueId: string) {
 
   const due = await prisma.dueEntry.findFirst({
     where: { id: dueId, charge: { userId: session.user.id } },
+    include: { charge: true },
   });
   if (!due) return { success: false, message: "Due not found" };
 
-  await prisma.dueEntry.update({
-    where: { id: dueId },
-    data: { status: "PAID", paidAmount: due.amount, paidAt: new Date() },
-  });
+  const intent = due.charge.direction === "INCOME" ? "RECEIVED" : "PAID";
+  const now = new Date();
+
+  await prisma.$transaction([
+    prisma.transaction.create({
+      data: {
+        amount: due.amount,
+        intent,
+        description: due.charge.description,
+        userId: session.user.id,
+        contactId: due.contactId ?? due.charge.contactId ?? null,
+        walletId: due.walletId ?? due.charge.walletId ?? null,
+        date: now,
+      },
+    }),
+    prisma.dueEntry.update({
+      where: { id: dueId },
+      data: { status: "PAID", paidAmount: due.amount, paidAt: now },
+    }),
+  ]);
 
   revalidatePath("/dashboard/recurring");
   return { success: true };

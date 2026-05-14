@@ -21,7 +21,7 @@ export default async function Page() {
                             <AnimatedNumber value={Math.abs(totalReceivables)} format={{ style: 'currency', currency: 'INR', trailingZeroDisplay: 'stripIfInteger' }} />
                         </StatValue>
                         <StatDescription>
-                            {totalReceivables < 0 ? "You are owed" : "You owe"}
+                            {totalReceivables > 0 ? "People owe you this much" : "No outstanding receivables"}
                         </StatDescription>
                         <StatIndicator color="error">
                             <TrendingDown className="h-4 w-4" />

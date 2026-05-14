@@ -91,10 +91,10 @@ export default async function VendorDetailsPage({
                                             <TableCell>
                                                 <Badge variant="secondary">{tx.category}</Badge>
                                             </TableCell>
-                                            <TableCell className="text-right font-medium text-green-600 whitespace-nowrap">
+                                            <TableCell className="text-right font-medium text-red-600 whitespace-nowrap">
                                                 {isCredit ? formatCurrency(Number(tx.amount)) : "-"}
                                             </TableCell>
-                                            <TableCell className="text-right font-medium text-red-600 whitespace-nowrap">
+                                            <TableCell className="text-right font-medium text-green-600 whitespace-nowrap">
                                                 {isDebit ? formatCurrency(Number(tx.amount)) : "-"}
                                             </TableCell>
                                         </TableRow>

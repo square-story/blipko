@@ -84,7 +84,7 @@ export default async function Page() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Overdue Contacts</CardTitle>
-                            <CardDescription>Contacts with negative balance (they owe you)</CardDescription>
+                            <CardDescription>Contacts with outstanding balances owed to you</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {overdueContacts.length === 0 ? (
