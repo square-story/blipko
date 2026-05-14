@@ -1,7 +1,6 @@
 .env
 node_modules
 dist
-prisma/migrations
 
 .env.local
 .env.development.local
