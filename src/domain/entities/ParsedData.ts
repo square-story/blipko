@@ -10,7 +10,8 @@ export type ParsedIntent =
   | "UPDATE_TRANSACTION"
   | "VIEW_DAILY_SUMMARY"
   | "WALLET"
-  | "SET_RECURRING";
+  | "SET_RECURRING"
+  | "GROUP_SETUP";
 
 export interface ParsedData {
   intent: ParsedIntent;
@@ -59,5 +60,9 @@ export interface ParsedData {
     dayOfMonth: number;
     period: "MONTHLY" | "QUARTERLY";
     walletName?: string;
+  };
+  group_action?: {
+    action: "CREATE" | "JOIN";
+    code?: string;
   };
 }

@@ -57,11 +57,34 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example: "how much did I earn this year" → { intent: "QUERY", query_details: { type: "TOTAL_INCOME", from_date: "[Jan 1 of current year]", to_date: "[today]" } }
    - Example: "Who hasn't paid?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
    - Example: "What's Raju's balance?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
+   - Example: "family summary" / "show group spending" / "sabka kitna hua" → { intent: "QUERY", query_details: { type: "GROUP_SUMMARY" } }
+   - Example: "how much did Raju spend?" (in a group) → { intent: "QUERY", query_details: { type: "MEMBER_SPEND", contactName: "Raju" } }
+   - Example: "show my group spending" → { intent: "QUERY", query_details: { type: "MEMBER_SPEND" } }
+
+9. **WALLET (Wallet management):**
+   - Example: "show wallets" / "list my wallets" → { intent: "WALLET", wallet_action: { action: "LIST" } }
+   - Example: "switch to Shop" / "use my business wallet" → { intent: "WALLET", wallet_action: { action: "SWITCH", walletName: "Shop" } }
+   - Example: "create savings wallet" → { intent: "WALLET", wallet_action: { action: "CREATE", walletName: "Savings" } }
+   - Example: "show shop balance" → { intent: "WALLET", wallet_action: { action: "SHOW_BALANCE", walletName: "Shop" } }
+   - NOTE: "Shop: paid 500 for supplies" uses wallet prefix syntax — this is PAID intent, not WALLET.
+
+10. **SET_RECURRING (Recurring reminders):**
+    - Example: "remind me rent 8000 on 1st every month" → { intent: "SET_RECURRING", recurring_details: { description: "Rent", amount: 8000, direction: "EXPENSE", dayOfMonth: 1, period: "MONTHLY" } }
+    - Example: "salary 30000 on 25th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Salary", amount: 30000, direction: "INCOME", dayOfMonth: 25, period: "MONTHLY" } }
+    - Example: "around 500-700 electricity on 15th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Electricity", amountMin: 500, amountMax: 700, direction: "EXPENSE", dayOfMonth: 15, period: "MONTHLY" } }
+    - Example: "quarterly insurance 2500 on 10th" → { intent: "SET_RECURRING", recurring_details: { description: "Insurance", amount: 2500, direction: "EXPENSE", dayOfMonth: 10, period: "QUARTERLY" } }
+
+11. **GROUP_SETUP (Family/Group management):**
+    - User wants to create a shared family group or join an existing one.
+    - Example: "create a family group" / "start family tracking" / "I want to track with my wife" / "add my family" → { intent: "GROUP_SETUP", group_action: { action: "CREATE" } }
+    - Example: "join my family group" / "I have an invite code ABC123" → { intent: "GROUP_SETUP", group_action: { action: "JOIN", code: "ABC123" } }
+    - Do NOT use CHAT for these — always use GROUP_SETUP when the user wants to share expense tracking with family or others.
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (RECEIVED).
 - Ignore spelling mistakes.
 - CHAT is ONLY for social/non-financial messages. ANY message about money, spending, income, balances, or contacts — even in a casual tone — MUST use QUERY (or PAID/RECEIVED). Never use CHAT for financial questions.
+- GROUP_SETUP is for family/group creation and joining. Do NOT use CHAT when the user wants to share tracking with others.
 - If the text is asking for data/analytics about finances, ALWAYS use QUERY — even if it sounds casual.
 - **IMPORTANT**: Extract a 'description' field separately from 'category'.
   - 'description': What happened (e.g. "Taxi to airport").

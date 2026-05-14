@@ -21,9 +21,10 @@ const transactionSchema: Schema = {
         "QUERY",
         "WALLET",
         "SET_RECURRING",
+        "GROUP_SETUP",
       ],
       description:
-        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general NON-FINANCIAL conversation only. QUERY if user asks anything about their money, spending, income, balances, or contacts. WALLET if user is managing wallets. SET_RECURRING if user wants to set up a recurring income or expense reminder.",
+        "PAID if user GAVE/SPENT money. RECEIVED if user GOT/EARNED money. BALANCE if asking for overall status. UNDO if user wants to delete/correct last entry. VIEW_DAILY_SUMMARY if user wants to see today's transactions. UPDATE_TRANSACTION if user wants to modify a previous transaction. CHAT for greetings or general NON-FINANCIAL conversation only. QUERY if user asks anything about their money, spending, income, balances, or contacts. WALLET if user is managing wallets. SET_RECURRING if user wants to set up a recurring income or expense reminder. GROUP_SETUP if user wants to create a family/group or join one.",
     },
     amount: {
       type: Type.NUMBER,
@@ -155,6 +156,21 @@ const transactionSchema: Schema = {
       },
       description: "Structured details when intent is SET_RECURRING",
     },
+    group_action: {
+      type: Type.OBJECT,
+      properties: {
+        action: {
+          type: Type.STRING,
+          enum: ["CREATE", "JOIN"],
+          description: "CREATE a new family group or JOIN an existing one",
+        },
+        code: {
+          type: Type.STRING,
+          description: "Invite code if the user is joining a group",
+        },
+      },
+      description: "Structured details when intent is GROUP_SETUP",
+    },
   },
   required: ["intent", "amount", "name"],
 };
@@ -221,7 +237,9 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example: "last year total spend" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", from_date: "[Jan 1 last year]", to_date: "[Dec 31 last year]" } }
    - Example: "Who hasn't paid this month?" / "Aarike paisa thannilla?" → { intent: "QUERY", query_details: { type: "UNPAID_CONTACTS" } }
    - Example: "What's Raju's balance?" / "Raju ethra tharam?" → { intent: "QUERY", query_details: { type: "CONTACT_BALANCE", contactName: "Raju" } }
-   - Example: "family summary" / "sabka kitna hua" → { intent: "QUERY", query_details: { type: "GROUP_SUMMARY" } }
+   - Example: "family summary" / "show group spending" / "sabka kitna hua" / "family ka hisab" → { intent: "QUERY", query_details: { type: "GROUP_SUMMARY" } }
+   - Example: "how much did Raju spend this month?" (in a group) → { intent: "QUERY", query_details: { type: "MEMBER_SPEND", contactName: "Raju" } }
+   - Example: "show my group spending" / "mera group spend" → { intent: "QUERY", query_details: { type: "MEMBER_SPEND" } }
    - Casual financial queries also use QUERY: "Bhai kitna kharch hua?" → { intent: "QUERY", query_details: { type: "TOTAL_SPEND", from_date: "[first day of current month]", to_date: "[today]" } }
    - "Paise ka hisab dikhao" → { intent: "QUERY", query_details: { type: "NET_BALANCE" } }
 
@@ -230,11 +248,19 @@ Your job is to analyze informal text in English, Hindi, Malayalam, Manglish, or 
    - Example: "switch to Shop" / "use my business wallet" → { intent: "WALLET", wallet_action: { action: "SWITCH", walletName: "Shop" } }
    - Example: "create savings wallet" → { intent: "WALLET", wallet_action: { action: "CREATE", walletName: "Savings" } }
    - Example: "show shop balance" → { intent: "WALLET", wallet_action: { action: "SHOW_BALANCE", walletName: "Shop" } }
+   - NOTE: "Shop: paid 500 for supplies" uses wallet prefix syntax — this is PAID intent, not WALLET.
 
 10. **SET_RECURRING (Recurring reminders):**
     - Example: "remind me rent 8000 on 1st every month" → { intent: "SET_RECURRING", recurring_details: { description: "Rent", amount: 8000, direction: "EXPENSE", dayOfMonth: 1, period: "MONTHLY" } }
     - Example: "salary 30000 on 25th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Salary", amount: 30000, direction: "INCOME", dayOfMonth: 25, period: "MONTHLY" } }
-    - Example: "around 500 electricity on 15th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Electricity", amount: 500, amountMin: 400, amountMax: 700, direction: "EXPENSE", dayOfMonth: 15, period: "MONTHLY" } }
+    - Example: "around 500-700 electricity on 15th monthly" → { intent: "SET_RECURRING", recurring_details: { description: "Electricity", amountMin: 500, amountMax: 700, direction: "EXPENSE", dayOfMonth: 15, period: "MONTHLY" } }
+    - Example: "quarterly insurance 2500 on 10th" → { intent: "SET_RECURRING", recurring_details: { description: "Insurance", amount: 2500, direction: "EXPENSE", dayOfMonth: 10, period: "QUARTERLY" } }
+
+11. **GROUP_SETUP (Family/Group management):**
+    - User wants to create a shared family group or join an existing one.
+    - Example: "create a family group" / "start family tracking" / "I want to track with my wife" / "add my family" → { intent: "GROUP_SETUP", group_action: { action: "CREATE" } }
+    - Example: "join my family group" / "I have an invite code ABC123" → { intent: "GROUP_SETUP", group_action: { action: "JOIN", code: "ABC123" } }
+    - Do NOT use CHAT for these — always use GROUP_SETUP when the user wants to share expense tracking with family or others.
 
 ### RULES:
 - Identify the *User's* perspective. If I say "Raju paid me", money comes to ME (RECEIVED).

@@ -18,17 +18,32 @@ export class GroupOnboardingProcessor implements MessageProcessor {
 
   canHandle(context: ProcessContext): boolean {
     const text = context.textMessage.trim();
-    return CREATE_GROUP_RE.test(text) || INVITE_CODE_RE.test(text);
+    if (CREATE_GROUP_RE.test(text) || INVITE_CODE_RE.test(text)) return true;
+    return context.parsed?.intent === "GROUP_SETUP";
   }
 
   async process(context: ProcessContext): Promise<ProcessOutput> {
     const text = context.textMessage.trim();
-    const parsed = { intent: "CHAT" as const, amount: 0, name: "Unknown" };
+    const parsed = context.parsed ?? {
+      intent: "CHAT" as const,
+      amount: 0,
+      name: "Unknown",
+    };
 
-    if (CREATE_GROUP_RE.test(text)) {
+    const isAiParsed = context.parsed?.intent === "GROUP_SETUP";
+    const aiAction = context.parsed?.group_action?.action;
+    const aiCode = context.parsed?.group_action?.code;
+
+    const isCreate = isAiParsed
+      ? aiAction === "CREATE"
+      : CREATE_GROUP_RE.test(text);
+
+    if (isCreate) {
       return this.handleCreateGroup(context, parsed);
     }
-    return this.handleJoinGroup(context, text, parsed);
+
+    const joinCode = isAiParsed && aiCode ? aiCode : text;
+    return this.handleJoinGroup(context, joinCode, parsed);
   }
 
   private async handleCreateGroup(
