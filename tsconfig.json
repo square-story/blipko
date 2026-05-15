@@ -45,6 +45,8 @@
     "node_modules",
     "dist",
     ".next",
-    "web"
+    "web",
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ],
 }
