@@ -1,5 +1,7 @@
 import { SarvamAIClient } from "sarvamai";
 import fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import { env } from "../../config/env";
 
 export interface TranscriptionResult {
@@ -45,18 +47,19 @@ export class SarvamTranscriptionService {
       // Let's write to a temp file to be safe and match the user's pattern which uses a stream/file.
       // Or better, create a temporary file from buffer.
 
-      const tempFilePath = `/tmp/${Date.now()}_${fileName}`;
+      const tempFilePath = path.join(os.tmpdir(), `sarvam_${Date.now()}.wav`);
       fs.writeFileSync(tempFilePath, audioBuffer);
 
-      const audioFileStream = fs.createReadStream(tempFilePath);
-
-      const response = await this.client.speechToText.translate({
-        file: audioFileStream,
-        model: "saaras:v2.5",
-      });
-
-      // Clean up temp file
-      fs.unlinkSync(tempFilePath);
+      let response: { transcript: string };
+      try {
+        const audioFileStream = fs.createReadStream(tempFilePath);
+        response = await this.client.speechToText.translate({
+          file: audioFileStream,
+          model: "saaras:v2.5",
+        });
+      } finally {
+        try { fs.unlinkSync(tempFilePath); } catch { /* ignore cleanup failure */ }
+      }
 
       console.log(`Transcription successful: "${response.transcript}"`);
 

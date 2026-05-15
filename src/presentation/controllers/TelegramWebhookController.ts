@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { timingSafeEqual } from "crypto";
 import { ProcessIncomingMessageUseCase } from "../../application/use-cases/ProcessIncomingMessage";
 import { ProcessVoiceMessageUseCase } from "../../application/use-cases/ProcessVoiceMessage";
 import { PrismaProcessedMessageRepository } from "../../data/repositories/PrismaProcessedMessageRepository";
@@ -96,11 +97,19 @@ export class TelegramWebhookController {
 
   async handleWebhook(req: Request, res: Response, next: NextFunction) {
     try {
-      // Verify webhook secret if configured
-      const secret = req.headers["x-telegram-bot-api-secret-token"];
-      if (this.webhookSecret && secret !== this.webhookSecret) {
-        res.status(403).json({ success: false, message: "Forbidden" });
-        return;
+      // Verify webhook secret if configured (timing-safe comparison)
+      if (this.webhookSecret) {
+        const incoming = req.headers["x-telegram-bot-api-secret-token"];
+        if (typeof incoming !== "string") {
+          res.status(403).json({ success: false, message: "Forbidden", data: null });
+          return;
+        }
+        const a = Buffer.from(incoming);
+        const b = Buffer.from(this.webhookSecret);
+        if (a.length !== b.length || !timingSafeEqual(a, b)) {
+          res.status(403).json({ success: false, message: "Forbidden", data: null });
+          return;
+        }
       }
 
       const update = req.body as TelegramUpdate;
@@ -109,7 +118,7 @@ export class TelegramWebhookController {
       if (update.callback_query) {
         const cq = update.callback_query;
         const platformUserId = String(cq.from.id);
-        const updateId = String(update.update_id);
+        const updateId = "cb:" + String(update.update_id);
 
         const isProcessed =
           await this.processedMessageRepository.exists(updateId);
@@ -145,7 +154,7 @@ export class TelegramWebhookController {
       }
 
       const platformUserId = String(msg.chat.id);
-      const messageId = String(msg.message_id);
+      const messageId = "msg:" + String(msg.message_id);
       const platformUsername = msg.from?.username ?? msg.from?.first_name;
       const replyToMessageId = msg.reply_to_message
         ? String(msg.reply_to_message.message_id)

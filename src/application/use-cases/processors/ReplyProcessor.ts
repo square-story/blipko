@@ -110,7 +110,7 @@ export class ReplyProcessor implements MessageProcessor {
           updates.description = updates.category;
         }
 
-        await this.transactionRepository.update(transaction.id, updates);
+        await this.transactionRepository.update(transaction.id, updates, context.user.id);
 
         let updateMsg = "✅ *Transaction Updated*\n";
         if (updates.amount) updateMsg += `Amount: ${updates.amount}\n`;
@@ -139,7 +139,7 @@ export class ReplyProcessor implements MessageProcessor {
       if (newCategory) {
         await this.transactionRepository.update(transaction.id, {
           category: newCategory,
-        });
+        }, context.user.id);
 
         const response = `✅ *Category Updated*
         

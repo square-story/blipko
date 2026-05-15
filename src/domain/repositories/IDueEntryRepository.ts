@@ -20,7 +20,7 @@ export interface IDueEntryRepository {
   markNotified(id: string): Promise<void>;
   markPaid(id: string, paidAmount: number): Promise<void>;
   snooze(id: string, days: number): Promise<void>;
-  findById(id: string): Promise<DueEntry | null>;
+  findById(id: string): Promise<(DueEntry & { charge: { userId: string } }) | null>;
 }
 
 interface RecurringChargeWithUser {

@@ -8,9 +8,9 @@ import {
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 
-const WEB_URL = "https://earnest-determination-production-5788.up.railway.app";
-const DB_URL =
-  "postgresql://postgres:xtvxedTZPBYmGsHQtYLhaVRjGYgccOvh@hopper.proxy.rlwy.net:52106/railway";
+const WEB_URL = process.env.TEST_WEB_URL ?? "http://localhost:3000";
+const DB_URL = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!DB_URL) throw new Error("TEST_DATABASE_URL env var is required");
 
 const prisma = new PrismaClient({ datasources: { db: { url: DB_URL } } });
 

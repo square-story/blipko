@@ -93,7 +93,10 @@ export class PrismaDueEntryRepository implements IDueEntryRepository {
     });
   }
 
-  async findById(id: string): Promise<DueEntry | null> {
-    return this.prisma.dueEntry.findUnique({ where: { id } });
+  async findById(id: string): Promise<(DueEntry & { charge: { userId: string } }) | null> {
+    return this.prisma.dueEntry.findUnique({
+      where: { id },
+      include: { charge: { select: { userId: true } } },
+    });
   }
 }

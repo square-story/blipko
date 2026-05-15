@@ -9,7 +9,7 @@ import { randomBytes } from "crypto";
 import { resolvePlatformUserId } from "../../utils/resolvePlatformUserId";
 
 function generateInviteCode(): string {
-  return randomBytes(4).toString("hex").toUpperCase(); // e.g. "A3F9C2B1"
+  return randomBytes(8).toString("hex").toUpperCase(); // 64-bit entropy
 }
 
 export class PrismaGroupRepository implements IGroupRepository {

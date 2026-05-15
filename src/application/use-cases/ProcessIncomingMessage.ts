@@ -134,6 +134,7 @@ export class ProcessIncomingMessageUseCase {
     if (payload.replyToMessageId) {
       replyTransaction = await this.transactionRepository.findByConfirmationId(
         payload.replyToMessageId,
+        user.id,
       );
     }
 

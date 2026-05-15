@@ -64,23 +64,7 @@ export class ConfirmationProcessor implements MessageProcessor {
     if (action === "confirm") {
       const transaction =
         await this.transactionRepository.findById(transactionId);
-      if (transaction) {
-        await this.transactionRepository.delete(transactionId);
-        const response = `🗑️ *Entry Deleted*
-      
-Removed: ₹${Number(transaction.amount).toFixed(2)} (${transaction.intent})
-Note: ${transaction.description}`;
-
-        await this.messageService.sendMessage({
-          to: context.platformUserId,
-          body: response,
-        });
-
-        return {
-          response,
-          parsed: { intent: "UNDO", notes: "Confirmed delete" },
-        };
-      } else {
+      if (!transaction || transaction.userId !== context.user.id) {
         const response = "⚠️ Transaction not found or already deleted.";
         await this.messageService.sendMessage({
           to: context.platformUserId,
@@ -91,6 +75,16 @@ Note: ${transaction.description}`;
           parsed: { intent: "UNDO", notes: "Transaction not found" },
         };
       }
+      await this.transactionRepository.delete(transactionId, context.user.id);
+      const response = `🗑️ *Entry Deleted*\n\nRemoved: ₹${Number(transaction.amount).toFixed(2)} (${transaction.intent})\nNote: ${transaction.description ?? ""}`;
+      await this.messageService.sendMessage({
+        to: context.platformUserId,
+        body: response,
+      });
+      return {
+        response,
+        parsed: { intent: "UNDO", notes: "Confirmed delete" },
+      };
     } else {
       const response = "❌ Deletion cancelled.";
       await this.messageService.sendMessage({

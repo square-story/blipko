@@ -8,6 +8,7 @@ import { IWalletRepository } from "../../../domain/repositories/IWalletRepositor
 import { IDueEntryRepository } from "../../../domain/repositories/IDueEntryRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { computeDueDatesInWindow, addMonths } from "../../../utils/dueDate";
+import { escapeMarkdown } from "../../../utils/escapeMarkdown";
 
 export class RecurringSetupProcessor implements MessageProcessor {
   constructor(
@@ -32,6 +33,17 @@ export class RecurringSetupProcessor implements MessageProcessor {
         to: context.platformUserId,
         body: response,
       });
+      return { response, parsed };
+    }
+
+    if (!Number.isFinite(details.amount) || details.amount <= 0 || details.amount > 9_999_999) {
+      const response = "Please provide a valid amount between ₹1 and ₹99,99,999.";
+      await this.messageService.sendMessage({ to: context.platformUserId, body: response });
+      return { response, parsed };
+    }
+    if (!Number.isInteger(details.dayOfMonth) || details.dayOfMonth < 1 || details.dayOfMonth > 28) {
+      const response = "Day of month must be between 1 and 28.";
+      await this.messageService.sendMessage({ to: context.platformUserId, body: response });
       return { response, parsed };
     }
 
@@ -85,7 +97,7 @@ export class RecurringSetupProcessor implements MessageProcessor {
       ? `₹${details.amountMin}–₹${details.amountMax ?? details.amount}`
       : `₹${details.amount}`;
 
-    const response = `✅ *Recurring ${directionLabel} set!*\n\n📌 *${details.description}*\n💰 ${amountLabel} on the ${details.dayOfMonth}th every ${details.period.toLowerCase()}\n\nI'll remind you 2 days before it's due.`;
+    const response = `✅ *Recurring ${directionLabel} set\\!*\n\n📌 *${escapeMarkdown(details.description)}*\n💰 ${amountLabel} on the ${details.dayOfMonth}th every ${details.period.toLowerCase()}\n\nI'll remind you 2 days before it's due\\.`;
 
     await this.messageService.sendMessage({
       to: context.platformUserId,

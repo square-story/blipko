@@ -105,9 +105,9 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     return updatedTransaction;
   }
 
-  async findByConfirmationId(messageId: string): Promise<Transaction | null> {
-    return this.prisma.transaction.findUnique({
-      where: { confirmationMessageId: messageId },
+  async findByConfirmationId(messageId: string, userId: string): Promise<Transaction | null> {
+    return this.prisma.transaction.findFirst({
+      where: { confirmationMessageId: messageId, userId },
     });
   }
 
@@ -121,9 +121,9 @@ export class PrismaTransactionRepository implements ITransactionRepository {
     });
   }
 
-  async delete(transactionId: string): Promise<void> {
-    const transaction = await this.prisma.transaction.findUnique({
-      where: { id: transactionId },
+  async delete(transactionId: string, userId: string): Promise<void> {
+    const transaction = await this.prisma.transaction.findFirst({
+      where: { id: transactionId, userId },
     });
 
     if (!transaction) return;
@@ -133,6 +133,7 @@ export class PrismaTransactionRepository implements ITransactionRepository {
       data: {
         isDeleted: true,
         deletedAt: new Date(),
+        deletedByUserId: userId,
       },
     });
 
@@ -144,19 +145,27 @@ export class PrismaTransactionRepository implements ITransactionRepository {
   async update(
     transactionId: string,
     data: Partial<CreateTransactionDTO>,
+    userId: string,
   ): Promise<void> {
-    const updateData: any = {};
+    const updateData: {
+      category?: string;
+      description?: string;
+      amount?: number;
+    } = {};
     if (data.category) updateData.category = data.category;
     if (data.description) updateData.description = data.description;
     if (data.amount !== undefined) updateData.amount = data.amount;
 
-    const transaction = await this.prisma.transaction.update({
-      where: { id: transactionId },
+    const transaction = await this.prisma.transaction.updateMany({
+      where: { id: transactionId, userId },
       data: updateData,
     });
 
-    if (transaction.contactId) {
-      await this.updateContactBalance(transaction.contactId);
+    if (transaction.count > 0 && data.category !== undefined) {
+      const tx = await this.prisma.transaction.findUnique({ where: { id: transactionId } });
+      if (tx?.contactId) {
+        await this.updateContactBalance(tx.contactId);
+      }
     }
   }
 

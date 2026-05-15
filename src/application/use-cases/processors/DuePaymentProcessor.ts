@@ -27,7 +27,7 @@ export class DuePaymentProcessor implements MessageProcessor {
     if (msg.startsWith(MARK_PAID_PREFIX)) {
       const id = context.textMessage.slice(MARK_PAID_PREFIX.length);
       const entry = await this.dueEntryRepository.findById(id);
-      if (!entry) {
+      if (!entry || entry.charge.userId !== context.user.id) {
         response = "Due entry not found.";
       } else {
         await this.dueEntryRepository.markPaid(id, Number(entry.amount));
@@ -36,7 +36,7 @@ export class DuePaymentProcessor implements MessageProcessor {
     } else {
       const id = context.textMessage.slice(SNOOZE_PREFIX.length);
       const entry = await this.dueEntryRepository.findById(id);
-      if (!entry) {
+      if (!entry || entry.charge.userId !== context.user.id) {
         response = "Due entry not found.";
       } else {
         await this.dueEntryRepository.snooze(id, 3);

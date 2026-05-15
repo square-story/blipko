@@ -13,7 +13,7 @@ import { startScheduler } from "./infrastructure/scheduler";
 const app: Application = express();
 app.set("trust proxy", 1);
 
-app.use(express.json());
+app.use(express.json({ limit: "32kb" }));
 
 app.get("/health", (_req, res) =>
   res.status(200).json({ success: true, message: "OK", data: null }),
@@ -33,7 +33,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Global Error Handler:", err);
   res.status(500).json({
     success: false,
-    message: err.message ?? "Internal Server Error",
+    message: "Internal Server Error",
     data: null,
   });
 });

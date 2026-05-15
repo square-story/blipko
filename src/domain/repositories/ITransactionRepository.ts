@@ -30,15 +30,16 @@ export interface ITransactionRepository {
     userId?: string;
     contactId?: string;
   }): Promise<Transaction[]>;
-  findByConfirmationId(messageId: string): Promise<Transaction | null>;
+  findByConfirmationId(messageId: string, userId: string): Promise<Transaction | null>;
   updateConfirmationMessageId(
     transactionId: string,
     messageId: string,
   ): Promise<void>;
-  delete(transactionId: string): Promise<void>;
+  delete(transactionId: string, userId: string): Promise<void>;
   update(
     transactionId: string,
     data: Partial<CreateTransactionDTO>,
+    userId: string,
   ): Promise<void>;
   getDailySummary(
     userId: string,
