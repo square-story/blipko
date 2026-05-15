@@ -10,6 +10,7 @@ export interface CreateDueEntryDTO {
 
 export interface IDueEntryRepository {
   create(data: CreateDueEntryDTO): Promise<DueEntry>;
+  createManySkipDuplicates(entries: CreateDueEntryDTO[]): Promise<number>;
   findPendingForCharge(chargeId: string): Promise<DueEntry[]>;
   findUnnotified(upToDate: Date): Promise<
     (DueEntry & {

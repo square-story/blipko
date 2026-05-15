@@ -389,6 +389,7 @@ model DueEntry {
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
+  @@unique([chargeId, dueDate])
   @@index([contactId, status])
   @@index([dueDate, status])
 }

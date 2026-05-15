@@ -19,6 +19,22 @@ export class PrismaDueEntryRepository implements IDueEntryRepository {
     });
   }
 
+  async createManySkipDuplicates(
+    entries: CreateDueEntryDTO[],
+  ): Promise<number> {
+    const result = await this.prisma.dueEntry.createMany({
+      data: entries.map((e) => ({
+        chargeId: e.chargeId,
+        contactId: e.contactId ?? null,
+        walletId: e.walletId ?? null,
+        dueDate: e.dueDate,
+        amount: e.amount,
+      })),
+      skipDuplicates: true,
+    });
+    return result.count;
+  }
+
   async findPendingForCharge(chargeId: string): Promise<DueEntry[]> {
     return this.prisma.dueEntry.findMany({
       where: { chargeId, status: { in: ["PENDING", "PARTIAL"] } },

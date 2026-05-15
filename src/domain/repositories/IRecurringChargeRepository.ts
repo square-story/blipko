@@ -17,6 +17,7 @@ export interface CreateRecurringChargeDTO {
 export interface IRecurringChargeRepository {
   create(data: CreateRecurringChargeDTO): Promise<RecurringCharge>;
   findByUserId(userId: string): Promise<RecurringCharge[]>;
+  findAllActive(): Promise<RecurringCharge[]>;
   findDueForNotification(
     beforeDate: Date,
   ): Promise<(RecurringCharge & { user: { telegramId: string | null } })[]>;

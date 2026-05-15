@@ -60,6 +60,12 @@ export class PrismaRecurringChargeRepository implements IRecurringChargeReposito
     });
   }
 
+  async findAllActive(): Promise<RecurringCharge[]> {
+    return this.prisma.recurringCharge.findMany({
+      where: { isActive: true, isDeleted: false },
+    });
+  }
+
   async deactivate(id: string): Promise<void> {
     await this.prisma.recurringCharge.update({
       where: { id },

@@ -7,6 +7,7 @@ import { IRecurringChargeRepository } from "../../../domain/repositories/IRecurr
 import { IWalletRepository } from "../../../domain/repositories/IWalletRepository";
 import { IDueEntryRepository } from "../../../domain/repositories/IDueEntryRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
+import { computeDueDatesInWindow, addMonths } from "../../../utils/dueDate";
 
 export class RecurringSetupProcessor implements MessageProcessor {
   constructor(
@@ -57,23 +58,26 @@ export class RecurringSetupProcessor implements MessageProcessor {
       dayOfMonth: details.dayOfMonth,
     });
 
-    // Create the first upcoming due entry
+    // Generate dues for the next 3 months
     const now = new Date();
-    const dueDate = new Date(
-      now.getFullYear(),
-      now.getMonth(),
+    const dueDates = computeDueDatesInWindow(
       details.dayOfMonth,
+      details.period,
+      now,
+      null,
+      now,
+      addMonths(now, 3),
     );
-    if (dueDate <= now) {
-      dueDate.setMonth(dueDate.getMonth() + 1);
+    if (dueDates.length > 0) {
+      await this.dueEntryRepository.createManySkipDuplicates(
+        dueDates.map((d) => ({
+          chargeId: charge.id,
+          ...(walletId !== undefined && { walletId }),
+          dueDate: d,
+          amount: details.amount,
+        })),
+      );
     }
-
-    await this.dueEntryRepository.create({
-      chargeId: charge.id,
-      ...(walletId !== undefined && { walletId }),
-      dueDate,
-      amount: details.amount,
-    });
 
     const directionLabel =
       details.direction === "INCOME" ? "income" : "expense";

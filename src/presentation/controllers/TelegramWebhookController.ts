@@ -220,3 +220,9 @@ export const sendDueNotifications = new SendDueNotificationsUseCase(
   dueEntryRepository,
   messageService,
 );
+
+import { GenerateDueEntriesUseCase } from "../../application/use-cases/GenerateDueEntries";
+export const generateDueEntries = new GenerateDueEntriesUseCase(
+  recurringChargeRepository,
+  dueEntryRepository,
+);

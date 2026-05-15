@@ -1,10 +1,29 @@
 import cron from "node-cron";
 import { SendDueNotificationsUseCase } from "../application/use-cases/SendDueNotifications";
+import { GenerateDueEntriesUseCase } from "../application/use-cases/GenerateDueEntries";
 import { prisma } from "../data/prisma/client";
 
 export function startScheduler(
   sendDueNotifications: SendDueNotificationsUseCase,
+  generateDueEntries: GenerateDueEntriesUseCase,
 ): void {
+  // Nightly at 1 AM IST (19:30 UTC) — runs BEFORE the 9 AM notification job
+  cron.schedule(
+    "30 19 * * *",
+    async () => {
+      console.log("Scheduler: running GenerateDueEntries");
+      try {
+        const result = await generateDueEntries.execute();
+        console.log(
+          `Scheduler: GenerateDueEntries done — ${result.created} created`,
+        );
+      } catch (err) {
+        console.error("Scheduler: GenerateDueEntries failed", err);
+      }
+    },
+    { noOverlap: true },
+  );
+
   // Daily at 9 AM IST (3:30 AM UTC)
   cron.schedule("30 3 * * *", async () => {
     console.log("Scheduler: running SendDueNotifications");
@@ -29,6 +48,6 @@ export function startScheduler(
   });
 
   console.log(
-    "Scheduler started — due notifications at 9 AM IST, history pruning weekly",
+    "Scheduler started — due generation at 1 AM IST, notifications at 9 AM IST, history pruning weekly",
   );
 }
