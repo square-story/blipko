@@ -35,6 +35,8 @@ jobs:
         cache: 'pnpm'
     - name: Install dependencies
       run: pnpm install
+    - name: Unit tests
+      run: pnpm test:unit
     - name: Install Playwright Browsers
       run: pnpm exec playwright install --with-deps
     - name: Create Database Schema
