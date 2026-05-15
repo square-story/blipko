@@ -48,18 +48,28 @@ export async function getTransactions({
   }
 
   const skip = (page - 1) * limit;
-  const [sortField, sortOrder] = sort.split(".");
+  const ALLOWED_SORT_FIELDS = [
+    "date",
+    "amount",
+    "createdAt",
+    "contact",
+  ] as const;
+  type AllowedSortField = (typeof ALLOWED_SORT_FIELDS)[number];
+  const [rawSortField, rawSortOrder] = sort.split(".");
+  const sortField: AllowedSortField = ALLOWED_SORT_FIELDS.includes(
+    rawSortField as AllowedSortField,
+  )
+    ? (rawSortField as AllowedSortField)
+    : "date";
+  const sortOrder: Prisma.SortOrder =
+    rawSortOrder === "asc" ? "asc" : "desc";
   const orderBy: Prisma.TransactionOrderByWithRelationInput = {};
 
-  if (sortField && sortOrder) {
-    if (sortField === "contact") {
-      orderBy.contact = { name: sortOrder as Prisma.SortOrder };
-    } else {
-      orderBy[sortField as keyof Prisma.TransactionOrderByWithRelationInput] =
-        sortOrder as Prisma.SortOrder;
-    }
+  if (sortField === "contact") {
+    orderBy.contact = { name: sortOrder };
   } else {
-    orderBy.date = "desc";
+    orderBy[sortField as keyof Prisma.TransactionOrderByWithRelationInput] =
+      sortOrder;
   }
 
   const where: Prisma.TransactionWhereInput = {
@@ -152,6 +162,11 @@ export async function deleteTransactions(ids: string[]) {
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
   if (!ids.length)
     return { success: false, message: "No transactions selected" };
+  if (ids.length > 100)
+    return {
+      success: false,
+      message: "Cannot delete more than 100 at once",
+    };
 
   await prisma.transaction.updateMany({
     where: { id: { in: ids }, userId: session.user.id },

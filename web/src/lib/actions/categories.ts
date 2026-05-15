@@ -3,6 +3,12 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const renameSchema = z.object({
+  oldName: z.string().min(1).max(50),
+  newName: z.string().min(1).max(50).trim(),
+});
 
 export type CategoryStat = {
   name: string;
@@ -46,7 +52,11 @@ export async function renameCategory(
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
 
-  const trimmed = newName.trim();
+  const parsed = renameSchema.safeParse({ oldName, newName });
+  if (!parsed.success)
+    return { success: false, message: "Invalid category name" };
+
+  const trimmed = parsed.data.newName;
   if (!trimmed) return { success: false, message: "Name cannot be empty" };
   if (trimmed === oldName) return { success: true };
 

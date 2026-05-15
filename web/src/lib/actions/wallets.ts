@@ -66,8 +66,8 @@ export async function setDefaultWallet(walletId: string) {
       where: { userId: session.user.id },
       data: { isDefault: false },
     }),
-    prisma.wallet.update({
-      where: { id: walletId },
+    prisma.wallet.updateMany({
+      where: { id: walletId, userId: session.user.id },
       data: { isDefault: true },
     }),
   ]);
@@ -86,6 +86,15 @@ export async function deleteWallet(walletId: string) {
   if (!wallet) return { success: false, message: "Wallet not found" };
   if (wallet.isDefault)
     return { success: false, message: "Cannot delete the default wallet" };
+
+  const txCount = await prisma.transaction.count({
+    where: { walletId, isDeleted: false },
+  });
+  if (txCount > 0)
+    return {
+      success: false,
+      message: "Cannot delete wallet with transactions",
+    };
 
   await prisma.wallet.delete({ where: { id: walletId } });
   revalidatePath("/dashboard/wallets");

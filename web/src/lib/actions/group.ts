@@ -118,6 +118,22 @@ export async function removeMember(memberId: string) {
   if (!adminMembership)
     return { success: false, message: "Only admins can remove members" };
 
+  if (memberId === session.user.id)
+    return { success: false, message: "Cannot remove yourself" };
+
+  const targetMember = await prisma.groupMember.findUnique({
+    where: {
+      groupId_userId: { groupId: adminMembership.groupId, userId: memberId },
+    },
+  });
+  if (targetMember?.role === "ADMIN") {
+    const adminCount = await prisma.groupMember.count({
+      where: { groupId: adminMembership.groupId, role: "ADMIN" },
+    });
+    if (adminCount <= 1)
+      return { success: false, message: "Cannot remove the last admin" };
+  }
+
   await prisma.groupMember.deleteMany({
     where: { groupId: adminMembership.groupId, userId: memberId },
   });

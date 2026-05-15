@@ -84,6 +84,7 @@ export async function markDueAsPaid(dueId: string) {
     include: { charge: true },
   });
   if (!due) return { success: false, message: "Due not found" };
+  if (due.status === "PAID") return { success: false, message: "Already paid" };
 
   const intent = due.charge.direction === "INCOME" ? "RECEIVED" : "PAID";
   const now = new Date();
@@ -139,6 +140,13 @@ export async function createRecurringCharge(data: unknown) {
     walletId,
     notifyDaysBefore,
   } = result.data;
+
+  if (walletId) {
+    const wallet = await prisma.wallet.findFirst({
+      where: { id: walletId, userId: session.user.id },
+    });
+    if (!wallet) return { success: false, message: "Invalid wallet" };
+  }
 
   const charge = await prisma.recurringCharge.create({
     data: {
