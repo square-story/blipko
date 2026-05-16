@@ -10,6 +10,7 @@ import { LineShadowText } from "./ui/line-shadow-text";
 import { ConfettiButton } from "./ui/confetti";
 import { WatchDemoButton } from "./watch-demo-button";
 import Features from "./features-4";
+import { useRouter } from "next/navigation";
 
 interface HomeContentProps {
     session: any;
@@ -19,6 +20,7 @@ interface HomeContentProps {
 
 
 export const HomeContent = ({ session }: HomeContentProps) => {
+    const router = useRouter();
     return (
         <main className="relative min-h-screen overflow-hidden flex flex-col items-center">
             <div className="fixed inset-0 pointer-events-none -z-10">
@@ -77,10 +79,13 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     transition={{ duration: 0.8 }}
                 >
                     {session?.user ? (
-                        <ConfettiButton className="relative p-10 rounded-3xl bg-primary/5 border border-primary/10 backdrop-blur-xl overflow-hidden">
+                        <ConfettiButton 
+                            onClick={() => router.push('/dashboard')}
+                            className="relative p-10 rounded-3xl bg-primary/5 border border-primary/10 backdrop-blur-xl overflow-hidden hover:bg-primary/10 transition-colors"
+                        >
                             <WelcomeConfetti />
                             <TextAnimate className="text-lg md:text-2xl text-gray-400 max-w-2xl font-medium">
-                                You are on the list.
+                                Go to Dashboard
                             </TextAnimate>
                         </ConfettiButton>
                     ) : (

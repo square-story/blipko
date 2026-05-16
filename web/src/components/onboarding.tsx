@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { completeOnboarding, generateTelegramLinkToken } from "@/lib/actions/user";
+import { Confetti } from "@/components/ui/confetti";
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
@@ -82,7 +83,9 @@ export default function Onboarding() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <>
+      <Confetti className="fixed inset-0 w-full h-full pointer-events-none z-[100]" />
+      <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="gap-0 p-0 [&>button:last-child]:text-white sm:max-w-[425px]" showCloseButton={false}>
         <div className="p-2">
           <Image
@@ -145,5 +148,6 @@ export default function Onboarding() {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

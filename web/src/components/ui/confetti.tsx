@@ -134,10 +134,14 @@ const ConfettiButtonComponent = ({
     } catch (error) {
       console.error("Confetti button error:", error)
     }
+
+    if (props.onClick) {
+      props.onClick(event)
+    }
   }
 
   return (
-    <button onClick={handleClick} {...props}>
+    <button {...props} onClick={handleClick}>
       {children}
     </button>
   )
