@@ -36,11 +36,29 @@ export const Header = () => {
               </p>
             </Link>
 
-            <Button className="rounded-full">
-              <Link href="/privacy-policy">
-                Privacy Policy
+            <div className="flex items-center gap-2">
+              <Link
+                href="/#features"
+                className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
+              >
+                Features
               </Link>
-            </Button>
+              <Link
+                href="/#faq"
+                className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
+              >
+                FAQ
+              </Link>
+              <Link
+                href="/privacy-policy"
+                className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
+              >
+                Privacy
+              </Link>
+              <Button className="rounded-full" size="sm">
+                <Link href="/terms">Terms</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </nav>

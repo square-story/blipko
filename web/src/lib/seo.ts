@@ -4,27 +4,25 @@ export const siteConfig = {
   name: "Blipko",
   shortName: "Blipko",
   description:
-    "The AI-powered digital accountant for Indian SMBs. Zero-UI bookkeeping on WhatsApp. Track expenses, send invoices, and manage payments with voice and text commands.",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "https://sadik.is-a.dev",
+    "Track money on Telegram in Malayalam, Manglish, or English. Log payments, split bills, set rent reminders, and manage family finances — just by chatting. Built for Kerala.",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.app",
   ogImage: "/opengraph-image.png",
   keywords: [
-    "fintech chatbot",
-    "WhatsApp accounting",
-    "SMB bookkeeping",
-    "digital accountant",
-    "invoice generator",
-    "expense tracker",
-    "India fintech",
-    "automatic bookkeeping",
-    "voice accounting",
-    "business finance",
+    "expense tracker Malayalam",
+    "Telegram finance bot Kerala",
+    "Manglish accounting",
+    "family expense tracker India",
+    "rent reminder bot",
+    "debt tracker Telegram",
+    "Kerala personal finance app",
+    "voice note expense tracker",
+    "ഹിസാബ് ട്രാക്കർ",
+    "Indian rupee tracker",
   ],
   authors: [
     {
       name: "Blipko",
-      url:
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        "https://square-story.github.io/blipko",
+      url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.app",
     },
   ],
   creator: "Blipko",
@@ -32,7 +30,7 @@ export const siteConfig = {
   category: "Finance",
   links: {
     github: "https://github.com/square-story/blipko",
-    twitter: "https://twitter.com/square_story",
+    twitter: "https://twitter.com/SadikBuilds",
   },
 };
 
@@ -110,8 +108,8 @@ export function constructMetadata({
       title,
       description,
       images: [imageUrl],
-      creator: "@blipko",
-      site: "@blipko",
+      creator: "@SadikBuilds",
+      site: "@SadikBuilds",
     },
 
     // Verification
@@ -191,13 +189,6 @@ export function generateWebApplicationSchema() {
       `${siteConfig.url}/screenshot01.png`,
       `${siteConfig.url}/screenshot02.png`,
     ],
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      ratingCount: "1250",
-      bestRating: "5",
-      worstRating: "1",
-    },
   };
 }
 
@@ -259,13 +250,6 @@ export function generateSoftwareApplicationSchema() {
       priceCurrency: "USD",
       availability: "https://schema.org/InStock",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      ratingCount: "1250",
-      bestRating: "5",
-      worstRating: "1",
-    },
     softwareVersion: "1.0",
     datePublished: "2025-01-01",
     license: "https://opensource.org/licenses/MIT",
@@ -274,14 +258,14 @@ export function generateSoftwareApplicationSchema() {
     installUrl: `${siteConfig.url}`,
     browserRequirements: "Requires JavaScript. Requires HTML5.",
     featureList: [
-      "Zero-UI bookkeeping",
-      "WhatsApp integration",
-      "Voice commands",
-      "Auto-invoicing",
-      "Expense tracking",
-      "Payment reminders",
-      "Multi-ledger support",
-      "Financial reports",
+      "Telegram bot interface",
+      "Malayalam and Manglish voice notes",
+      "Split bill tracking",
+      "Recurring rent and dues reminders",
+      "Family group expense sharing",
+      "Multi-wallet management",
+      "AI-powered queries",
+      "Daily and monthly summaries",
     ],
     keywords: siteConfig.keywords.join(", "),
   };

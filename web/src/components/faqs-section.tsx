@@ -17,9 +17,8 @@ export function FaqsSection() {
 					Frequently Asked Questions
 				</h2>
 				<p className="max-w-2xl text-muted-foreground">
-					Here are some common questions and answers that you might encounter
-					when using Blipko. If you don't find the answer you're looking for,
-					feel free to reach out.
+					Got questions? Here are answers about how Blipko works for Kerala users.
+					Still unsure? Reach out below.
 				</p>
 			</div>
 			<Accordion
@@ -44,7 +43,7 @@ export function FaqsSection() {
 				))}
 			</Accordion>
 			<p className="text-muted-foreground">
-				Can't find what you're looking for? Contact {" "}
+				Can&apos;t find what you&apos;re looking for? Contact{" "}
 				<AuthorTooltip author={founderData} />
 			</p>
 		</div>
@@ -54,44 +53,38 @@ export function FaqsSection() {
 const questions = [
 	{
 		id: "item-1",
-		title: "What is Blipko?",
+		title: "ഇത് എന്താണ് Blipko? (What is Blipko?)",
 		content:
-			"Blipko is an AI-powered ledger that lives in WhatsApp. It allows you to manage finances, track debts, and send invoices just by chatting naturally, like 'Gave 200 to Raju'.",
+			"Blipko is a Telegram bot that helps you track money by chatting naturally in Malayalam, Manglish, or English. Type \"Raju 500 koduthu\" and it logs the transaction instantly — no spreadsheets, no apps.",
 	},
 	{
 		id: "item-2",
-		title: "How does the AI parsing work?",
+		title: "Does it understand Malayalam?",
 		content:
-			"Blipko uses advanced LLMs to understand informal language, including Hinglish and local dialects. You can say 'Amit se 5k aaya kal' or 'Raju ko 200 udhar diya', and it will automatically categorize the transaction.",
+			"Yes. Say \"Raju ko 200 koduthu\", \"innathe chilavu ethra\", or send a voice note in Malayalam — Blipko understands Manglish, Hindi, and English. No form filling required. Just chat the way you normally would.",
 	},
 	{
 		id: "item-3",
-		title: "Can I send invoices and reminders?",
+		title: "How do recurring reminders work?",
 		content:
-			"Yes! You can generate professional PDF invoices with a simple command. Blipko also handles automated reminders with UPI links, sending polite notices before, on, or after the due date.",
+			"Tell Blipko \"remind me rent ₹8000 on 1st every month\". It creates the reminder and sends you a Telegram notification every month at 9 AM with a one-tap Mark Paid button. No more forgotten rent days.",
 	},
 	{
 		id: "item-4",
-		title: "Does it support recurring payments?",
+		title: "Can I manage family or shared expenses?",
 		content:
-			"Absolutely. Just tell Blipko 'Raju owes 1000 rent every 2 months', and it will set up auto-debits and reminders for you.",
+			"Yes. Create a family group with an invite code and share it with members. Everyone logs expenses, and you can see a breakdown of who spent what using the /group command or the family section on the web dashboard.",
 	},
 	{
 		id: "item-5",
-		title: "Can I manage multiple businesses?",
+		title: "Is there a web app?",
 		content:
-			"Yes, Blipko supports multi-book behavior. You can switch between ledgers for 'Shop', 'House rent', or 'Personal' using simple commands like '/switch shop'.",
+			"Yes — sign in at blipko.app to see your dashboard with full transaction history, monthly analytics, recurring charges, vendor management, and wallet overview. Works on any browser.",
 	},
 	{
 		id: "item-6",
-		title: "What about reports and analytics?",
+		title: "Is it free?",
 		content:
-			"Get instant insights with commands like '/today', '/month', or 'Top 5 overdue clients'. You can also export data to Excel or sync with Google Sheets for your accountant.",
-	},
-	{
-		id: "item-7",
-		title: "Can I use voice notes or images?",
-		content:
-			"Yes! Send a voice note saying 'Received 3000 from Amit' or a photo of a bill. Blipko uses speech-to-text and OCR to convert them into structured ledger entries.",
+			"Blipko is free during early access. The core bot features will remain free. We may introduce a paid plan for advanced business features in the future.",
 	},
 ];

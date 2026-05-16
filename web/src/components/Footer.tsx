@@ -46,7 +46,7 @@ export function Footer() {
         </Link>
         <Link
           aria-label="Email"
-          href="mailto:gibmepreo@gmail.com"
+          href="mailto:sadik.build@gmail.com"
           rel="noreferrer"
           target="_blank"
           className={Underline}
@@ -56,7 +56,12 @@ export function Footer() {
         <ThemeToogle />
       </div>
 
-      <div className="mx-auto mb-8 flex flex-col justify-center text-center text-sm">
+      <div className="mx-auto mb-8 flex flex-col items-center justify-center text-center text-sm gap-3">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <span>·</span>
+          <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+        </div>
         <div className="flex flex-row items-center justify-center gap-2 text-slate-600 dark:text-slate-400 font-bangla">
           <span>© {new Date().getFullYear()}</span>
           <span className="cursor-pointer text-black dark:text-white font-semibold">
