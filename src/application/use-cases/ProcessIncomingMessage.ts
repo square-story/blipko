@@ -25,6 +25,7 @@ import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
 import { DuePaymentProcessor } from "./processors/DuePaymentProcessor";
 import { GroupOnboardingProcessor } from "./processors/GroupOnboardingProcessor";
 import { GroupQueryProcessor } from "./processors/GroupQueryProcessor";
+import { SlashCommandProcessor } from "./processors/SlashCommandProcessor";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -63,6 +64,13 @@ export class ProcessIncomingMessageUseCase {
     queryAgent?: IQueryAgent,
   ) {
     this.processors = [
+      new SlashCommandProcessor(
+        walletRepository,
+        groupRepository,
+        recurringChargeRepository,
+        dueEntryRepository,
+        messageService,
+      ),
       new DuePaymentProcessor(dueEntryRepository, messageService),
       new GroupOnboardingProcessor(groupRepository, messageService),
       new ConfirmationProcessor(transactionRepository, messageService),
@@ -188,6 +196,7 @@ export class ProcessIncomingMessageUseCase {
 
     for (const processor of this.processors) {
       if (
+        processor instanceof SlashCommandProcessor ||
         processor instanceof DuePaymentProcessor ||
         processor instanceof GroupOnboardingProcessor ||
         processor instanceof StartProcessor ||

@@ -93,7 +93,31 @@ export class TelegramWebhookController {
     private readonly processedMessageRepository: PrismaProcessedMessageRepository,
     private readonly messageService: TelegramMessageService,
     private readonly webhookSecret?: string,
+    private readonly botToken?: string,
   ) {}
+
+  async registerBotCommands(): Promise<void> {
+    if (!this.botToken) return;
+    try {
+      await fetch(`https://api.telegram.org/bot${this.botToken}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commands: [
+            { command: "wallets",   description: "List your wallets" },
+            { command: "wallet",    description: "Switch default — /wallet <name>" },
+            { command: "group",     description: "Group info and invite code" },
+            { command: "dues",      description: "View upcoming dues" },
+            { command: "recurring", description: "List recurring charges" },
+            { command: "help",      description: "Show all commands" },
+          ],
+        }),
+      });
+      console.log("Telegram bot commands registered");
+    } catch (err) {
+      console.error("Failed to register bot commands:", err);
+    }
+  }
 
   async handleWebhook(req: Request, res: Response, next: NextFunction) {
     try {
@@ -222,6 +246,7 @@ export const telegramWebhookController = new TelegramWebhookController(
   processedMessageRepository,
   messageService,
   env.TELEGRAM_WEBHOOK_SECRET,
+  env.TELEGRAM_BOT_TOKEN,
 );
 
 import { SendDueNotificationsUseCase } from "../../application/use-cases/SendDueNotifications";

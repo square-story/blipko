@@ -7,6 +7,7 @@ import { telegramRoutes } from "./presentation/routes/telegramRoutes";
 import {
   sendDueNotifications,
   generateDueEntries,
+  telegramWebhookController,
 } from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
 
@@ -44,6 +45,7 @@ if (process.env.NODE_ENV !== "test") {
   const server = app.listen(port, () => {
     process.stdout.write(`🚀 AI Ledger server listening on port ${port}\n`);
     startScheduler(sendDueNotifications, generateDueEntries);
+    telegramWebhookController.registerBotCommands().catch(console.error);
   });
 
   function shutdown() {

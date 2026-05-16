@@ -99,7 +99,7 @@ describe("GenerateDueEntriesUseCase", () => {
     chargeRepo.findAllActive.mockResolvedValue([
       makeCharge({ period: "QUARTERLY", startDate: new Date(2026, 0, 1) }),
     ]);
-    dueRepo.createManySkipDuplicates.mockImplementation(async (entries) => entries.length);
+    dueRepo.createManySkipDuplicates.mockImplementation(async (entries: { length: number }) => entries.length);
     await useCase.execute();
     const entries = dueRepo.createManySkipDuplicates.mock.calls[0][0];
     expect(entries.length).toBeLessThanOrEqual(2);

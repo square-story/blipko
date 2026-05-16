@@ -99,4 +99,19 @@ export class PrismaDueEntryRepository implements IDueEntryRepository {
       include: { charge: { select: { userId: true } } },
     });
   }
+
+  async findUpcomingByUser(
+    userId: string,
+    limit: number,
+  ): Promise<(DueEntry & { charge: { description: string; period: string } })[]> {
+    return this.prisma.dueEntry.findMany({
+      where: {
+        charge: { userId, isActive: true, isDeleted: false },
+        status: { in: ["PENDING", "PARTIAL"] },
+      },
+      include: { charge: { select: { description: true, period: true } } },
+      orderBy: { dueDate: "asc" },
+      take: limit,
+    });
+  }
 }
