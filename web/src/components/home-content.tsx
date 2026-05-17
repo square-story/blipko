@@ -116,20 +116,9 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-3">
-                            <Link
-                                href={TELEGRAM_URL}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex h-12 w-[220px] items-center justify-center gap-2 rounded-full bg-[#229ED9] font-medium text-white hover:opacity-90 transition-opacity"
-                            >
-                                <Send className="h-4 w-4" />
-                                Open in Telegram
-                            </Link>
-                            <div className="flex flex-col md:flex-row gap-3 items-center justify-center">
-                                <SignInButton />
-                                <WatchDemoButton />
-                            </div>
+                        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+                            <SignInButton />
+                            <WatchDemoButton />
                         </div>
                     )}
                 </motion.div>
