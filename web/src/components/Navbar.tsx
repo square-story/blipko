@@ -55,7 +55,7 @@ export const Header = () => {
               >
                 Privacy
               </Link>
-              <Button asChild className="rounded-full" size="sm">
+              <Button className="rounded-full" size="sm">
                 <Link href="/terms">Terms</Link>
               </Button>
             </div>
