@@ -1,5 +1,6 @@
 import { MessageCircle, Mic, Bell, Users, Wallet, LayoutDashboard } from 'lucide-react'
 import { motion } from 'motion/react'
+import { Card } from '@/components/ui/card'
 
 const features = [
     {
@@ -49,31 +50,29 @@ export default function Features() {
                     <p className="text-muted-foreground text-lg">Built for Keralites. Works wherever you are.</p>
                 </motion.div>
 
-                <div className="relative mx-auto grid max-w-5xl overflow-hidden rounded-xl border bg-card/60 backdrop-blur-sm sm:grid-cols-2 lg:grid-cols-3">
-                    {features.map((f, i) => {
-                        const Icon = f.icon;
-                        return (
-                            <motion.div
-                                key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: i * 0.08 }}
-                                className="group relative border-b border-r p-8 last:border-b-0 sm:last:border-r-0 lg:last:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0 hover:bg-muted/50 transition-colors"
-                            >
-                                <div className="space-y-3 relative z-10">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border bg-background">
-                                            <Icon className="h-5 w-5" />
+                <Card className="overflow-hidden">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3">
+                        {features.map((f, i) => {
+                            const Icon = f.icon;
+                            return (
+                                <div
+                                    key={i}
+                                    className="border-b border-r p-8 last:border-b-0 sm:last:border-r-0 lg:last:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0 hover:bg-muted/50 transition-colors"
+                                >
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex size-10 items-center justify-center rounded-lg border bg-background">
+                                                <Icon />
+                                            </div>
+                                            <h3 className="text-base font-semibold">{f.title}</h3>
                                         </div>
-                                        <h3 className="text-base font-semibold">{f.title}</h3>
+                                        <p className="text-sm text-muted-foreground leading-relaxed">{f.body}</p>
                                     </div>
-                                    <p className="text-sm text-muted-foreground leading-relaxed">{f.body}</p>
                                 </div>
-                            </motion.div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
             </div>
         </section>
     )

@@ -1,18 +1,15 @@
 
 import { Play } from "lucide-react"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export function WatchDemoButton() {
     return (
-        <Link href="https://youtu.be/YjKOqf2Cpjw" target="_blank">
-            <button
-                className="group relative flex h-12 w-[200px] items-center justify-between rounded-full font-medium border-2 text-primary"
-            >
-                <span className="pl-4">Watch Demo</span>
-                <div className="relative mr-1 h-9 w-9 overflow-hidden rounded-full bg-primary border border-primary">
-                    <Play className="h-4 w-4 ml-2 mt-2 text-accent" />
-                </div>
-            </button>
-        </Link>
+        <Button asChild size="lg" variant="outline" className="rounded-full">
+            <Link href="https://youtu.be/YjKOqf2Cpjw" target="_blank">
+                <Play data-icon="inline-start" />
+                Watch Demo
+            </Link>
+        </Button>
     )
 }
