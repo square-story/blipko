@@ -17,3 +17,4 @@ scripts/extract_users_csv.ts
 
 
 /backups
+.seed-build

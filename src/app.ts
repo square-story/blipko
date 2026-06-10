@@ -4,11 +4,7 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env";
 import { prisma } from "./data/prisma/client";
 import { telegramRoutes } from "./presentation/routes/telegramRoutes";
-import {
-  sendDueNotifications,
-  generateDueEntries,
-  telegramWebhookController,
-} from "./presentation/controllers/TelegramWebhookController";
+import { telegramWebhookController } from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
 
 const app: Application = express();
@@ -43,8 +39,8 @@ const port = env.PORT;
 
 if (process.env.NODE_ENV !== "test") {
   const server = app.listen(port, () => {
-    process.stdout.write(`🚀 AI Ledger server listening on port ${port}\n`);
-    startScheduler(sendDueNotifications, generateDueEntries);
+    process.stdout.write(`🚀 Blipko budget bot listening on port ${port}\n`);
+    startScheduler();
     telegramWebhookController.registerBotCommands().catch(console.error);
   });
 

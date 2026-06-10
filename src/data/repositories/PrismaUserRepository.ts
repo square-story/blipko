@@ -2,6 +2,7 @@ import { PrismaClient, User } from "@prisma/client";
 import {
   IUserRepository,
   CreateUserDTO,
+  UpdateUserDTO,
 } from "../../domain/repositories/IUserRepository";
 
 export class PrismaUserRepository implements IUserRepository {
@@ -10,7 +11,6 @@ export class PrismaUserRepository implements IUserRepository {
   async create(data: CreateUserDTO): Promise<User> {
     return this.prisma.user.create({
       data: {
-        phoneNumber: data.phoneNumber ?? null,
         telegramId: data.telegramId ?? null,
         email: data.email ?? null,
         name: data.name ?? null,
@@ -18,15 +18,20 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  async findByPhone(phoneNumber: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { phoneNumber } });
-  }
-
-  async update(
-    id: string,
-    data: { telegramId?: string; name?: string },
-  ): Promise<User> {
-    return this.prisma.user.update({ where: { id }, data });
+  async update(id: string, data: UpdateUserDTO): Promise<User> {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.telegramId !== undefined && { telegramId: data.telegramId }),
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.monthlyIncome !== undefined && {
+          monthlyIncome: data.monthlyIncome,
+        }),
+        ...(data.hasOnboarded !== undefined && {
+          hasOnboarded: data.hasOnboarded,
+        }),
+      },
+    });
   }
 
   async findByTelegramId(telegramId: string): Promise<User | null> {
