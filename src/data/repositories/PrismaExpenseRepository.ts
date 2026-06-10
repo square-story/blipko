@@ -27,6 +27,22 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     return this.prisma.expense.findUnique({ where: { id } });
   }
 
+  async findLastByUserId(userId: string): Promise<Expense | null> {
+    return this.prisma.expense.findFirst({
+      where: { userId, isDeleted: false },
+      orderBy: { date: "desc" },
+    });
+  }
+
+  async findByConfirmationMessageId(
+    messageId: string,
+    userId: string,
+  ): Promise<Expense | null> {
+    return this.prisma.expense.findFirst({
+      where: { confirmationMessageId: messageId, userId, isDeleted: false },
+    });
+  }
+
   async updateConfirmationMessageId(
     expenseId: string,
     messageId: string,

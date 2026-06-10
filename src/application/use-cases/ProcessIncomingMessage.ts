@@ -16,6 +16,7 @@ import { MessageProcessor, ProcessContext } from "./processors/MessageProcessor"
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
+import { UndoProcessor } from "./processors/UndoProcessor";
 import { ExpenseProcessor } from "./processors/ExpenseProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
 
@@ -65,10 +66,22 @@ export class ProcessIncomingMessageUseCase {
         budgetConfigRepository,
         messageService,
       ),
+      new UndoProcessor(
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
     ];
     this.postParseProcessors = [
       new StatusProcessor(
         expenseRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
+      new UndoProcessor(
+        expenseRepository,
+        categoryRepository,
         budgetConfigRepository,
         messageService,
       ),
@@ -110,6 +123,7 @@ export class ProcessIncomingMessageUseCase {
       user,
       platformUserId: payload.platformUserId,
       textMessage: payload.textMessage,
+      replyToMessageId: payload.replyToMessageId,
       conversationHistory: history,
     };
 

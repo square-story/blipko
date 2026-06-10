@@ -7,6 +7,7 @@ export interface ProcessContext {
   platformUserId: string;
   textMessage: string;
   parsed?: ParsedData | undefined;
+  replyToMessageId?: string | undefined;
   conversationHistory?: ConversationTurn[] | undefined;
 }
 

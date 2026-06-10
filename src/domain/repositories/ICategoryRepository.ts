@@ -11,5 +11,6 @@ export interface ICategoryRepository {
   findAllForUser(userId: string): Promise<Category[]>;
   // Case-insensitive match across system + user categories.
   findByNameForUser(userId: string, name: string): Promise<Category | null>;
+  findById(id: string): Promise<Category | null>;
   create(data: CreateCategoryDTO): Promise<Category>;
 }

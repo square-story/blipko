@@ -40,13 +40,16 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expenseRepository = {
       create: vi.fn().mockResolvedValue({ id: "e1" }),
       findById: vi.fn(),
+      findLastByUserId: vi.fn().mockResolvedValue(null),
+      findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
       sumByBucketForMonth: vi.fn().mockResolvedValue(220),
-      softDelete: vi.fn(),
+      softDelete: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
       findAllForUser: vi.fn().mockResolvedValue([]),
       findByNameForUser: vi.fn().mockResolvedValue(null),
+      findById: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
       create: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
     };
     budgetConfigRepository = {
@@ -187,6 +190,25 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(expenseRepository.create).not.toHaveBeenCalled();
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "This month — Day",
+    );
+  });
+
+  it("undoes the last expense on the plain 'undo' command", async () => {
+    expenseRepository.findLastByUserId.mockResolvedValue({
+      id: "e1",
+      amount: 220,
+      bucket: "WANTS",
+      categoryId: "c1",
+      note: "lunch",
+    });
+    expenseRepository.sumByBucketForMonth.mockResolvedValue(0);
+
+    await useCase.execute({ platformUserId: "123", textMessage: "undo" });
+
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(expenseRepository.softDelete).toHaveBeenCalledWith("e1");
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "Removed: ₹220 Food",
     );
   });
 
