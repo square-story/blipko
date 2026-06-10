@@ -47,6 +47,34 @@ export function formatMoney(amount: number): string {
   return `₹${inr.format(Math.round(amount))}`;
 }
 
+export interface MonthDayInfo {
+  day: number; // 1-based day of month
+  daysInMonth: number;
+  remainingDays: number; // days left including today (>= 1)
+}
+
+export function monthDayInfo(now: Date = new Date()): MonthDayInfo {
+  const day = now.getDate();
+  const daysInMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+  ).getDate();
+  return { day, daysInMonth, remainingDays: daysInMonth - day + 1 };
+}
+
+// Integer percentage of budget spent (0 when budget is 0).
+export function pctSpent(spent: number, budget: number): number {
+  if (budget <= 0) return 0;
+  return Math.round((spent / budget) * 100);
+}
+
+// 10-char unicode progress bar, clamped to [0, width].
+export function progressBar(pct: number, width = 10): string {
+  const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));
+  return "█".repeat(filled) + "░".repeat(width - filled);
+}
+
 // Strip legacy-Markdown control chars from user-supplied text so a stray
 // underscore/asterisk in a note can't break the message formatting.
 export function sanitizeMd(text: string): string {

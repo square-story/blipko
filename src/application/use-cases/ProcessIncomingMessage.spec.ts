@@ -180,6 +180,16 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(body).toContain("13,500"); // 15000 - 1500
   });
 
+  it("handles the plain 'status' command before AI parsing", async () => {
+    await useCase.execute({ platformUserId: "123", textMessage: "status" });
+
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(expenseRepository.create).not.toHaveBeenCalled();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "This month — Day",
+    );
+  });
+
   it("falls back to a friendly reply for non-financial messages", async () => {
     aiParser.parseText.mockResolvedValue({
       intent: "UNKNOWN",

@@ -92,8 +92,9 @@ export class TelegramWebhookController {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           commands: [
-            { command: "start", description: "Set up your budget" },
-            { command: "help",  description: "How to use the bot" },
+            { command: "start",  description: "Set up your budget" },
+            { command: "status", description: "Your budget health this month" },
+            { command: "help",   description: "How to use the bot" },
           ],
         }),
       });

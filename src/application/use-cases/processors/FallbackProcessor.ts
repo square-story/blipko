@@ -35,8 +35,6 @@ export class FallbackProcessor implements MessageProcessor {
         return amount && amount > 0
           ? `Noted — income of ${formatMoney(amount)}. (Full income tracking is coming soon.)`
           : "Got it. (Full income tracking is coming soon.)";
-      case "STATUS":
-        return "📊 Budget status is coming soon. For now, just text me your spends and I'll keep track.";
       case "UNDO":
         return "↩️ Undo is coming soon. For now, your latest entries are safely recorded.";
       default:

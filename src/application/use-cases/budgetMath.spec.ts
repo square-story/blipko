@@ -3,6 +3,9 @@ import {
   bucketBudget,
   currentMonthRange,
   formatMoney,
+  monthDayInfo,
+  pctSpent,
+  progressBar,
   sanitizeMd,
 } from "./budgetMath";
 
@@ -28,5 +31,25 @@ describe("budgetMath", () => {
 
   it("strips markdown control chars from user text", () => {
     expect(sanitizeMd("net_flix *bill*")).toBe("netflix bill");
+  });
+
+  it("computes integer percent spent, guarding zero budget", () => {
+    expect(pctSpent(21400, 25000)).toBe(86);
+    expect(pctSpent(0, 25000)).toBe(0);
+    expect(pctSpent(100, 0)).toBe(0);
+  });
+
+  it("renders a clamped 10-char progress bar", () => {
+    expect(progressBar(0)).toBe("░░░░░░░░░░");
+    expect(progressBar(50)).toBe("█████░░░░░");
+    expect(progressBar(100)).toBe("██████████");
+    expect(progressBar(150)).toBe("██████████"); // clamped
+  });
+
+  it("reports day-of-month info with at least one remaining day", () => {
+    const info = monthDayInfo(new Date(2026, 4, 10)); // May 10, 31-day month
+    expect(info.day).toBe(10);
+    expect(info.daysInMonth).toBe(31);
+    expect(info.remainingDays).toBe(22); // 31 - 10 + 1
   });
 });
