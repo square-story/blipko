@@ -6,17 +6,14 @@ import { PrismaProcessedMessageRepository } from "../../data/repositories/Prisma
 import { TelegramMessageService } from "../../data/messaging/TelegramMessageService";
 import { TelegramMediaService } from "../../data/messaging/TelegramMediaService";
 import { GeminiParser } from "../../data/ai/GeminiParser";
-import { GeminiQueryAgent } from "../../data/ai/GeminiQueryAgent";
 import { OpenAIParser } from "../../data/ai/OpenAIParser";
 import { FallbackAiParser } from "../../data/ai/FallbackAiParser";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
-import { PrismaContactRepository } from "../../data/repositories/PrismaContactRepository";
-import { PrismaTransactionRepository } from "../../data/repositories/PrismaTransactionRepository";
 import { PrismaUserRepository } from "../../data/repositories/PrismaUserRepository";
-import { PrismaWalletRepository } from "../../data/repositories/PrismaWalletRepository";
-import { PrismaRecurringChargeRepository } from "../../data/repositories/PrismaRecurringChargeRepository";
-import { PrismaDueEntryRepository } from "../../data/repositories/PrismaDueEntryRepository";
-import { PrismaGroupRepository } from "../../data/repositories/PrismaGroupRepository";
+import { PrismaExpenseRepository } from "../../data/repositories/PrismaExpenseRepository";
+import { PrismaCategoryRepository } from "../../data/repositories/PrismaCategoryRepository";
+import { PrismaBudgetConfigRepository } from "../../data/repositories/PrismaBudgetConfigRepository";
+import { PrismaParseLogRepository } from "../../data/repositories/PrismaParseLogRepository";
 import { PrismaConversationRepository } from "../../data/repositories/PrismaConversationRepository";
 import { prisma } from "../../data/prisma/client";
 import { env } from "../../config/env";
@@ -51,31 +48,22 @@ const transcriptionService = new SarvamTranscriptionService();
 const aiParser = new FallbackAiParser(new OpenAIParser(), new GeminiParser());
 
 const userRepository = new PrismaUserRepository(prisma);
-const contactRepository = new PrismaContactRepository(prisma);
-const transactionRepository = new PrismaTransactionRepository(prisma);
-const queryAgent = new GeminiQueryAgent(
-  transactionRepository,
-  contactRepository,
-);
+const expenseRepository = new PrismaExpenseRepository(prisma);
+const categoryRepository = new PrismaCategoryRepository(prisma);
+const budgetConfigRepository = new PrismaBudgetConfigRepository(prisma);
+const parseLogRepository = new PrismaParseLogRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
-const walletRepository = new PrismaWalletRepository(prisma);
-const recurringChargeRepository = new PrismaRecurringChargeRepository(prisma);
-const dueEntryRepository = new PrismaDueEntryRepository(prisma);
-const groupRepository = new PrismaGroupRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
 
 const processIncomingMessage = new ProcessIncomingMessageUseCase(
   aiParser,
   userRepository,
-  contactRepository,
-  transactionRepository,
-  messageService,
-  walletRepository,
-  recurringChargeRepository,
-  dueEntryRepository,
-  groupRepository,
+  expenseRepository,
+  categoryRepository,
+  budgetConfigRepository,
+  parseLogRepository,
   conversationRepository,
-  queryAgent,
+  messageService,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(
@@ -104,12 +92,8 @@ export class TelegramWebhookController {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           commands: [
-            { command: "wallets",   description: "List your wallets" },
-            { command: "wallet",    description: "Switch default — /wallet <name>" },
-            { command: "group",     description: "Group info and invite code" },
-            { command: "dues",      description: "View upcoming dues" },
-            { command: "recurring", description: "List recurring charges" },
-            { command: "help",      description: "Show all commands" },
+            { command: "start", description: "Set up your budget" },
+            { command: "help",  description: "How to use the bot" },
           ],
         }),
       });
@@ -247,16 +231,4 @@ export const telegramWebhookController = new TelegramWebhookController(
   messageService,
   env.TELEGRAM_WEBHOOK_SECRET,
   env.TELEGRAM_BOT_TOKEN,
-);
-
-import { SendDueNotificationsUseCase } from "../../application/use-cases/SendDueNotifications";
-export const sendDueNotifications = new SendDueNotificationsUseCase(
-  dueEntryRepository,
-  messageService,
-);
-
-import { GenerateDueEntriesUseCase } from "../../application/use-cases/GenerateDueEntries";
-export const generateDueEntries = new GenerateDueEntriesUseCase(
-  recurringChargeRepository,
-  dueEntryRepository,
 );

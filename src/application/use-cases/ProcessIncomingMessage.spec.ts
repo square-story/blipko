@@ -1,270 +1,197 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ProcessIncomingMessageUseCase } from "./ProcessIncomingMessage";
 
-describe("ProcessIncomingMessage", () => {
+const onboardedUser = {
+  id: "u1",
+  telegramId: "123",
+  name: "Sam",
+  hasOnboarded: true,
+  monthlyIncome: 50000,
+};
+
+const newUser = {
+  id: "u1",
+  telegramId: "123",
+  name: "Sam",
+  hasOnboarded: false,
+  monthlyIncome: null,
+};
+
+describe("ProcessIncomingMessage (budget flow)", () => {
   let useCase: ProcessIncomingMessageUseCase;
-  let mockUserRepository: any;
-  let mockContactRepository: any;
-  let mockTransactionRepository: any;
-  let mockAiParser: any;
-  let mockMessageService: any;
-  let mockWalletRepository: any;
-  let mockRecurringChargeRepository: any;
-  let mockDueEntryRepository: any;
-  let mockConversationRepository: any;
+  let userRepository: any;
+  let expenseRepository: any;
+  let categoryRepository: any;
+  let budgetConfigRepository: any;
+  let parseLogRepository: any;
+  let conversationRepository: any;
+  let aiParser: any;
+  let messageService: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserRepository = {
-      findByTelegramId: vi.fn(),
-      create: vi.fn(),
+
+    userRepository = {
+      findByTelegramId: vi.fn().mockResolvedValue(onboardedUser),
+      create: vi.fn().mockResolvedValue(newUser),
+      update: vi.fn().mockResolvedValue(onboardedUser),
+      linkTelegramByToken: vi.fn().mockResolvedValue(null),
     };
-    mockContactRepository = {
-      findByName: vi.fn(),
-      findSimilarByName: vi.fn(),
+    expenseRepository = {
+      create: vi.fn().mockResolvedValue({ id: "e1" }),
       findById: vi.fn(),
-      create: vi.fn(),
+      updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
+      sumByBucketForMonth: vi.fn().mockResolvedValue(220),
+      softDelete: vi.fn(),
     };
-    mockTransactionRepository = {
-      create: vi.fn(),
-      findByContact: vi.fn(),
-      findById: vi.fn(),
-      findByConfirmationId: vi.fn(),
-      updateConfirmationMessageId: vi.fn(),
-      findThreeTransactions: vi.fn().mockResolvedValue([]),
-      getBalance: vi.fn(),
-      getDailySummary: vi.fn(),
+    categoryRepository = {
+      findAllForUser: vi.fn().mockResolvedValue([]),
+      findByNameForUser: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
     };
-    mockAiParser = {
-      parseText: vi.fn(),
-    };
-    mockMessageService = {
-      sendMessage: vi.fn().mockResolvedValue("msg-id-123"),
-      sendInteractiveMessage: vi.fn(),
-      sendTypingIndicator: vi.fn(),
-    };
-    mockWalletRepository = {
-      create: vi.fn().mockResolvedValue({ id: "wallet-1", name: "Personal" }),
-      findDefaultByUser: vi
+    budgetConfigRepository = {
+      create: vi.fn().mockResolvedValue({}),
+      findByUserId: vi
         .fn()
-        .mockResolvedValue({ id: "wallet-1", name: "Personal" }),
-      findByName: vi.fn().mockResolvedValue(null),
-      findByUserId: vi.fn().mockResolvedValue([]),
-      findById: vi.fn().mockResolvedValue(null),
-      setDefault: vi.fn(),
-      delete: vi.fn(),
+        .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    mockRecurringChargeRepository = {
-      create: vi.fn(),
-      findByUserId: vi.fn().mockResolvedValue([]),
-      findDueForNotification: vi.fn().mockResolvedValue([]),
-      markNotified: vi.fn(),
-      deactivate: vi.fn(),
-    };
-    mockDueEntryRepository = {
-      create: vi.fn(),
-      findPendingForCharge: vi.fn().mockResolvedValue([]),
-      findUnnotified: vi.fn().mockResolvedValue([]),
-      markNotified: vi.fn(),
-      markPaid: vi.fn(),
-      snooze: vi.fn(),
+    parseLogRepository = {
+      create: vi.fn().mockResolvedValue({ id: "plog1" }),
       findById: vi.fn().mockResolvedValue(null),
     };
-    mockConversationRepository = {
+    conversationRepository = {
       getRecent: vi.fn().mockResolvedValue([]),
       append: vi.fn().mockResolvedValue(undefined),
     };
-    const mockGroupRepository = {
-      create: vi.fn(),
-      findById: vi.fn().mockResolvedValue(null),
-      findByInviteCode: vi.fn().mockResolvedValue(null),
-      addMember: vi.fn(),
-      removeMember: vi.fn(),
-      findMembership: vi.fn().mockResolvedValue(null),
-      findMembershipByUser: vi.fn().mockResolvedValue(null),
-      findGroupContextForUser: vi.fn().mockResolvedValue(null),
-      findGroupsByHead: vi.fn().mockResolvedValue([]),
-      getGroupSummary: vi.fn().mockResolvedValue([]),
-      regenerateInviteCode: vi.fn(),
+    aiParser = { parseText: vi.fn() };
+    messageService = {
+      sendMessage: vi.fn().mockResolvedValue("msg-id-123"),
+      sendInteractiveMessage: vi.fn().mockResolvedValue("msg-id-456"),
+      sendTypingIndicator: vi.fn(),
     };
 
     useCase = new ProcessIncomingMessageUseCase(
-      mockAiParser,
-      mockUserRepository,
-      mockContactRepository,
-      mockTransactionRepository,
-      mockMessageService,
-      mockWalletRepository,
-      mockRecurringChargeRepository,
-      mockDueEntryRepository,
-      mockGroupRepository,
-      mockConversationRepository,
+      aiParser,
+      userRepository,
+      expenseRepository,
+      categoryRepository,
+      budgetConfigRepository,
+      parseLogRepository,
+      conversationRepository,
+      messageService,
     );
   });
 
-  it("should process a credit transaction correctly", async () => {
-    const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
-    const mockContact = { id: "contact-1", name: "Raju", userId: "user-1" };
-    const mockParsedData = {
-      intent: "PAID",
-      amount: 500,
-      name: "Raju",
+  it("onboards a new user from their income number and shows the 50/30/20 split", async () => {
+    userRepository.findByTelegramId.mockResolvedValue(newUser);
+
+    await useCase.execute({ platformUserId: "123", textMessage: "50000" });
+
+    expect(userRepository.update).toHaveBeenCalledWith("u1", {
+      monthlyIncome: 50000,
+      hasOnboarded: true,
+    });
+    expect(budgetConfigRepository.create).toHaveBeenCalledWith({ userId: "u1" });
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("monthly plan");
+    expect(body).toContain("25,000"); // Needs
+    expect(body).toContain("15,000"); // Wants
+    expect(body).toContain("10,000"); // Savings
+  });
+
+  it("records a confident expense and shows remaining bucket budget", async () => {
+    categoryRepository.findByNameForUser.mockResolvedValue({
+      id: "c1",
+      name: "Food",
+      bucket: "WANTS",
+    });
+    aiParser.parseText.mockResolvedValue({
+      intent: "EXPENSE",
+      amount: 220,
       category: "Food",
-      currency: "INR",
-    };
-
-    mockUserRepository.findByTelegramId.mockResolvedValue(mockUser);
-    mockAiParser.parseText.mockResolvedValue(mockParsedData);
-    mockContactRepository.findSimilarByName.mockResolvedValue(mockContact);
-    mockContactRepository.findByName.mockResolvedValue(mockContact);
-    mockContactRepository.findById.mockResolvedValue({
-      ...mockContact,
-      currentBalance: 500,
-    });
-    mockTransactionRepository.create.mockResolvedValue({
-      id: "tx-1",
-      amount: 500,
-      intent: "PAID",
-      description: "Food",
-    });
-    mockTransactionRepository.findByContact.mockResolvedValue([]);
-
-    await useCase.execute({
-      platformUserId: "1234567890",
-      textMessage: "Rajuin 500 koduthu",
+      bucket: "WANTS",
+      note: "lunch",
+      confidence: 0.9,
     });
 
-    expect(mockUserRepository.findByTelegramId).toHaveBeenCalledWith(
-      "1234567890",
+    await useCase.execute({ platformUserId: "123", textMessage: "lunch 220" });
+
+    expect(expenseRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        amount: 220,
+        bucket: "WANTS",
+        categoryId: "c1",
+      }),
     );
-    expect(mockAiParser.parseText).toHaveBeenCalledWith(
-      "Rajuin 500 koduthu",
-      null,
-      [],
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("Wants · Food");
+    expect(body).toContain("Wants left this month");
+    expect(body).toContain("14,780"); // 15000 - 220
+    expect(body).toContain("15,000");
+    expect(expenseRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
+      "e1",
+      "msg-id-123",
     );
-    expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
-      to: "1234567890",
-      body: expect.stringContaining("Entry Added"),
-    });
   });
 
-  it("should create a new user if not found", async () => {
-    const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
-    const mockParsedData = { intent: "BALANCE", amount: 0, name: "Unknown" };
-
-    mockUserRepository.findByTelegramId.mockResolvedValue(null);
-    mockUserRepository.create.mockResolvedValue(mockUser);
-    mockAiParser.parseText.mockResolvedValue(mockParsedData);
-    mockContactRepository.findByName.mockResolvedValue(null);
-    mockContactRepository.findSimilarByName.mockResolvedValue(null);
-
-    await useCase.execute({
-      platformUserId: "1234567890",
-      textMessage: "Balance?",
+  it("asks for a bucket on a low-confidence parse instead of saving", async () => {
+    aiParser.parseText.mockResolvedValue({
+      intent: "EXPENSE",
+      amount: 1500,
+      confidence: 0.4,
     });
 
-    expect(mockUserRepository.create).toHaveBeenCalledWith({
-      telegramId: "1234567890",
-    });
+    await useCase.execute({ platformUserId: "123", textMessage: "paid 1500" });
+
+    expect(parseLogRepository.create).toHaveBeenCalled();
+    expect(expenseRepository.create).not.toHaveBeenCalled();
+    const [, body, buttons] =
+      messageService.sendInteractiveMessage.mock.calls[0];
+    expect(body).toContain("which bucket");
+    expect(buttons.map((b: any) => b.id)).toEqual([
+      "bkt:plog1:NEEDS",
+      "bkt:plog1:WANTS",
+      "bkt:plog1:SAVINGS",
+    ]);
   });
 
-  it("should create a new contact if not found", async () => {
-    const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
-    const mockContact = { id: "contact-1", name: "NewGuy", userId: "user-1" };
-    const mockParsedData = {
-      intent: "RECEIVED",
-      amount: 100,
-      name: "NewGuy",
-      category: "General",
-      currency: "INR",
-    };
-
-    mockUserRepository.findByTelegramId.mockResolvedValue(mockUser);
-    mockAiParser.parseText.mockResolvedValue(mockParsedData);
-    mockContactRepository.findSimilarByName.mockResolvedValue(null);
-    mockContactRepository.findByName.mockResolvedValue(null);
-    mockContactRepository.create.mockResolvedValue(mockContact);
-    mockContactRepository.findById.mockResolvedValue({
-      ...mockContact,
-      currentBalance: 100,
+  it("records the expense after the user confirms the bucket via button", async () => {
+    parseLogRepository.findById.mockResolvedValue({
+      id: "plog1",
+      rawText: "paid 1500",
+      parsed: { intent: "EXPENSE", amount: 1500, note: "paid", confidence: 0.4 },
     });
-    mockTransactionRepository.create.mockResolvedValue({
-      id: "tx-2",
-      amount: 100,
-      intent: "RECEIVED",
-    });
-    mockTransactionRepository.findByContact.mockResolvedValue([]);
+    expenseRepository.sumByBucketForMonth.mockResolvedValue(1500);
 
     await useCase.execute({
-      platformUserId: "1234567890",
-      textMessage: "NewGuy 100 thannu",
+      platformUserId: "123",
+      textMessage: "bkt:plog1:WANTS",
     });
 
-    expect(mockContactRepository.create).toHaveBeenCalledWith({
-      name: "NewGuy",
-      userId: "user-1",
-    });
-  });
-
-  it("should handle BALANCE intent for a specific contact", async () => {
-    const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
-    const mockContact = {
-      id: "contact-1",
-      name: "Raju",
-      userId: "user-1",
-      currentBalance: 1000,
-    };
-    const mockParsedData = { intent: "BALANCE", amount: 0, name: "Raju" };
-
-    mockUserRepository.findByTelegramId.mockResolvedValue(mockUser);
-    mockAiParser.parseText.mockResolvedValue(mockParsedData);
-    mockContactRepository.findByName.mockResolvedValue(mockContact);
-    mockTransactionRepository.findByContact.mockResolvedValue([]);
-    mockTransactionRepository.findThreeTransactions.mockResolvedValue([]);
-
-    await useCase.execute({
-      platformUserId: "1234567890",
-      textMessage: "Balance with Raju?",
-    });
-
-    expect(mockContactRepository.findByName).toHaveBeenCalledWith(
-      "user-1",
-      "Raju",
+    expect(parseLogRepository.findById).toHaveBeenCalledWith("plog1");
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(expenseRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 1500, bucket: "WANTS", parseLogId: "plog1" }),
     );
-    expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
-      to: "1234567890",
-      body: expect.stringContaining("Customer Report: Raju"),
-    });
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("Wants left this month");
+    expect(body).toContain("13,500"); // 15000 - 1500
   });
 
-  it("should handle VIEW_DAILY_SUMMARY intent", async () => {
-    const mockUser = { id: "user-1", telegramId: "1234567890", name: "User" };
-    const mockParsedData = { intent: "VIEW_DAILY_SUMMARY" };
-    const mockSummary = {
-      transactions: [
-        { intent: "PAID", amount: 500, category: "Food" },
-        { intent: "PAID", amount: 200, category: "Travel" },
-      ],
-      totalSpend: 700,
-      categoryBreakdown: { Food: 500, Travel: 200 },
-    };
-
-    mockUserRepository.findByTelegramId.mockResolvedValue(mockUser);
-    mockAiParser.parseText.mockResolvedValue(mockParsedData);
-    mockTransactionRepository.getDailySummary.mockResolvedValue(mockSummary);
-
-    await useCase.execute({
-      platformUserId: "1234567890",
-      textMessage: "Show today's spend",
+  it("falls back to a friendly reply for non-financial messages", async () => {
+    aiParser.parseText.mockResolvedValue({
+      intent: "UNKNOWN",
+      confidence: 0.9,
+      conversational_response: "Hi! Text me a spend like \"chai 30\".",
     });
 
-    expect(mockTransactionRepository.getDailySummary).toHaveBeenCalledWith(
-      "user-1",
-      expect.any(Date),
+    await useCase.execute({ platformUserId: "123", textMessage: "hello" });
+
+    expect(expenseRepository.create).not.toHaveBeenCalled();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "Text me a spend",
     );
-    expect(mockMessageService.sendMessage).toHaveBeenCalledWith({
-      to: "1234567890",
-      body: expect.stringContaining("Today's Summary"),
-    });
   });
 });

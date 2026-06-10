@@ -9,98 +9,39 @@ datasource db {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-enum Intent {
-  PAID
-  RECEIVED
-  UNDO
-}
-
-enum Status {
-  PENDING
-  CONFIRMED
-  FAILED
-}
-
-enum ContactStatus {
-  ACTIVE
-  INACTIVE
-  ARCHIVED
-}
-
-// Double-entry accounting
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  INCOME
-  EXPENSE
-}
-
-enum LineType {
-  DEBIT
-  CREDIT
-}
-
-// Wallets
-enum WalletType {
-  PERSONAL
-  BUSINESS
+// 50/30/20 budgeting buckets
+enum Bucket {
+  NEEDS
+  WANTS
   SAVINGS
-  CUSTOM
 }
 
-// Recurring charges & dues
-enum PeriodType {
-  MONTHLY
-  QUARTERLY
-  CUSTOM
+enum ExpenseSource {
+  TEXT
+  VOICE
 }
 
-enum RecurringDirection {
-  INCOME
-  EXPENSE
-}
-
-enum DueStatus {
-  PENDING
-  PARTIAL
-  PAID
-  OVERDUE
-}
-
-// Deposits
-enum DepositType {
-  SECURITY
-  ADVANCE
-}
-
-enum DepositStatus {
-  HELD
-  PARTIALLY_RETURNED
-  RETURNED
-}
-
-// Contributions
-enum ContributionType {
-  CAPITAL
-  LOAN
-}
-
-// Family / Group
-enum GroupRole {
-  ADMIN
-  MEMBER
-}
-
-// ─── Auth (NextAuth) ───────────────────────────────────────────────────────────
+// ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
   id          String   @id @default(cuid())
   email       String?  @unique
-  phoneNumber String?  @unique
   name        String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Platform identity
+  telegramId String? @unique
+
+  // Budget profile
+  monthlyIncome Decimal? @db.Decimal(12, 2)
+  currency      String   @default("INR")
+  locale        String   @default("en-IN")
+  payday        Int      @default(1)
+
+  // Lifecycle
+  isEarlyAdopter Boolean @default(true)
+  hasOnboarded   Boolean @default(false)
 
   // NextAuth
   emailVerified DateTime?
@@ -108,32 +49,101 @@ model User {
   accounts      Account[]
   sessions      Session[]
 
-  // Platform identity
-  telegramId String? @unique
-
-  // Early Access
-  isEarlyAdopter Boolean @default(true)
-  hasOnboarded   Boolean @default(false)
-
   // Core relations
-  transactions     Transaction[]
-  contacts         Contact[]
-  logs             ParseLog[]
-  organizations    Organization[]
-  ledgerAccounts   LedgerAccount[]
-  auditLogs        AuditLog[]
-  wallets          Wallet[]
-  recurringCharges RecurringCharge[]
-
-  // Group relations
-  createdGroups    Group[]       @relation("GroupCreator")
-  groupMemberships GroupMember[]
-
-  // Transactions where this user acted as group member
-  groupMemberTransactions Transaction[] @relation("GroupMemberTransactions")
+  expenses     Expense[]
+  budgetConfig BudgetConfig?
+  categories   Category[]
+  logs         ParseLog[]
 
   conversationMessages ConversationMessage[]
   telegramLinkToken    TelegramLinkToken?
+}
+
+model BudgetConfig {
+  id         String @id @default(cuid())
+  userId     String @unique
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  needsPct   Int    @default(50)
+  wantsPct   Int    @default(30)
+  savingsPct Int    @default(20)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// System categories have userId = null; custom categories belong to a user.
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  bucket   Bucket
+  isSystem Boolean @default(false)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expenses Expense[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+}
+
+model Expense {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(10, 2)
+  bucket Bucket
+  note   String?
+
+  // Raw capture + parse provenance
+  rawText    String
+  source     ExpenseSource @default(TEXT)
+  confidence Float
+
+  date DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  // Link back to the raw parsed log
+  parseLogId String?   @unique
+  parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
+
+  // Link to the confirmation message (for reply/undo handling)
+  confirmationMessageId String? @unique
+
+  // Soft delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  @@index([userId, date])
+  @@index([userId, bucket, date])
+}
+
+// ─── Infra ────────────────────────────────────────────────────────────────────
+
+// Stores every parse (raw + parsed JSON + confidence). Also serves as the
+// pending-expense store for the low-confidence bucket-confirmation flow.
+model ParseLog {
+  id         String  @id @default(cuid())
+  rawText    String
+  parsed     Json
+  confidence Float?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  expense Expense?
+
+  createdAt DateTime @default(now())
+}
+
+model ProcessedMessage {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  processedAt DateTime @default(now())
 }
 
 model ConversationMessage {
@@ -146,6 +156,17 @@ model ConversationMessage {
 
   @@index([userId, createdAt])
 }
+
+model TelegramLinkToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── Auth (NextAuth) ───────────────────────────────────────────────────────────
 
 model Account {
   id                String  @id @default(cuid())
@@ -180,320 +201,4 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-// ─── Multi-Business ────────────────────────────────────────────────────────────
-
-model Organization {
-  id        String         @id @default(cuid())
-  name      String
-  userId    String
-  user      User           @relation(fields: [userId], references: [id])
-  units     BusinessUnit[]
-  contacts  Contact[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-}
-
-model BusinessUnit {
-  id           String       @id @default(cuid())
-  name         String
-  type         String // "cottage", "shop_room", "flat", "office", etc.
-  orgId        String
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  contacts     Contact[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-}
-
-// ─── Core Domain ───────────────────────────────────────────────────────────────
-
-model Contact {
-  id       String        @id @default(cuid())
-  name     String
-  category String        @default("General")
-  status   ContactStatus @default(ACTIVE)
-
-  // Contact Details
-  phoneNumber String?
-  email       String?
-  address     String?
-  notes       String?
-
-  currentBalance Decimal @default(0) @db.Decimal(10, 2)
-
-  // Contacts are private to a user
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  // Optional multi-business grouping
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  businessUnitId String?
-  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id])
-
-  // Relations
-  transactions     Transaction[]
-  recurringCharges RecurringCharge[]
-  dueEntries       DueEntry[]
-  deposits         Deposit[]
-  contributions    Contribution[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Ensure a user doesn't have two contacts named "Raju"
-  @@unique([userId, name])
-}
-
-model Transaction {
-  id          String  @id @default(cuid())
-  amount      Decimal @db.Decimal(10, 2)
-  currency    String  @default("INR")
-  intent      Intent
-  description String?
-  category    String  @default("General")
-  receiptUrl  String?
-
-  date DateTime @default(now())
-
-  // Relations
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  contactId String?
-  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
-
-  walletId String?
-  wallet   Wallet? @relation(fields: [walletId], references: [id])
-
-  // Group tracking
-  groupId       String?
-  group         Group?  @relation(fields: [groupId], references: [id])
-  groupMemberId String?
-  groupMember   User?   @relation("GroupMemberTransactions", fields: [groupMemberId], references: [id])
-
-  // Link back to the raw parsed log
-  parseLogId String?   @unique
-  parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
-
-  // Link to the confirmation message sent to the user (for reply handling)
-  confirmationMessageId String? @unique
-
-  // Double-entry ledger lines
-  lines TransactionLine[]
-
-  // Soft Delete
-  isDeleted       Boolean   @default(false)
-  deletedAt       DateTime?
-  deletedByUserId String?
-
-  @@index([userId, date])
-  @@index([userId, date, isDeleted])
-  @@index([groupId])
-  @@index([groupMemberId])
-  @@index([contactId, date])
-  @@index([walletId, date])
-}
-
-// ─── Double-Entry Accounting ───────────────────────────────────────────────────
-
-model LedgerAccount {
-  id      String      @id @default(cuid())
-  code    String // e.g. "1100", "4000"
-  name    String // e.g. "Cash", "Rent Revenue"
-  type    AccountType
-  userId  String
-  user    User          @relation(fields: [userId], references: [id])
-  entries TransactionLine[]
-
-  @@unique([userId, code])
-}
-
-model TransactionLine {
-  id            String        @id @default(cuid())
-  transactionId String
-  accountId     String
-  type          LineType
-  amount        Decimal       @db.Decimal(10, 2)
-  transaction   Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  account       LedgerAccount @relation(fields: [accountId], references: [id])
-}
-
-// ─── Wallets ──────────────────────────────────────────────────────────────────
-
-model Wallet {
-  id        String     @id @default(cuid())
-  name      String
-  emoji     String     @default("💰")
-  type      WalletType @default(PERSONAL)
-  isDefault Boolean    @default(false)
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  transactions     Transaction[]
-  recurringCharges RecurringCharge[]
-  dueEntries       DueEntry[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, name])
-  @@index([userId, isDefault])
-}
-
-// ─── Recurring Charges & Dues ─────────────────────────────────────────────────
-
-model RecurringCharge {
-  id          String             @id @default(cuid())
-  userId      String
-  user        User               @relation(fields: [userId], references: [id])
-  contactId   String?
-  contact     Contact?           @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  walletId    String?
-  wallet      Wallet?            @relation(fields: [walletId], references: [id])
-  amount      Decimal            @db.Decimal(10, 2)
-  amountMin   Decimal?           @db.Decimal(10, 2)
-  amountMax   Decimal?           @db.Decimal(10, 2)
-  direction   RecurringDirection @default(EXPENSE)
-  description String             @default("Recurring charge")
-  period      PeriodType
-  dayOfMonth  Int
-  startDate   DateTime
-  endDate     DateTime?
-  isActive    Boolean            @default(true)
-  isDeleted   Boolean            @default(false)
-
-  notifyDaysBefore Int       @default(2)
-  lastNotifiedAt   DateTime?
-
-  dues      DueEntry[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-}
-
-model DueEntry {
-  id         String          @id @default(cuid())
-  chargeId   String
-  charge     RecurringCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
-  contactId  String?
-  contact    Contact?        @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  walletId   String?
-  wallet     Wallet?         @relation(fields: [walletId], references: [id])
-  dueDate    DateTime
-  amount     Decimal         @db.Decimal(10, 2)
-  paidAmount Decimal         @default(0) @db.Decimal(10, 2)
-  status     DueStatus       @default(PENDING)
-  notifiedAt DateTime?
-  paidAt     DateTime?
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-
-  @@unique([chargeId, dueDate])
-  @@index([contactId, status])
-  @@index([dueDate, status])
-}
-
-// ─── Deposits ─────────────────────────────────────────────────────────────────
-
-model Deposit {
-  id         String        @id @default(cuid())
-  contactId  String
-  contact    Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  amount     Decimal       @db.Decimal(10, 2)
-  type       DepositType
-  receivedAt DateTime
-  returnedAt DateTime?
-  status     DepositStatus @default(HELD)
-  notes      String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-}
-
-// ─── Contributions (Capital / Loans from partners) ────────────────────────────
-
-model Contribution {
-  id          String           @id @default(cuid())
-  contactId   String
-  contact     Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  amount      Decimal          @db.Decimal(10, 2)
-  type        ContributionType
-  receivedAt  DateTime
-  notes       String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-}
-
-// ─── Audit Log ────────────────────────────────────────────────────────────────
-
-model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  action     String // "CREATE_TRANSACTION", "DELETE_CONTACT", etc.
-  entityType String // "Transaction", "Contact", etc.
-  entityId   String
-  before     Json?
-  after      Json?
-  createdAt  DateTime @default(now())
-
-  @@index([userId, entityType])
-  @@index([entityId])
-}
-
-// ─── Infra ────────────────────────────────────────────────────────────────────
-
-model ParseLog {
-  id      String @id @default(cuid())
-  rawText String
-  parsed  Json
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  transaction Transaction?
-
-  createdAt DateTime @default(now())
-}
-
-model ProcessedMessage {
-  id          String   @id @default(cuid())
-  messageId   String   @unique
-  processedAt DateTime @default(now())
-}
-
-// ─── Family / Group Accounts ──────────────────────────────────────────────────
-
-model Group {
-  id          String        @id @default(cuid())
-  name        String
-  inviteCode  String        @unique @default(cuid())
-  createdById String
-  createdBy   User          @relation("GroupCreator", fields: [createdById], references: [id])
-  members     GroupMember[]
-  transactions Transaction[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-}
-
-model GroupMember {
-  id       String    @id @default(cuid())
-  groupId  String
-  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId   String
-  user     User      @relation(fields: [userId], references: [id])
-  role     GroupRole @default(MEMBER)
-  joinedAt DateTime  @default(now())
-
-  @@unique([groupId, userId])
-  @@index([userId])
-}
-
-model TelegramLinkToken {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
 }

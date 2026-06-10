@@ -1,31 +1,22 @@
-import { IAiParser } from "../../domain/services/IAiParser";
+import { User } from "@prisma/client";
+import {
+  IAiParser,
+  ConversationTurn,
+  CategoryHint,
+} from "../../domain/services/IAiParser";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
-import { IContactRepository } from "../../domain/repositories/IContactRepository";
-import { ITransactionRepository } from "../../domain/repositories/ITransactionRepository";
-import { IWalletRepository } from "../../domain/repositories/IWalletRepository";
-import { IRecurringChargeRepository } from "../../domain/repositories/IRecurringChargeRepository";
-import { IDueEntryRepository } from "../../domain/repositories/IDueEntryRepository";
-import { IGroupRepository } from "../../domain/repositories/IGroupRepository";
+import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
+import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
+import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
+import { IParseLogRepository } from "../../domain/repositories/IParseLogRepository";
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
-import { ParsedData } from "../../domain/entities/ParsedData";
-import { User, Transaction } from "@prisma/client";
-import { MessageProcessor } from "./processors/MessageProcessor";
-import { StartProcessor } from "./processors/StartProcessor";
-import { BalanceProcessor } from "./processors/BalanceProcessor";
-import { TransactionProcessor } from "./processors/TransactionProcessor";
-import { UndoProcessor } from "./processors/UndoProcessor";
-import { ReplyProcessor } from "./processors/ReplyProcessor";
-import { ConfirmationProcessor } from "./processors/ConfirmationProcessor";
-import { DailySummaryProcessor } from "./processors/DailySummaryProcessor";
-import { ChatProcessor } from "./processors/ChatProcessor";
-import { QueryProcessor, IQueryAgent } from "./processors/QueryProcessor";
-import { WalletProcessor } from "./processors/WalletProcessor";
-import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
-import { DuePaymentProcessor } from "./processors/DuePaymentProcessor";
-import { GroupOnboardingProcessor } from "./processors/GroupOnboardingProcessor";
-import { GroupQueryProcessor } from "./processors/GroupQueryProcessor";
-import { SlashCommandProcessor } from "./processors/SlashCommandProcessor";
+import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
+import { MessageProcessor, ProcessContext } from "./processors/MessageProcessor";
+import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
+import { OnboardingProcessor } from "./processors/OnboardingProcessor";
+import { ExpenseProcessor } from "./processors/ExpenseProcessor";
+import { FallbackProcessor } from "./processors/FallbackProcessor";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -39,200 +30,99 @@ export interface ProcessIncomingMessageOutput {
   parsed: ParsedData;
 }
 
-const QUICK_REPLIES: Record<string, string> = {
-  ping: "pong",
-  admin: "Sadik is here 💦",
-};
-
-// "Shop: paid 500 supplies" → walletName = "Shop", strippedText = "paid 500 supplies"
-const WALLET_PREFIX_RE = /^([a-zA-Z][a-zA-Z0-9 ]{0,19}):\s*/;
-
 export class ProcessIncomingMessageUseCase {
-  private processors: MessageProcessor[];
+  // Processors that run before AI parsing (button callbacks, onboarding).
+  private readonly preParseProcessors: MessageProcessor[];
+  // Processors that run after AI parsing.
+  private readonly postParseProcessors: MessageProcessor[];
 
   constructor(
     private readonly aiParser: IAiParser,
     private readonly userRepository: IUserRepository,
-    private readonly contactRepository: IContactRepository,
-    private readonly transactionRepository: ITransactionRepository,
-    private readonly messageService: IMessagingPlatform,
-    private readonly walletRepository: IWalletRepository,
-    private readonly recurringChargeRepository: IRecurringChargeRepository,
-    private readonly dueEntryRepository: IDueEntryRepository,
-    private readonly groupRepository: IGroupRepository,
+    private readonly expenseRepository: IExpenseRepository,
+    private readonly categoryRepository: ICategoryRepository,
+    private readonly budgetConfigRepository: IBudgetConfigRepository,
+    private readonly parseLogRepository: IParseLogRepository,
     private readonly conversationRepository: IConversationRepository,
-    queryAgent?: IQueryAgent,
+    private readonly messageService: IMessagingPlatform,
   ) {
-    this.processors = [
-      new SlashCommandProcessor(
-        walletRepository,
-        groupRepository,
-        recurringChargeRepository,
-        dueEntryRepository,
+    this.preParseProcessors = [
+      new ConfirmBucketProcessor(
+        parseLogRepository,
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
         messageService,
       ),
-      new DuePaymentProcessor(dueEntryRepository, messageService),
-      new GroupOnboardingProcessor(groupRepository, messageService),
-      new ConfirmationProcessor(transactionRepository, messageService),
-      new StartProcessor(messageService),
-      new ReplyProcessor(transactionRepository, messageService),
-      new UndoProcessor(transactionRepository, messageService),
-      new ChatProcessor(messageService),
-      new WalletProcessor(walletRepository, messageService),
-      new RecurringSetupProcessor(
-        recurringChargeRepository,
-        dueEntryRepository,
-        walletRepository,
+      new OnboardingProcessor(
+        userRepository,
+        budgetConfigRepository,
         messageService,
       ),
-      new GroupQueryProcessor(
-        transactionRepository,
-        groupRepository,
+    ];
+    this.postParseProcessors = [
+      new ExpenseProcessor(
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        parseLogRepository,
         messageService,
       ),
-      new QueryProcessor(queryAgent ?? null, messageService),
-      new BalanceProcessor(
-        transactionRepository,
-        contactRepository,
-        messageService,
-      ),
-      new TransactionProcessor(
-        transactionRepository,
-        contactRepository,
-        messageService,
-      ),
-      new DailySummaryProcessor(transactionRepository, messageService),
+      new FallbackProcessor(messageService),
     ];
   }
 
   async execute(
     payload: ProcessIncomingMessageInput,
   ): Promise<ProcessIncomingMessageOutput> {
-    const normalizedMessage = payload.textMessage.trim().toLowerCase();
-    console.log(
-      `Executing ProcessIncomingMessage for ${payload.platformUserId} with message: "${normalizedMessage}"`,
-    );
-
     const linkToken = payload.textMessage?.match(/^\/?\s*start\s+(\S+)/i)?.[1];
     const { user, wasLinked } = await this.ensureUserExists(
       payload.platformUserId,
       payload.platformUsername,
       linkToken,
     );
-    console.log(`User identified: ${user.id}`);
 
-    // Linking message already handled — confirmation sent, nothing else to do
     if (wasLinked) {
       return {
         response: "✅ Account linked!",
-        parsed: {
-          intent: "START",
-          notes: "Telegram account linked via web token",
-        },
+        parsed: { intent: "UNKNOWN", confidence: 1 },
       };
     }
 
-    const [groupContextRaw, conversationHistory] = await Promise.all([
-      this.groupRepository.findGroupContextForUser(user.id),
-      this.conversationRepository.getRecent(user.id, 6),
-    ]);
-    const groupContext = groupContextRaw ?? undefined;
-
-    let replyTransaction: Transaction | null = null;
-    if (payload.replyToMessageId) {
-      replyTransaction = await this.transactionRepository.findByConfirmationId(
-        payload.replyToMessageId,
-        user.id,
-      );
-    }
-
-    const quickReply = QUICK_REPLIES[normalizedMessage];
-    if (quickReply) {
-      await this.messageService.sendMessage({
-        to: payload.platformUserId,
-        body: quickReply,
-      });
-      return {
-        response: quickReply,
-        parsed: {
-          intent: "QUICK_REPLY",
-          notes: `Quick reply for keyword: ${normalizedMessage}`,
-        },
-      };
-    }
-
-    // Extract optional wallet prefix: "Shop: paid 500 supplies"
-    let walletId: string | undefined;
-    let walletName: string | undefined;
-    let textMessage = payload.textMessage;
-
-    const walletMatch = payload.textMessage.match(WALLET_PREFIX_RE);
-    if (walletMatch && walletMatch[1]) {
-      const candidate = walletMatch[1].trim();
-      const wallet = await this.walletRepository.findByName(user.id, candidate);
-      if (wallet) {
-        walletId = wallet.id;
-        walletName = wallet.name;
-        textMessage = payload.textMessage.slice(walletMatch[0].length);
-      }
-    }
-
-    const history = conversationHistory.map((h) => ({
-      role: h.role as "user" | "model",
+    const historyRows = await this.conversationRepository.getRecent(user.id, 6);
+    const history: ConversationTurn[] = historyRows.map((h) => ({
+      role: h.role === "model" ? "model" : "user",
       content: h.content,
     }));
 
-    const contextWithoutParse = {
+    const context: ProcessContext = {
       user,
       platformUserId: payload.platformUserId,
-      textMessage,
-      replyToMessageId: payload.replyToMessageId,
-      replyTransaction: replyTransaction ?? undefined,
-      walletId,
-      walletName,
-      groupContext,
+      textMessage: payload.textMessage,
       conversationHistory: history,
     };
 
-    for (const processor of this.processors) {
-      if (
-        processor instanceof SlashCommandProcessor ||
-        processor instanceof DuePaymentProcessor ||
-        processor instanceof GroupOnboardingProcessor ||
-        processor instanceof StartProcessor ||
-        processor instanceof ConfirmationProcessor
-      ) {
-        if (processor.canHandle(contextWithoutParse)) {
-          return processor.process(contextWithoutParse);
-        }
-      }
-      if (
-        processor instanceof ReplyProcessor &&
-        processor.canHandle(contextWithoutParse)
-      ) {
-        return processor.process(contextWithoutParse);
+    // Pre-AI processors (button callbacks, onboarding).
+    for (const processor of this.preParseProcessors) {
+      if (processor.canHandle(context)) {
+        return processor.process(context);
       }
     }
 
-    console.log("Parsing message with AI...");
-    const parsed = await this.aiParser.parseText(
-      textMessage,
-      replyTransaction,
+    // AI parse with the user's category list as context.
+    const categories = await this.loadCategoryHints(user.id);
+    const parsed = await this.aiParser.parseText(payload.textMessage, {
+      categories,
       history,
-    );
-    console.log("AI Parsed result:", JSON.stringify(parsed, null, 2));
+    });
+    context.parsed = parsed;
 
-    const contextWithParse = {
-      ...contextWithoutParse,
-      parsed,
-    };
-
-    for (const processor of this.processors) {
-      if (processor.canHandle(contextWithParse)) {
-        const output = await processor.process(contextWithParse);
-        // Save conversation turns (fire-and-forget — don't block reply)
+    for (const processor of this.postParseProcessors) {
+      if (processor.canHandle(context)) {
+        const output = await processor.process(context);
+        // Save conversation turns (fire-and-forget — don't block the reply).
         this.conversationRepository
-          .append(user.id, "user", textMessage)
+          .append(user.id, "user", payload.textMessage)
           .catch(console.error);
         this.conversationRepository
           .append(user.id, "model", output.response)
@@ -241,7 +131,16 @@ export class ProcessIncomingMessageUseCase {
       }
     }
 
-    throw new Error(`Unsupported intent: ${parsed.intent}`);
+    // FallbackProcessor.canHandle always returns true, so this is unreachable.
+    throw new Error(`No processor handled intent: ${parsed.intent}`);
+  }
+
+  private async loadCategoryHints(userId: string): Promise<CategoryHint[]> {
+    const categories = await this.categoryRepository.findAllForUser(userId);
+    return categories.map((c) => ({
+      name: c.name,
+      bucket: c.bucket as ParsedBucket,
+    }));
   }
 
   private async ensureUserExists(
@@ -260,27 +159,16 @@ export class ProcessIncomingMessageUseCase {
       if (linked) {
         await this.messageService.sendMessage({
           to: telegramId,
-          body: `✅ Account linked! Your Telegram is now connected to Blipko. Try saying "Gave 500 to Raju" to track a payment.`,
+          body: `✅ Account linked! Text me what you spend — like "chai 30" — and I'll track your budget.`,
         });
         return { user: linked, wasLinked: true };
       }
     }
 
-    console.log(`Creating new user for Telegram ID ${telegramId}`);
     const user = await this.userRepository.create({
       telegramId,
       ...(name !== undefined && { name }),
     });
-
-    // Auto-create a default Personal wallet for new users
-    await this.walletRepository.create({
-      name: "Personal",
-      emoji: "👤",
-      type: "PERSONAL",
-      isDefault: true,
-      userId: user.id,
-    });
-
     return { user, wasLinked: false };
   }
 }
