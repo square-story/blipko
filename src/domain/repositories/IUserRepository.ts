@@ -18,5 +18,7 @@ export interface IUserRepository {
   update(id: string, data: UpdateUserDTO): Promise<User>;
   findByTelegramId(telegramId: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
+  // Onboarded users reachable on Telegram with an income set (for nudges).
+  findOnboardedWithTelegram(): Promise<User[]>;
   linkTelegramByToken(token: string, telegramId: string): Promise<User | null>;
 }

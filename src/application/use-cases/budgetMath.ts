@@ -53,6 +53,13 @@ export interface MonthDayInfo {
   remainingDays: number; // days left including today (>= 1)
 }
 
+// "YYYY-MM" key for the given month — used to scope once-per-month nudges.
+export function monthPeriodKey(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
 export function monthDayInfo(now: Date = new Date()): MonthDayInfo {
   const day = now.getDate();
   const daysInMonth = new Date(

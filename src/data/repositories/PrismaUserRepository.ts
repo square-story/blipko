@@ -42,6 +42,16 @@ export class PrismaUserRepository implements IUserRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  async findOnboardedWithTelegram(): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: {
+        hasOnboarded: true,
+        telegramId: { not: null },
+        monthlyIncome: { not: null },
+      },
+    });
+  }
+
   async linkTelegramByToken(
     token: string,
     telegramId: string,
