@@ -12,13 +12,14 @@ import { SplitVisual } from "./split-visual";
 import { ChatCaptureDemo } from "./chat-capture-demo";
 import Link from "next/link";
 import { Send } from "lucide-react";
+import type { Session } from "next-auth";
 
 const TELEGRAM_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
     ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}`
     : "https://t.me/blipko_bot";
 
 interface HomeContentProps {
-    session: any;
+    session: Session | null;
 }
 
 
@@ -85,7 +86,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     {session?.user ? (
                         <div className="flex flex-col items-center justify-center gap-4">
                             <p className="text-lg text-muted-foreground font-medium">
-                                Welcome back, {session.user.name || "friend"}! You're ready to go.
+                                Welcome back, {session.user.name || "friend"}! You&apos;re ready to go.
                             </p>
                             <div className="flex flex-col md:flex-row gap-3 items-center">
                                 <Link
