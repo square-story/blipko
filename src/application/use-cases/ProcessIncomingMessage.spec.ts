@@ -44,6 +44,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
       sumByBucketForMonth: vi.fn().mockResolvedValue(220),
+      topCategoriesForMonth: vi.fn().mockResolvedValue([]),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
@@ -190,6 +191,15 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(expenseRepository.create).not.toHaveBeenCalled();
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "This month — Day",
+    );
+  });
+
+  it("handles the plain 'report' command before AI parsing", async () => {
+    await useCase.execute({ platformUserId: "123", textMessage: "report" });
+
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "summary",
     );
   });
 

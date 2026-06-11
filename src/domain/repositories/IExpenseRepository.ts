@@ -33,5 +33,13 @@ export interface IExpenseRepository {
     monthStart: Date,
     monthEnd: Date,
   ): Promise<number>;
+  // Top spending categories in a bucket within [monthStart, monthEnd), desc by total.
+  topCategoriesForMonth(
+    userId: string,
+    bucket: Bucket,
+    monthStart: Date,
+    monthEnd: Date,
+    limit: number,
+  ): Promise<Array<{ name: string; total: number }>>;
   softDelete(id: string): Promise<void>;
 }

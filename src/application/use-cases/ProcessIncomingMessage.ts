@@ -16,6 +16,7 @@ import { MessageProcessor, ProcessContext } from "./processors/MessageProcessor"
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
+import { ReportProcessor } from "./processors/ReportProcessor";
 import { UndoProcessor } from "./processors/UndoProcessor";
 import { ExpenseProcessor } from "./processors/ExpenseProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
@@ -62,6 +63,11 @@ export class ProcessIncomingMessageUseCase {
         messageService,
       ),
       new StatusProcessor(
+        expenseRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
+      new ReportProcessor(
         expenseRepository,
         budgetConfigRepository,
         messageService,

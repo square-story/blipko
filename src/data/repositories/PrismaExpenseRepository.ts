@@ -71,6 +71,42 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     return Number(result._sum.amount ?? 0);
   }
 
+  async topCategoriesForMonth(
+    userId: string,
+    bucket: Bucket,
+    monthStart: Date,
+    monthEnd: Date,
+    limit: number,
+  ): Promise<Array<{ name: string; total: number }>> {
+    const groups = await this.prisma.expense.groupBy({
+      by: ["categoryId"],
+      where: {
+        userId,
+        bucket,
+        isDeleted: false,
+        date: { gte: monthStart, lt: monthEnd },
+      },
+      _sum: { amount: true },
+      orderBy: { _sum: { amount: "desc" } },
+      take: limit,
+    });
+
+    const ids = groups
+      .map((g) => g.categoryId)
+      .filter((id): id is string => id !== null);
+    const categories = await this.prisma.category.findMany({
+      where: { id: { in: ids } },
+    });
+    const nameById = new Map(categories.map((c) => [c.id, c.name]));
+
+    return groups.map((g) => ({
+      name: g.categoryId
+        ? (nameById.get(g.categoryId) ?? "Other")
+        : "Uncategorized",
+      total: Number(g._sum.amount ?? 0),
+    }));
+  }
+
   async softDelete(id: string): Promise<void> {
     await this.prisma.expense.update({
       where: { id },

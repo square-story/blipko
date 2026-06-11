@@ -94,6 +94,7 @@ export class TelegramWebhookController {
           commands: [
             { command: "start",  description: "Set up your budget" },
             { command: "status", description: "Your budget health this month" },
+            { command: "report", description: "This month's summary" },
             { command: "help",   description: "How to use the bot" },
           ],
         }),
