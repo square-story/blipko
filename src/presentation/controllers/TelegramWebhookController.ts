@@ -15,6 +15,8 @@ import { PrismaCategoryRepository } from "../../data/repositories/PrismaCategory
 import { PrismaBudgetConfigRepository } from "../../data/repositories/PrismaBudgetConfigRepository";
 import { PrismaParseLogRepository } from "../../data/repositories/PrismaParseLogRepository";
 import { PrismaConversationRepository } from "../../data/repositories/PrismaConversationRepository";
+import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeRepository";
+import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
 import { prisma } from "../../data/prisma/client";
 import { env } from "../../config/env";
 
@@ -52,6 +54,7 @@ const expenseRepository = new PrismaExpenseRepository(prisma);
 const categoryRepository = new PrismaCategoryRepository(prisma);
 const budgetConfigRepository = new PrismaBudgetConfigRepository(prisma);
 const parseLogRepository = new PrismaParseLogRepository(prisma);
+const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
 
@@ -92,8 +95,10 @@ export class TelegramWebhookController {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           commands: [
-            { command: "start", description: "Set up your budget" },
-            { command: "help",  description: "How to use the bot" },
+            { command: "start",  description: "Set up your budget" },
+            { command: "status", description: "Your budget health this month" },
+            { command: "report", description: "This month's summary" },
+            { command: "help",   description: "How to use the bot" },
           ],
         }),
       });
@@ -231,4 +236,12 @@ export const telegramWebhookController = new TelegramWebhookController(
   messageService,
   env.TELEGRAM_WEBHOOK_SECRET,
   env.TELEGRAM_BOT_TOKEN,
+);
+
+export const sendBudgetNudges = new SendBudgetNudgesUseCase(
+  userRepository,
+  expenseRepository,
+  budgetConfigRepository,
+  nudgeRepository,
+  messageService,
 );

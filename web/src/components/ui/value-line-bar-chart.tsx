@@ -26,6 +26,7 @@ const jetBrainsMono = JetBrains_Mono({
 const CHART_MARGIN = 35;
 
 interface ValueLineBarChartProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic chart rows; keys vary by xKey/yKey
   data: any[];
   xKey: string;
   yKey: string;

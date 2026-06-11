@@ -1,36 +1,36 @@
-import { MessageCircle, Mic, Bell, Users, Wallet, LayoutDashboard } from 'lucide-react'
+import { MessageCircle, Mic, PieChart, Activity, Bell, LayoutDashboard } from 'lucide-react'
 import { motion } from 'motion/react'
 
 const features = [
     {
         icon: MessageCircle,
         title: "Chat in Your Language",
-        body: "Works with Manglish, English, and Hindi. Say \"rent koduthu\" or \"salary kitti\" — Blipko understands.",
+        body: "Type \"lunch 220\" or \"auto 60\" in Malayalam, Manglish, or English. Blipko reads it and logs the spend.",
     },
     {
         icon: Mic,
         title: "Voice Notes Too",
-        body: "Send a voice note in Malayalam. Sarvam AI transcribes it instantly. No typing needed.",
+        body: "Send a voice note on the go. It's transcribed instantly and added to your budget — no typing needed.",
+    },
+    {
+        icon: PieChart,
+        title: "Auto 50/30/20 Sorting",
+        body: "Every spend is auto-categorized into Needs, Wants, or Savings. No manual tagging, ever.",
+    },
+    {
+        icon: Activity,
+        title: "Instant Budget Health",
+        body: "Send /status anytime to see how much is left in each bucket and your safe daily spend.",
     },
     {
         icon: Bell,
-        title: "Never Miss Rent Day",
-        body: "Set recurring dues once. Get a Telegram reminder every month at 9 AM with a one-tap Mark Paid button.",
-    },
-    {
-        icon: Users,
-        title: "Family Finance Together",
-        body: "Create a group with an invite code. Track who spent what — perfect for shared households and small businesses.",
-    },
-    {
-        icon: Wallet,
-        title: "Multiple Wallets",
-        body: "Separate Personal, Business, and Savings. Prefix your message: \"Shop: Raju 500 koduthu\" to log to the right wallet.",
+        title: "Heads-up Before You Overspend",
+        body: "Blipko nudges you when a bucket hits 80% — so the month doesn't end with a surprise.",
     },
     {
         icon: LayoutDashboard,
-        title: "Dashboard on Web",
-        body: "View analytics, manage vendors, and check recurring charges from any browser — no app install needed.",
+        title: "Monthly Report + Web Dashboard",
+        body: "Get a /report each month, and dive into trends, categories, and history on the web — no app install.",
     },
 ];
 
@@ -46,7 +46,7 @@ export default function Features() {
                     className="relative z-10 mx-auto max-w-xl text-center"
                 >
                     <h2 className="text-3xl md:text-4xl font-bold mb-3">Everything you need</h2>
-                    <p className="text-muted-foreground text-lg">Built for Keralites. Works wherever you are.</p>
+                    <p className="text-muted-foreground text-lg">Budgeting that fits in a chat. Built for Kerala.</p>
                 </motion.div>
 
                 <div className="relative mx-auto grid max-w-5xl overflow-hidden rounded-xl border bg-card/60 backdrop-blur-sm sm:grid-cols-2 lg:grid-cols-3">

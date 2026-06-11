@@ -4,7 +4,10 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env";
 import { prisma } from "./data/prisma/client";
 import { telegramRoutes } from "./presentation/routes/telegramRoutes";
-import { telegramWebhookController } from "./presentation/controllers/TelegramWebhookController";
+import {
+  telegramWebhookController,
+  sendBudgetNudges,
+} from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
 
 const app: Application = express();
@@ -40,7 +43,7 @@ const port = env.PORT;
 if (process.env.NODE_ENV !== "test") {
   const server = app.listen(port, () => {
     process.stdout.write(`🚀 Blipko budget bot listening on port ${port}\n`);
-    startScheduler();
+    startScheduler(sendBudgetNudges);
     telegramWebhookController.registerBotCommands().catch(console.error);
   });
 

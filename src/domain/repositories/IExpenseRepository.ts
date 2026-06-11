@@ -15,6 +15,13 @@ export interface CreateExpenseDTO {
 export interface IExpenseRepository {
   create(data: CreateExpenseDTO): Promise<Expense>;
   findById(id: string): Promise<Expense | null>;
+  // Most recent non-deleted expense for the user (for word-based undo).
+  findLastByUserId(userId: string): Promise<Expense | null>;
+  // Resolve the expense behind a confirmation message the user replied to.
+  findByConfirmationMessageId(
+    messageId: string,
+    userId: string,
+  ): Promise<Expense | null>;
   updateConfirmationMessageId(
     expenseId: string,
     messageId: string,
@@ -26,5 +33,13 @@ export interface IExpenseRepository {
     monthStart: Date,
     monthEnd: Date,
   ): Promise<number>;
+  // Top spending categories in a bucket within [monthStart, monthEnd), desc by total.
+  topCategoriesForMonth(
+    userId: string,
+    bucket: Bucket,
+    monthStart: Date,
+    monthEnd: Date,
+    limit: number,
+  ): Promise<Array<{ name: string; total: number }>>;
   softDelete(id: string): Promise<void>;
 }

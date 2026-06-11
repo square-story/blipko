@@ -291,6 +291,7 @@ function GravityStarsBackground({
     if (!ctx) return;
     updateStars();
     drawStars(ctx);
+    // eslint-disable-next-line -- self-referencing requestAnimationFrame loop is idiomatic
     animRef.current = requestAnimationFrame(animate);
   }, [updateStars, drawStars]);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, type HTMLMotionProps } from "motion/react";
-import type { JSX } from "react";
+import type { CSSProperties, JSX } from "react";
 
 
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export function LineShadowText({
 
   // Motion's style typing does not yet understand custom CSS variables.
    
-  const style = { "--shadow-color": shadowColor } as any;
+  const style = { "--shadow-color": shadowColor } as CSSProperties;
 
   return (
     <MotionComponent

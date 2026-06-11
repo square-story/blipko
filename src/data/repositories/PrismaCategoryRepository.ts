@@ -26,6 +26,10 @@ export class PrismaCategoryRepository implements ICategoryRepository {
     });
   }
 
+  async findById(id: string): Promise<Category | null> {
+    return this.prisma.category.findUnique({ where: { id } });
+  }
+
   async create(data: CreateCategoryDTO): Promise<Category> {
     return this.prisma.category.create({
       data: { userId: data.userId, name: data.name, bucket: data.bucket },

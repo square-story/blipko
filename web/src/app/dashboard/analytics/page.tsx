@@ -1,26 +1,21 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getAnalyticsData } from "@/lib/actions/analytics";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 import { RoundedPieChart } from "@/components/ui/rounded-pie-chart";
-import { IncomeExpenseChart } from "../_components/income-expense-chart";
-import { TrendingDown, Users, IndianRupee } from "lucide-react";
+import { BucketTrendChart } from "../_components/income-expense-chart";
+import { formatMoney } from "@/lib/budget";
 
 export default async function Page() {
-    const { monthlyTrend, overdueContacts, categoryBreakdown, topContacts } =
+    const { monthlyTrend, categoryBreakdown, topCategories } =
         await getAnalyticsData(6);
 
-    // Map monthlyTrend to the shape IncomeExpenseChart expects
-    const chartData = monthlyTrend.map((m) => ({
-        date: m.month,
-        income: m.totalIn,
-        expense: m.totalOut,
-    }));
-
-    const totalOverdue = overdueContacts.reduce(
-        (sum, c) => sum + Math.abs(c.balance),
-        0,
-    );
+    const totalThisMonth = categoryBreakdown.reduce((s, c) => s + c.value, 0);
 
     return (
         <ContentLayout title="Analytics">
@@ -28,51 +23,46 @@ export default async function Page() {
                 {/* Summary Stats */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Contacts Overdue</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Spent This Month</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{overdueContacts.length}</div>
-                            <p className="text-xs text-muted-foreground">contacts with pending balances</p>
+                            <div className="text-2xl font-bold">{formatMoney(totalThisMonth)}</div>
+                            <p className="text-xs text-muted-foreground">across all categories</p>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Total Overdue Amount</CardTitle>
-                            <TrendingDown className="h-4 w-4 text-destructive" />
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Categories Used</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-destructive">
-                                ₹{totalOverdue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                            </div>
-                            <p className="text-xs text-muted-foreground">total outstanding receivables</p>
+                            <div className="text-2xl font-bold">{categoryBreakdown.length}</div>
+                            <p className="text-xs text-muted-foreground">with spend this month</p>
                         </CardContent>
                     </Card>
 
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Top Category (This Month)</CardTitle>
-                            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Top Category</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {categoryBreakdown[0]?.name ?? "—"}
+                                {topCategories[0]?.name ?? "—"}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {categoryBreakdown[0]
-                                    ? `₹${categoryBreakdown[0].value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
-                                    : "No transactions yet"}
+                                {topCategories[0]
+                                    ? formatMoney(topCategories[0].value)
+                                    : "No spend yet"}
                             </p>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Monthly Trend Chart */}
-                <IncomeExpenseChart data={chartData} />
+                {/* Monthly bucket trend */}
+                <BucketTrendChart data={monthlyTrend} />
 
-                {/* Category + Overdue Row */}
+                {/* Category pie + top categories */}
                 <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
                     <RoundedPieChart
                         title="Spend by Category"
@@ -80,82 +70,43 @@ export default async function Page() {
                         chartData={categoryBreakdown}
                     />
 
-                    {/* Overdue Contacts Table */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Overdue Contacts</CardTitle>
-                            <CardDescription>Contacts with outstanding balances owed to you</CardDescription>
+                            <CardTitle>Top Categories</CardTitle>
+                            <CardDescription>Highest spend this month</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {overdueContacts.length === 0 ? (
-                                <p className="text-sm text-muted-foreground py-8 text-center">
-                                    Everyone is settled up!
+                            {topCategories.length === 0 ? (
+                                <p className="py-8 text-center text-sm text-muted-foreground">
+                                    No spend yet this month.
                                 </p>
                             ) : (
-                                <div className="space-y-3">
-                                    {overdueContacts.slice(0, 10).map((contact) => (
-                                        <div
-                                            key={contact.id}
-                                            className="flex items-center justify-between"
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium text-sm">{contact.name}</span>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {contact.category}
-                                                </Badge>
+                                <div className="space-y-4">
+                                    {topCategories.map((c) => {
+                                        const max = topCategories[0]?.value ?? 1;
+                                        const pct = Math.round((c.value / max) * 100);
+                                        return (
+                                            <div key={c.name} className="space-y-1">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="font-medium">{c.name}</span>
+                                                    <span className="text-muted-foreground">
+                                                        {formatMoney(c.value)}
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 w-full rounded-full bg-muted">
+                                                    <div
+                                                        className="h-2 rounded-full bg-primary"
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <span className="text-sm font-semibold text-destructive">
-                                                ₹{Math.abs(contact.balance).toLocaleString("en-IN", {
-                                                    maximumFractionDigits: 0,
-                                                })}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </CardContent>
                     </Card>
                 </div>
-
-                {/* Top Contacts by Volume */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Top Contacts by Transaction Volume</CardTitle>
-                        <CardDescription>Contacts with the highest total transaction amounts</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {topContacts.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-4 text-center">
-                                No transactions yet.
-                            </p>
-                        ) : (
-                            <div className="space-y-4">
-                                {topContacts.map((contact, i) => {
-                                    const maxTotal = topContacts[0]?.total ?? 1;
-                                    const pct = Math.round((contact.total / maxTotal) * 100);
-                                    return (
-                                        <div key={i} className="space-y-1">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="font-medium">{contact.name}</span>
-                                                <span className="text-muted-foreground">
-                                                    ₹{contact.total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                                                    {" "}·{" "}
-                                                    {contact.count} txn{contact.count !== 1 ? "s" : ""}
-                                                </span>
-                                            </div>
-                                            <div className="h-2 w-full rounded-full bg-muted">
-                                                <div
-                                                    className="h-2 rounded-full bg-primary"
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
             </div>
         </ContentLayout>
     );

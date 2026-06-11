@@ -21,6 +21,12 @@ enum ExpenseSource {
   VOICE
 }
 
+// Proactive budget nudges — one of each kind per bucket per month.
+enum NudgeKind {
+  WARN_80
+  OVER
+}
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -54,9 +60,24 @@ model User {
   budgetConfig BudgetConfig?
   categories   Category[]
   logs         ParseLog[]
+  budgetNudges BudgetNudge[]
 
   conversationMessages ConversationMessage[]
   telegramLinkToken    TelegramLinkToken?
+}
+
+// Idempotency log for proactive nudges: at most one row per
+// (user, bucket, kind, month), so a nudge is sent once per month, not daily.
+model BudgetNudge {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket    Bucket
+  kind      NudgeKind
+  periodKey String // "YYYY-MM"
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, bucket, kind, periodKey])
 }
 
 model BudgetConfig {

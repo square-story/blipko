@@ -1,127 +1,234 @@
 import { Suspense } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { getBudgetOverview } from "@/lib/actions/budget";
 import {
-  getDashboardStats,
-  getDashboardChartData,
-  getDashboardPendingInvoices,
-} from "@/lib/actions/dashboard";
-import { Stat, StatLabel, StatValue, StatDescription, StatIndicator } from "@/components/ui/stat";
-import { IncomeExpenseChart } from "./_components/income-expense-chart";
-import { PendingInvoicesList } from "./_components/pending-invoices-list";
-import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+    Stat,
+    StatLabel,
+    StatValue,
+    StatDescription,
+    StatIndicator,
+} from "@/components/ui/stat";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { AnimatedNumber } from "@/components/animated-number";
 import Onboarding from "@/components/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Wallet, TrendingDown, PiggyBank } from "lucide-react";
+import { BUCKET_META, formatMoney } from "@/lib/budget";
 
-async function StatsSection({
-  statsPromise,
+async function OverviewSection({
+    overviewPromise,
 }: {
-  statsPromise: ReturnType<typeof getDashboardStats>;
+    overviewPromise: ReturnType<typeof getBudgetOverview>;
 }) {
-  const { totalReceivables, cashFlow, hasOnboarded } = await statsPromise;
-  return (
-    <>
-      {!hasOnboarded && <Onboarding />}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Stat>
-          <StatLabel>Total Receivables</StatLabel>
-          <StatValue>
-            <AnimatedNumber
-              value={Math.abs(totalReceivables)}
-              format={{ style: "currency", currency: "INR", trailingZeroDisplay: "stripIfInteger" }}
-            />
-          </StatValue>
-          <StatDescription>
-            {totalReceivables > 0 ? "People owe you this much" : "No outstanding receivables"}
-          </StatDescription>
-          <StatIndicator color="error">
-            <TrendingDown className="h-4 w-4" />
-          </StatIndicator>
-        </Stat>
+    const {
+        monthlyIncome,
+        currency,
+        buckets,
+        totalSpent,
+        savingsProgress,
+        recentExpenses,
+        categoryBreakdown,
+        hasOnboarded,
+    } = await overviewPromise;
 
-        <Stat>
-          <StatLabel>Cash Flow (In)</StatLabel>
-          <StatValue>
-            <AnimatedNumber
-              value={cashFlow.in}
-              format={{ style: "currency", currency: "INR", trailingZeroDisplay: "stripIfInteger" }}
-            />
-          </StatValue>
-          <StatDescription>Total income this month</StatDescription>
-          <StatIndicator color="success">
-            <TrendingUp className="h-4 w-4" />
-          </StatIndicator>
-        </Stat>
+    const currencyFormat = {
+        style: "currency" as const,
+        currency,
+        trailingZeroDisplay: "stripIfInteger" as const,
+    };
 
-        <Stat>
-          <StatLabel>Cash Flow (Out)</StatLabel>
-          <StatValue>
-            <AnimatedNumber
-              value={cashFlow.out}
-              format={{ style: "currency", currency: "INR", trailingZeroDisplay: "stripIfInteger" }}
-            />
-          </StatValue>
-          <StatDescription>Total expenses this month</StatDescription>
-          <StatIndicator color="warning">
-            <Wallet className="h-4 w-4" />
-          </StatIndicator>
-        </Stat>
-      </div>
-    </>
-  );
-}
+    return (
+        <>
+            {!hasOnboarded && <Onboarding />}
 
-async function ChartSection({
-  chartPromise,
-}: {
-  chartPromise: ReturnType<typeof getDashboardChartData>;
-}) {
-  const chartData = await chartPromise;
-  return <IncomeExpenseChart data={chartData} />;
-}
+            {/* Headline stats */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Stat>
+                    <StatLabel>Monthly Income</StatLabel>
+                    <StatValue>
+                        <AnimatedNumber value={monthlyIncome} format={currencyFormat} />
+                    </StatValue>
+                    <StatDescription>Your budgeting baseline</StatDescription>
+                    <StatIndicator color="success">
+                        <Wallet className="h-4 w-4" />
+                    </StatIndicator>
+                </Stat>
 
-async function InvoicesSection({
-  invoicesPromise,
-}: {
-  invoicesPromise: ReturnType<typeof getDashboardPendingInvoices>;
-}) {
-  const pendingInvoices = await invoicesPromise;
-  return <PendingInvoicesList contacts={pendingInvoices} />;
+                <Stat>
+                    <StatLabel>Spent This Month</StatLabel>
+                    <StatValue>
+                        <AnimatedNumber value={totalSpent} format={currencyFormat} />
+                    </StatValue>
+                    <StatDescription>Across all buckets</StatDescription>
+                    <StatIndicator color="warning">
+                        <TrendingDown className="h-4 w-4" />
+                    </StatIndicator>
+                </Stat>
+
+                <Stat>
+                    <StatLabel>Savings This Month</StatLabel>
+                    <StatValue>
+                        <AnimatedNumber value={savingsProgress.saved} format={currencyFormat} />
+                    </StatValue>
+                    <StatDescription>
+                        {savingsProgress.pct}% of {formatMoney(savingsProgress.target, currency)} target
+                    </StatDescription>
+                    <StatIndicator color="success">
+                        <PiggyBank className="h-4 w-4" />
+                    </StatIndicator>
+                </Stat>
+            </div>
+
+            {/* Bucket cards */}
+            <div className="grid gap-4 md:grid-cols-3">
+                {buckets.map((b) => {
+                    const meta = BUCKET_META[b.bucket];
+                    const over = b.pct > 100;
+                    const barWidth = Math.min(100, b.pct);
+                    return (
+                        <Card key={b.bucket}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="flex items-center justify-between text-base">
+                                    <span>
+                                        {meta.emoji} {meta.label}
+                                    </span>
+                                    <span
+                                        className={`text-sm font-medium ${over ? "text-destructive" : "text-muted-foreground"}`}
+                                    >
+                                        {b.pct}%
+                                    </span>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                <div className="text-sm">
+                                    <span className="font-semibold">
+                                        {formatMoney(b.spent, currency)}
+                                    </span>{" "}
+                                    <span className="text-muted-foreground">
+                                        / {formatMoney(b.budget, currency)}
+                                    </span>
+                                </div>
+                                <div className="h-2 w-full rounded-full bg-muted">
+                                    <div
+                                        className={`h-2 rounded-full ${over ? "bg-destructive" : "bg-primary"}`}
+                                        style={{ width: `${barWidth}%` }}
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {b.remaining >= 0
+                                        ? `${formatMoney(b.remaining, currency)} left`
+                                        : `${formatMoney(Math.abs(b.remaining), currency)} over`}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+
+            {/* Recent expenses + category breakdown */}
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Recent Expenses</CardTitle>
+                        <CardDescription>Latest spends this month</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {recentExpenses.length === 0 ? (
+                            <p className="py-8 text-center text-sm text-muted-foreground">
+                                No expenses logged yet this month.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {recentExpenses.map((e) => (
+                                    <div
+                                        key={e.id}
+                                        className="flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary" className="text-xs">
+                                                {BUCKET_META[e.bucket].emoji}{" "}
+                                                {e.categoryName ?? BUCKET_META[e.bucket].label}
+                                            </Badge>
+                                            <span className="text-sm text-muted-foreground">
+                                                {e.note ?? ""}
+                                            </span>
+                                        </div>
+                                        <span className="text-sm font-medium">
+                                            {formatMoney(e.amount, currency)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Top Categories</CardTitle>
+                        <CardDescription>Where your money went this month</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {categoryBreakdown.length === 0 ? (
+                            <p className="py-8 text-center text-sm text-muted-foreground">
+                                No category spend yet.
+                            </p>
+                        ) : (
+                            <div className="space-y-4">
+                                {categoryBreakdown.slice(0, 6).map((c) => {
+                                    const max = categoryBreakdown[0].value || 1;
+                                    const pct = Math.round((c.value / max) * 100);
+                                    return (
+                                        <div key={c.name} className="space-y-1">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-medium">{c.name}</span>
+                                                <span className="text-muted-foreground">
+                                                    {formatMoney(c.value, currency)}
+                                                </span>
+                                            </div>
+                                            <div className="h-2 w-full rounded-full bg-muted">
+                                                <div
+                                                    className="h-2 rounded-full bg-primary"
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </>
+    );
 }
 
 export default function Page() {
-  const statsPromise = getDashboardStats();
-  const chartPromise = getDashboardChartData();
-  const invoicesPromise = getDashboardPendingInvoices();
+    const overviewPromise = getBudgetOverview();
 
-  return (
-    <ContentLayout title="Dashboard">
-      <div className="flex flex-col gap-4 p-4 md:p-8 pt-6">
-        <Suspense
-          fallback={
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-xl" />
-              ))}
+    return (
+        <ContentLayout title="Dashboard">
+            <div className="flex flex-col gap-4 p-4 md:p-8 pt-6">
+                <Suspense
+                    fallback={
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {[...Array(3)].map((_, i) => (
+                                <Skeleton key={i} className="h-24 rounded-xl" />
+                            ))}
+                        </div>
+                    }
+                >
+                    <OverviewSection overviewPromise={overviewPromise} />
+                </Suspense>
             </div>
-          }
-        >
-          <StatsSection statsPromise={statsPromise} />
-        </Suspense>
-
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
-          <div className="col-span-1 lg:col-span-4">
-            <Suspense fallback={<Skeleton className="h-[380px] w-full rounded-xl" />}>
-              <ChartSection chartPromise={chartPromise} />
-            </Suspense>
-          </div>
-          <div className="col-span-1 lg:col-span-3">
-            <Suspense fallback={<Skeleton className="h-[380px] w-full rounded-xl" />}>
-              <InvoicesSection invoicesPromise={invoicesPromise} />
-            </Suspense>
-          </div>
-        </div>
-      </div>
-    </ContentLayout>
-  );
+        </ContentLayout>
+    );
 }

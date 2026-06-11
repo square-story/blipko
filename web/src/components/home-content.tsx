@@ -8,15 +8,18 @@ import { SignInButton } from "./sign-in-button"
 import { LineShadowText } from "./ui/line-shadow-text";
 import { WatchDemoButton } from "./watch-demo-button";
 import Features from "./features-4";
+import { SplitVisual } from "./split-visual";
+import { ChatCaptureDemo } from "./chat-capture-demo";
 import Link from "next/link";
 import { Send } from "lucide-react";
+import type { Session } from "next-auth";
 
 const TELEGRAM_URL = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
     ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}`
     : "https://t.me/blipko_bot";
 
 interface HomeContentProps {
-    session: any;
+    session: Session | null;
 }
 
 
@@ -51,7 +54,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     className="text-lg md:text-xl text-muted-foreground font-medium"
                     lang="ml"
                 >
-                    ഹിസാബ് എഴുതാൻ മറന്നോ?
+                    ശമ്പളം എവിടെ പോകുന്നു?
                 </motion.p>
 
                 <motion.div
@@ -68,11 +71,11 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     transition={{ duration: 0.8 }}
                 >
                     <TextAnimate className="text-lg md:text-2xl text-gray-400 max-w-2xl mb-4 font-medium">
-                        Track every rupee. Just chat.
+                        Know where your salary goes. Just chat.
                     </TextAnimate>
                     <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto mb-10">
-                        Blipko is a Telegram bot that understands Malayalam, Manglish, and English.
-                        Say &ldquo;Raju 500 koduthu&rdquo; and it&apos;s logged instantly.
+                        Log any spend in plain Malayalam, Manglish, or English — by text or voice.
+                        Blipko sorts it into a 50/30/20 budget and tells you what&apos;s left, instantly.
                     </p>
                 </motion.div>
 
@@ -83,7 +86,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     {session?.user ? (
                         <div className="flex flex-col items-center justify-center gap-4">
                             <p className="text-lg text-muted-foreground font-medium">
-                                Welcome back, {session.user.name || "friend"}! You're ready to go.
+                                Welcome back, {session.user.name || "friend"}! You&apos;re ready to go.
                             </p>
                             <div className="flex flex-col md:flex-row gap-3 items-center">
                                 <Link
@@ -124,6 +127,12 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 </motion.div>
             </motion.div>
 
+            {/* 50/30/20 split visual */}
+            <SplitVisual />
+
+            {/* Chat capture demo */}
+            <ChatCaptureDemo />
+
             {/* Features Grid */}
             <Features />
 
@@ -137,7 +146,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 <div className="rounded-xl border border-dashed bg-muted/20 px-6 py-5 text-center">
                     <p className="text-sm text-muted-foreground">
                         <span className="font-medium text-foreground">On the roadmap:</span>{" "}
-                        Double-entry accounting · Business &amp; organisation ledgers · Receipt uploads · WhatsApp support
+                        Savings goals · Recurring bill tracking · Receipt photos · WhatsApp support
                     </p>
                 </div>
             </motion.section>

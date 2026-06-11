@@ -40,13 +40,17 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expenseRepository = {
       create: vi.fn().mockResolvedValue({ id: "e1" }),
       findById: vi.fn(),
+      findLastByUserId: vi.fn().mockResolvedValue(null),
+      findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
       sumByBucketForMonth: vi.fn().mockResolvedValue(220),
-      softDelete: vi.fn(),
+      topCategoriesForMonth: vi.fn().mockResolvedValue([]),
+      softDelete: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
       findAllForUser: vi.fn().mockResolvedValue([]),
       findByNameForUser: vi.fn().mockResolvedValue(null),
+      findById: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
       create: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
     };
     budgetConfigRepository = {
@@ -178,6 +182,44 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("Wants left this month");
     expect(body).toContain("13,500"); // 15000 - 1500
+  });
+
+  it("handles the plain 'status' command before AI parsing", async () => {
+    await useCase.execute({ platformUserId: "123", textMessage: "status" });
+
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(expenseRepository.create).not.toHaveBeenCalled();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "This month — Day",
+    );
+  });
+
+  it("handles the plain 'report' command before AI parsing", async () => {
+    await useCase.execute({ platformUserId: "123", textMessage: "report" });
+
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "summary",
+    );
+  });
+
+  it("undoes the last expense on the plain 'undo' command", async () => {
+    expenseRepository.findLastByUserId.mockResolvedValue({
+      id: "e1",
+      amount: 220,
+      bucket: "WANTS",
+      categoryId: "c1",
+      note: "lunch",
+    });
+    expenseRepository.sumByBucketForMonth.mockResolvedValue(0);
+
+    await useCase.execute({ platformUserId: "123", textMessage: "undo" });
+
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(expenseRepository.softDelete).toHaveBeenCalledWith("e1");
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "Removed: ₹220 Food",
+    );
   });
 
   it("falls back to a friendly reply for non-financial messages", async () => {

@@ -26,7 +26,7 @@ export function ConfettiText({ children, className }: ConfettiTextProps) {
 
         // Switching to Web Audio API for a synthetic "pop" to avoid external assets/base64 bloat.
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+            const AudioContext = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof window.AudioContext }).webkitAudioContext
             if (!AudioContext) return
 
             const ctx = new AudioContext()

@@ -15,6 +15,9 @@ import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
 import { MessageProcessor, ProcessContext } from "./processors/MessageProcessor";
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
+import { StatusProcessor } from "./processors/StatusProcessor";
+import { ReportProcessor } from "./processors/ReportProcessor";
+import { UndoProcessor } from "./processors/UndoProcessor";
 import { ExpenseProcessor } from "./processors/ExpenseProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
 
@@ -59,8 +62,35 @@ export class ProcessIncomingMessageUseCase {
         budgetConfigRepository,
         messageService,
       ),
+      new StatusProcessor(
+        expenseRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
+      new ReportProcessor(
+        expenseRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
+      new UndoProcessor(
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
     ];
     this.postParseProcessors = [
+      new StatusProcessor(
+        expenseRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
+      new UndoProcessor(
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        messageService,
+      ),
       new ExpenseProcessor(
         expenseRepository,
         categoryRepository,
@@ -99,6 +129,7 @@ export class ProcessIncomingMessageUseCase {
       user,
       platformUserId: payload.platformUserId,
       textMessage: payload.textMessage,
+      replyToMessageId: payload.replyToMessageId,
       conversationHistory: history,
     };
 
