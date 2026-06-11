@@ -29,6 +29,8 @@ async function OverviewSection({
 }) {
     const {
         monthlyIncome,
+        expectedIncome,
+        incomeThisMonth,
         currency,
         buckets,
         totalSpent,
@@ -51,11 +53,18 @@ async function OverviewSection({
             {/* Headline stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Stat>
-                    <StatLabel>Monthly Income</StatLabel>
+                    <StatLabel>Budget Income</StatLabel>
                     <StatValue>
                         <AnimatedNumber value={monthlyIncome} format={currencyFormat} />
                     </StatValue>
-                    <StatDescription>Your budgeting baseline</StatDescription>
+                    <StatDescription>
+                        {incomeThisMonth > 0
+                            ? `${formatMoney(incomeThisMonth, currency)} logged this month` +
+                              (monthlyIncome > incomeThisMonth
+                                  ? ` · ${formatMoney(expectedIncome, currency)} expected`
+                                  : "")
+                            : "Your expected monthly baseline"}
+                    </StatDescription>
                     <StatIndicator color="success">
                         <Wallet className="h-4 w-4" />
                     </StatIndicator>

@@ -57,6 +57,7 @@ model User {
 
   // Core relations
   expenses     Expense[]
+  incomes      Income[]
   budgetConfig BudgetConfig?
   categories   Category[]
   logs         ParseLog[]
@@ -141,6 +142,28 @@ model Expense {
 
   @@index([userId, date])
   @@index([userId, bucket, date])
+}
+
+// Income events (salary, freelance, bonus). The month's effective budget is
+// based on max(expected monthlyIncome, sum of income this month).
+model Income {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(12, 2)
+  source String? // "salary", "freelance", etc.
+  note   String?
+
+  rawText    String
+  confidence Float
+
+  date DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  @@index([userId, date])
 }
 
 // ─── Infra ────────────────────────────────────────────────────────────────────

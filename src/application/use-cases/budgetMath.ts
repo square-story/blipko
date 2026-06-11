@@ -41,6 +41,16 @@ export function bucketBudget(
   return (monthlyIncome * bucketPct(split, bucket)) / 100;
 }
 
+// The income to budget against this month: the expected salary is a floor, and
+// actual income logged this month expands it above that floor. Lets salaried
+// and variable-income users share one rule (gig users set expected = 0).
+export function effectiveMonthlyIncome(
+  expected: number,
+  incomeThisMonth: number,
+): number {
+  return Math.max(expected, incomeThisMonth);
+}
+
 const inr = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 
 export function formatMoney(amount: number): string {

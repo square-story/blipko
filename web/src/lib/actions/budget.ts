@@ -11,6 +11,7 @@ import {
   DEFAULT_SPLIT,
   bucketBudget,
   currentMonthRange,
+  effectiveMonthlyIncome,
   pctSpent,
   type BudgetSplit,
 } from "@/lib/budget";
@@ -29,36 +30,44 @@ export async function getBudgetOverview() {
   const userId = session.user.id;
   const { start, end } = currentMonthRange();
 
-  const [user, config, grouped, recent, categoryGroups] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        monthlyIncome: true,
-        currency: true,
-        locale: true,
-        hasOnboarded: true,
-      },
-    }),
-    prisma.budgetConfig.findUnique({ where: { userId } }),
-    prisma.expense.groupBy({
-      by: ["bucket"],
-      _sum: { amount: true },
-      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-    }),
-    prisma.expense.findMany({
-      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-      include: { category: { select: { name: true } } },
-      orderBy: { date: "desc" },
-      take: 8,
-    }),
-    prisma.expense.groupBy({
-      by: ["categoryId"],
-      _sum: { amount: true },
-      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-    }),
-  ]);
+  const [user, config, grouped, recent, categoryGroups, incomeAgg] =
+    await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          monthlyIncome: true,
+          currency: true,
+          locale: true,
+          hasOnboarded: true,
+        },
+      }),
+      prisma.budgetConfig.findUnique({ where: { userId } }),
+      prisma.expense.groupBy({
+        by: ["bucket"],
+        _sum: { amount: true },
+        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+      }),
+      prisma.expense.findMany({
+        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+        include: { category: { select: { name: true } } },
+        orderBy: { date: "desc" },
+        take: 8,
+      }),
+      prisma.expense.groupBy({
+        by: ["categoryId"],
+        _sum: { amount: true },
+        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+      }),
+      prisma.income.aggregate({
+        _sum: { amount: true },
+        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+      }),
+    ]);
 
-  const monthlyIncome = Number(user?.monthlyIncome ?? 0);
+  const expectedIncome = Number(user?.monthlyIncome ?? 0);
+  const incomeThisMonth = Number(incomeAgg._sum.amount ?? 0);
+  // Budgets track actual income this month, floored at the expected salary.
+  const monthlyIncome = effectiveMonthlyIncome(expectedIncome, incomeThisMonth);
   const currency = user?.currency ?? "INR";
   const locale = user?.locale ?? "en-IN";
   const split: BudgetSplit = config
@@ -121,6 +130,8 @@ export async function getBudgetOverview() {
 
   return {
     monthlyIncome,
+    expectedIncome,
+    incomeThisMonth,
     currency,
     locale,
     split,

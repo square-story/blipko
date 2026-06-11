@@ -6,11 +6,13 @@ import {
 import { IExpenseRepository } from "../../../domain/repositories/IExpenseRepository";
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
+import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
   currentMonthRange,
+  effectiveMonthlyIncome,
   formatMoney,
   sanitizeMd,
 } from "../budgetMath";
@@ -25,6 +27,7 @@ export class UndoProcessor implements MessageProcessor {
     private readonly expenseRepository: IExpenseRepository,
     private readonly categoryRepository: ICategoryRepository,
     private readonly budgetConfigRepository: IBudgetConfigRepository,
+    private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
   ) {}
 
@@ -67,7 +70,11 @@ export class UndoProcessor implements MessageProcessor {
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
-    const budget = bucketBudget(Number(user.monthlyIncome ?? 0), config, target.bucket);
+    const income = effectiveMonthlyIncome(
+      Number(user.monthlyIncome ?? 0),
+      await this.incomeRepository.sumForMonth(user.id, start, end),
+    );
+    const budget = bucketBudget(income, config, target.bucket);
     const remaining = budget - spent;
 
     const label = await this.describe(target.categoryId, target.note);

@@ -6,6 +6,7 @@ import {
 import { IExpenseRepository } from "../../../domain/repositories/IExpenseRepository";
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
+import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IParseLogRepository } from "../../../domain/repositories/IParseLogRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { recordExpenseAndReply } from "../expenseFlow";
@@ -24,6 +25,7 @@ export class ExpenseProcessor implements MessageProcessor {
     private readonly categoryRepository: ICategoryRepository,
     private readonly budgetConfigRepository: IBudgetConfigRepository,
     private readonly parseLogRepository: IParseLogRepository,
+    private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
   ) {}
 
@@ -38,14 +40,20 @@ export class ExpenseProcessor implements MessageProcessor {
     const amount = parsed.amount;
     if (typeof amount !== "number" || amount <= 0 || amount > MAX_AMOUNT) {
       const response =
-        "Hmm, I couldn't catch the amount. Try something like \"chai 30\".";
-      await this.messageService.sendMessage({ to: platformUserId, body: response });
+        'Hmm, I couldn\'t catch the amount. Try something like "chai 30".';
+      await this.messageService.sendMessage({
+        to: platformUserId,
+        body: response,
+      });
       return { response, parsed };
     }
 
     // Resolve category; a known category's bucket is authoritative.
     const matched = parsed.category
-      ? await this.categoryRepository.findByNameForUser(user.id, parsed.category)
+      ? await this.categoryRepository.findByNameForUser(
+          user.id,
+          parsed.category,
+        )
       : null;
     const bucket = matched?.bucket ?? parsed.bucket;
 
@@ -59,6 +67,7 @@ export class ExpenseProcessor implements MessageProcessor {
         expenseRepository: this.expenseRepository,
         categoryRepository: this.categoryRepository,
         budgetConfigRepository: this.budgetConfigRepository,
+        incomeRepository: this.incomeRepository,
         messageService: this.messageService,
       },
       {

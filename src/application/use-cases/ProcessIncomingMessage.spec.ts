@@ -24,6 +24,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
   let categoryRepository: any;
   let budgetConfigRepository: any;
   let parseLogRepository: any;
+  let incomeRepository: any;
   let conversationRepository: any;
   let aiParser: any;
   let messageService: any;
@@ -67,6 +68,12 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       create: vi.fn().mockResolvedValue({ id: "plog1" }),
       findById: vi.fn().mockResolvedValue(null),
     };
+    incomeRepository = {
+      create: vi.fn().mockResolvedValue({ id: "inc1" }),
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      findLastByUserId: vi.fn().mockResolvedValue(null),
+      softDelete: vi.fn().mockResolvedValue(undefined),
+    };
     conversationRepository = {
       getRecent: vi.fn().mockResolvedValue([]),
       append: vi.fn().mockResolvedValue(undefined),
@@ -85,6 +92,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       categoryRepository,
       budgetConfigRepository,
       parseLogRepository,
+      incomeRepository,
       conversationRepository,
       messageService,
     );
@@ -256,6 +264,28 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(expenseRepository.softDelete).toHaveBeenCalledWith("e1");
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Removed: ₹220 Food",
+    );
+  });
+
+  it("records income and replies with the refreshed budget", async () => {
+    incomeRepository.sumForMonth.mockResolvedValue(55000);
+    aiParser.parseText.mockResolvedValue({
+      intent: "INCOME",
+      amount: 5000,
+      note: "freelance",
+      confidence: 0.9,
+    });
+
+    await useCase.execute({
+      platformUserId: "123",
+      textMessage: "got freelance 5000",
+    });
+
+    expect(incomeRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 5000, userId: "u1" }),
+    );
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "This month: ₹55,000",
     );
   });
 

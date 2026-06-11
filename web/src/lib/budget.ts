@@ -50,6 +50,15 @@ export function bucketBudget(
   return (monthlyIncome * bucketPct(split, bucket)) / 100;
 }
 
+// The income to budget against this month: expected salary is a floor, actual
+// income logged this month expands it above that floor. Matches the backend.
+export function effectiveMonthlyIncome(
+  expected: number,
+  incomeThisMonth: number,
+): number {
+  return Math.max(expected, incomeThisMonth);
+}
+
 // Integer percentage of budget spent (0 when budget is 0).
 export function pctSpent(spent: number, budget: number): number {
   if (budget <= 0) return 0;

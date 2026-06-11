@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   bucketBudget,
   currentMonthRange,
+  effectiveMonthlyIncome,
   formatMoney,
   monthDayInfo,
   pctSpent,
@@ -12,6 +13,13 @@ import {
 const SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 
 describe("budgetMath", () => {
+  it("effective income floors at expected and grows with actual", () => {
+    expect(effectiveMonthlyIncome(50000, 0)).toBe(50000); // nothing logged → expected
+    expect(effectiveMonthlyIncome(50000, 55000)).toBe(55000); // extra income expands
+    expect(effectiveMonthlyIncome(50000, 30000)).toBe(50000); // never below the plan
+    expect(effectiveMonthlyIncome(0, 8000)).toBe(8000); // gig worker, no baseline
+  });
+
   it("computes per-bucket budgets from income and split", () => {
     expect(bucketBudget(50000, SPLIT, "NEEDS")).toBe(25000);
     expect(bucketBudget(50000, SPLIT, "WANTS")).toBe(15000);
