@@ -9,24 +9,24 @@ import {
     ColumnFiltersState,
 } from "@tanstack/react-table";
 import { useQueryState, parseAsInteger, parseAsString } from "nuqs";
-import { TransactionData } from "@/lib/actions/transactions";
+import { ExpenseData, ExpenseFilters } from "@/lib/actions/expenses";
 import { DataTable } from "@/components/data-table/data-table";
 import { columns } from "./_components/columns";
-import { TransactionTableToolbar } from "./_components/transaction-table-toolbar";
+import { ExpenseTableToolbar } from "./_components/expense-table-toolbar";
+import { ExpenseTableFloatingBar } from "./_components/expense-table-floating-bar";
 
-import { TransactionTableFloatingBar } from "./_components/transaction-table-floating-bar";
-
-interface TransactionTableProps {
-    data: TransactionData[];
+interface ExpenseTableProps {
+    data: ExpenseData[];
     pageCount: number;
     total: number;
+    categoryOptions: { label: string; value: string }[];
 }
 
-export function TransactionTable({
+export function ExpenseTable({
     data,
     pageCount,
-    total,
-}: TransactionTableProps) {
+    categoryOptions,
+}: ExpenseTableProps) {
     // URL State
     const [page, setPage] = useQueryState(
         "page",
@@ -40,12 +40,12 @@ export function TransactionTable({
         "sort",
         parseAsString.withOptions({ shallow: false })
     );
-    const [intent, setIntent] = useQueryState(
-        "intent",
+    const [bucket, setBucket] = useQueryState(
+        "bucket",
         parseAsString.withOptions({ shallow: false })
     );
-    const [category, setCategory] = useQueryState(
-        "category",
+    const [categoryId, setCategoryId] = useQueryState(
+        "categoryId",
         parseAsString.withOptions({ shallow: false })
     );
     const [from, setFrom] = useQueryState(
@@ -64,8 +64,9 @@ export function TransactionTable({
     // Memoize column filters from URL
     const columnFilters = React.useMemo<ColumnFiltersState>(() => {
         const filters: ColumnFiltersState = [];
-        if (intent) filters.push({ id: "intent", value: intent.split(".") });
-        if (category) filters.push({ id: "category", value: category.split(".") });
+        if (bucket) filters.push({ id: "bucket", value: bucket.split(".") });
+        if (categoryId)
+            filters.push({ id: "categoryName", value: categoryId.split(".") });
         if (from || to) {
             filters.push({
                 id: "date",
@@ -73,7 +74,7 @@ export function TransactionTable({
             });
         }
         return filters;
-    }, [intent, category, from, to]);
+    }, [bucket, categoryId, from, to]);
 
     // Derive table sorting state
     const sorting: SortingState = React.useMemo(() => {
@@ -97,23 +98,20 @@ export function TransactionTable({
         const newFilters =
             typeof updater === "function" ? updater(columnFilters) : updater;
 
-        // Handle Intent Filter
-        const intentFilter = newFilters.find((f) => f.id === "intent");
-        if (intentFilter && Array.isArray(intentFilter.value)) {
-            setIntent(intentFilter.value.join("."));
+        const bucketFilter = newFilters.find((f) => f.id === "bucket");
+        if (bucketFilter && Array.isArray(bucketFilter.value)) {
+            setBucket(bucketFilter.value.join("."));
         } else {
-            setIntent(null);
+            setBucket(null);
         }
 
-        // Handle Category Filter
-        const categoryFilter = newFilters.find((f) => f.id === "category");
+        const categoryFilter = newFilters.find((f) => f.id === "categoryName");
         if (categoryFilter && Array.isArray(categoryFilter.value)) {
-            setCategory(categoryFilter.value.join("."));
+            setCategoryId(categoryFilter.value.join("."));
         } else {
-            setCategory(null);
+            setCategoryId(null);
         }
 
-        // Handle Date Filter
         const dateFilter = newFilters.find((f) => f.id === "date");
         if (dateFilter && Array.isArray(dateFilter.value)) {
             const [start, end] = dateFilter.value as (number | undefined)[];
@@ -125,10 +123,18 @@ export function TransactionTable({
         }
     };
 
-    const onGlobalFilterChange = (updater: Updater<any>) => {
+    const onGlobalFilterChange = (updater: Updater<string>) => {
         const newVal = typeof updater === "function" ? updater(search) : updater;
         setSearch(newVal);
-    }
+    };
+
+    const currentFilters: ExpenseFilters = {
+        search: search || undefined,
+        bucket: bucket || undefined,
+        categoryId: categoryId || undefined,
+        from: from || undefined,
+        to: to || undefined,
+    };
 
     const table = useReactTable({
         data,
@@ -154,22 +160,20 @@ export function TransactionTable({
             if (typeof updater === "function") {
                 const newState = updater({
                     pageIndex: page - 1,
-                    pageSize: perPage
+                    pageSize: perPage,
                 });
                 setPage(newState.pageIndex + 1);
                 setPerPage(newState.pageSize);
             }
-        }
+        },
     });
-
-
 
     return (
         <DataTable
             table={table}
-            actionBar={<TransactionTableFloatingBar table={table} />}
+            actionBar={<ExpenseTableFloatingBar table={table} />}
         >
-            <TransactionTableToolbar table={table} />
+            <ExpenseTableToolbar table={table} categoryOptions={categoryOptions} filters={currentFilters} />
         </DataTable>
     );
 }

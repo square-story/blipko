@@ -1,13 +1,9 @@
 import {
   LayoutGrid,
   LucideIcon,
-  ArrowRightLeft,
+  Receipt,
   PieChart,
-  Users,
   Settings,
-  Wallet,
-  RefreshCw,
-  Home,
   Tag,
 } from "lucide-react";
 
@@ -44,12 +40,12 @@ export function getMenuList(): Group[] {
       ],
     },
     {
-      groupLabel: "Finance",
+      groupLabel: "Budget",
       menus: [
         {
-          href: "/dashboard/transactions",
-          label: "Transactions",
-          icon: ArrowRightLeft,
+          href: "/dashboard/expenses",
+          label: "Expenses",
+          icon: Receipt,
         },
         {
           href: "/dashboard/analytics",
@@ -57,38 +53,9 @@ export function getMenuList(): Group[] {
           icon: PieChart,
         },
         {
-          href: "/dashboard/wallets",
-          label: "Wallets",
-          icon: Wallet,
-        },
-        {
           href: "/dashboard/categories",
           label: "Categories",
           icon: Tag,
-        },
-        {
-          href: "/dashboard/recurring",
-          label: "Recurring",
-          icon: RefreshCw,
-          submenus: [
-            { href: "/dashboard/recurring", label: "Charges" },
-            { href: "/dashboard/recurring/dues", label: "Upcoming Dues" },
-          ],
-        },
-      ],
-    },
-    {
-      groupLabel: "Management",
-      menus: [
-        {
-          href: "/dashboard/family",
-          label: "Family",
-          icon: Home,
-        },
-        {
-          href: "/dashboard/vendors",
-          label: "Vendors",
-          icon: Users,
         },
       ],
     },

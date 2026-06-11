@@ -3,6 +3,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { Bucket } from "@prisma/client";
+import { BUCKETS, currentMonthRange } from "@/lib/budget";
 
 export async function getAnalyticsData(months: number = 6) {
   const session = await auth();
@@ -14,26 +16,17 @@ export async function getAnalyticsData(months: number = 6) {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
 
-  // Monthly income vs expense trend
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      userId,
-      date: { gte: startDate },
-      isDeleted: false,
-    },
-    select: {
-      date: true,
-      amount: true,
-      intent: true,
-      category: true,
-    },
+  // Per-bucket spend per month over the window.
+  const expenses = await prisma.expense.findMany({
+    where: { userId, isDeleted: false, date: { gte: startDate } },
+    select: { date: true, amount: true, bucket: true },
   });
 
   type MonthEntry = {
     month: string;
-    totalIn: number;
-    totalOut: number;
-    categoryBreakdown: Record<string, number>;
+    NEEDS: number;
+    WANTS: number;
+    SAVINGS: number;
   };
   const monthMap = new Map<string, MonthEntry>();
 
@@ -44,110 +37,53 @@ export async function getAnalyticsData(months: number = 6) {
       month: "short",
       year: "2-digit",
     });
-    monthMap.set(key, {
-      month: label,
-      totalIn: 0,
-      totalOut: 0,
-      categoryBreakdown: {},
-    });
+    monthMap.set(key, { month: label, NEEDS: 0, WANTS: 0, SAVINGS: 0 });
   }
 
-  for (const tx of transactions) {
-    const key = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
+  for (const e of expenses) {
+    const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, "0")}`;
     const entry = monthMap.get(key);
     if (!entry) continue;
-    const amount = tx.amount.toNumber();
-    if (tx.intent === "RECEIVED") {
-      entry.totalIn += amount;
-    } else if (tx.intent === "PAID") {
-      entry.totalOut += amount;
-      const cat = tx.category || "General";
-      entry.categoryBreakdown[cat] =
-        (entry.categoryBreakdown[cat] || 0) + amount;
-    }
+    entry[e.bucket as Bucket] += Number(e.amount);
   }
 
   const monthlyTrend = Array.from(monthMap.values());
 
-  // Overdue contacts: currentBalance > 0 means they owe the user
-  const overdueContacts = await prisma.contact.findMany({
-    where: {
-      userId,
-      currentBalance: { gt: 0 },
-    },
-    select: {
-      id: true,
-      name: true,
-      category: true,
-      currentBalance: true,
-      updatedAt: true,
-    },
-    orderBy: { currentBalance: "desc" },
-    take: 20,
+  // Category breakdown (current month).
+  const { start, end } = currentMonthRange(now);
+  const categoryGroups = await prisma.expense.groupBy({
+    by: ["categoryId"],
+    _sum: { amount: true },
+    where: { userId, isDeleted: false, date: { gte: start, lt: end } },
   });
 
-  const serializedOverdue = overdueContacts.map((c) => ({
-    id: c.id,
-    name: c.name,
-    category: c.category,
-    balance: c.currentBalance.toNumber(),
-    updatedAt: c.updatedAt.toISOString(),
-  }));
+  const categoryIds = categoryGroups
+    .map((g) => g.categoryId)
+    .filter((id): id is string => !!id);
+  const categories = categoryIds.length
+    ? await prisma.category.findMany({
+        where: { id: { in: categoryIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const nameById = new Map(categories.map((c) => [c.id, c.name]));
 
-  // Category breakdown (current month)
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thisMonthTx = await prisma.transaction.findMany({
-    where: {
-      userId,
-      date: { gte: thisMonthStart },
-      intent: "PAID",
-      isDeleted: false,
-    },
-    select: { category: true, amount: true },
-  });
-
-  const categoryMap = new Map<string, number>();
-  for (const tx of thisMonthTx) {
-    const cat = tx.category || "General";
-    categoryMap.set(cat, (categoryMap.get(cat) || 0) + tx.amount.toNumber());
-  }
-  const categoryBreakdown = Array.from(categoryMap.entries())
-    .map(([name, value]) => ({ name, value }))
+  const categoryBreakdown = categoryGroups
+    .map((g) => ({
+      name: g.categoryId
+        ? (nameById.get(g.categoryId) ?? "Uncategorized")
+        : "Uncategorized",
+      value: Number(g._sum.amount ?? 0),
+    }))
+    .filter((c) => c.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Top contacts by transaction volume
-  const contactVolume = await prisma.transaction.groupBy({
-    by: ["contactId"],
-    _sum: { amount: true },
-    _count: { id: true },
-    where: {
-      userId,
-      contactId: { not: null },
-      isDeleted: false,
-    },
-    orderBy: { _sum: { amount: "desc" } },
-    take: 5,
-  });
-
-  const contactIds = contactVolume
-    .map((r) => r.contactId)
-    .filter(Boolean) as string[];
-  const contactDetails = await prisma.contact.findMany({
-    where: { id: { in: contactIds } },
-    select: { id: true, name: true },
-  });
-  const contactMap = new Map(contactDetails.map((c) => [c.id, c.name]));
-
-  const topContacts = contactVolume.map((r) => ({
-    name: contactMap.get(r.contactId!) ?? "Unknown",
-    total: r._sum.amount?.toNumber() ?? 0,
-    count: r._count.id,
-  }));
+  const topCategories = categoryBreakdown.slice(0, 5);
 
   return {
     monthlyTrend,
-    overdueContacts: serializedOverdue,
+    buckets: BUCKETS,
     categoryBreakdown,
-    topContacts,
+    topCategories,
   };
 }

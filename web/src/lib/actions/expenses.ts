@@ -1,0 +1,203 @@
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { Bucket, Prisma } from "@prisma/client";
+import { revalidatePath } from "next/cache";
+
+export type ExpenseData = {
+  id: string;
+  amount: number;
+  bucket: Bucket;
+  categoryName: string | null;
+  note: string | null;
+  source: string;
+  date: Date;
+};
+
+export type ExpenseFilters = {
+  search?: string;
+  bucket?: string; // dot-separated
+  categoryId?: string; // dot-separated
+  from?: string; // epoch ms
+  to?: string; // epoch ms
+};
+
+function buildWhere(
+  userId: string,
+  { search, bucket, categoryId, from, to }: ExpenseFilters,
+): Prisma.ExpenseWhereInput {
+  const where: Prisma.ExpenseWhereInput = {
+    userId,
+    isDeleted: false,
+    OR: search
+      ? [
+          { note: { contains: search, mode: "insensitive" } },
+          { rawText: { contains: search, mode: "insensitive" } },
+        ]
+      : undefined,
+  };
+
+  if (from || to) {
+    where.date = {};
+    if (from) where.date.gte = new Date(Number(from));
+    if (to) where.date.lte = new Date(Number(to));
+  }
+
+  if (bucket) {
+    const buckets = bucket.split(".") as Bucket[];
+    if (buckets.length > 0) where.bucket = { in: buckets };
+  }
+
+  if (categoryId) {
+    const ids = categoryId.split(".");
+    if (ids.length > 0) where.categoryId = { in: ids };
+  }
+
+  return where;
+}
+
+export async function getExpenses({
+  page = 1,
+  limit = 10,
+  search = "",
+  sort = "date.desc",
+  bucket,
+  categoryId,
+  from,
+  to,
+}: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+  bucket?: string;
+  categoryId?: string;
+  from?: string;
+  to?: string;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      message: "Unauthorized",
+      data: [] as ExpenseData[],
+      total: 0,
+      pageCount: 0,
+    };
+  }
+
+  const skip = (page - 1) * limit;
+  const ALLOWED_SORT_FIELDS = ["date", "amount", "createdAt"] as const;
+  type AllowedSortField = (typeof ALLOWED_SORT_FIELDS)[number];
+  const [rawSortField, rawSortOrder] = sort.split(".");
+  const sortField: AllowedSortField = ALLOWED_SORT_FIELDS.includes(
+    rawSortField as AllowedSortField,
+  )
+    ? (rawSortField as AllowedSortField)
+    : "date";
+  const sortOrder: Prisma.SortOrder = rawSortOrder === "asc" ? "asc" : "desc";
+  const orderBy: Prisma.ExpenseOrderByWithRelationInput = {
+    [sortField]: sortOrder,
+  };
+
+  const where = buildWhere(session.user.id, {
+    search,
+    bucket,
+    categoryId,
+    from,
+    to,
+  });
+
+  try {
+    const [total, expenses] = await Promise.all([
+      prisma.expense.count({ where }),
+      prisma.expense.findMany({
+        where,
+        include: { category: { select: { name: true } } },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    const data: ExpenseData[] = expenses.map((e) => ({
+      id: e.id,
+      amount: Number(e.amount),
+      bucket: e.bucket,
+      categoryName: e.category?.name ?? null,
+      note: e.note,
+      source: e.source,
+      date: e.date,
+    }));
+
+    return {
+      success: true,
+      data,
+      total,
+      pageCount: Math.ceil(total / limit),
+    };
+  } catch (error) {
+    console.error("Error fetching expenses:", error);
+    return {
+      success: false,
+      message: "Failed to fetch expenses",
+      data: [] as ExpenseData[],
+      total: 0,
+      pageCount: 0,
+    };
+  }
+}
+
+export async function deleteExpenses(ids: string[]) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+  if (!ids.length) return { success: false, message: "No expenses selected" };
+  if (ids.length > 100)
+    return { success: false, message: "Cannot delete more than 100 at once" };
+
+  await prisma.expense.updateMany({
+    where: { id: { in: ids }, userId: session.user.id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+
+  revalidatePath("/dashboard/expenses");
+  return { success: true };
+}
+
+function csvCell(value: string): string {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export async function exportExpensesCsv(
+  filters: ExpenseFilters,
+): Promise<{ success: boolean; csv?: string; message?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const where = buildWhere(session.user.id, filters);
+  const expenses = await prisma.expense.findMany({
+    where,
+    include: { category: { select: { name: true } } },
+    orderBy: { date: "desc" },
+  });
+
+  const header = ["Date", "Amount", "Bucket", "Category", "Note", "Source"];
+  const rows = expenses.map((e) =>
+    [
+      e.date.toISOString().split("T")[0],
+      String(Number(e.amount)),
+      e.bucket,
+      e.category?.name ?? "",
+      e.note ?? "",
+      e.source,
+    ]
+      .map(csvCell)
+      .join(","),
+  );
+
+  return { success: true, csv: [header.join(","), ...rows].join("\n") };
+}

@@ -55,36 +55,36 @@ const questions = [
 		id: "item-1",
 		title: "ഇത് എന്താണ് Blipko? (What is Blipko?)",
 		content:
-			"Blipko is a Telegram bot that helps you track money by chatting naturally in Malayalam, Manglish, or English. Type \"Raju 500 koduthu\" and it logs the transaction instantly — no spreadsheets, no apps.",
+			"Blipko is a Telegram bot that helps you stick to a budget by chatting. Type what you spent — \"lunch 220\" — and it logs it, sorts it into a 50/30/20 budget, and tells you what's left. No spreadsheets, no apps.",
 	},
 	{
 		id: "item-2",
-		title: "Does it understand Malayalam?",
+		title: "Does it understand Malayalam and voice notes?",
 		content:
-			"Yes. Say \"Raju ko 200 koduthu\", \"innathe chilavu ethra\", or send a voice note in Malayalam — Blipko understands Manglish, Hindi, and English. No form filling required. Just chat the way you normally would.",
+			"Yes. Type or speak in Malayalam, Manglish, or English — \"auto 60\", \"innathe chilavu\", or a quick voice note. Blipko understands and logs it. No forms, just chat the way you normally would.",
 	},
 	{
 		id: "item-3",
-		title: "How do recurring reminders work?",
+		title: "How does the 50/30/20 budget work?",
 		content:
-			"Tell Blipko \"remind me rent ₹8000 on 1st every month\". It creates the reminder and sends you a Telegram notification every month at 9 AM with a one-tap Mark Paid button. No more forgotten rent days.",
+			"Set your monthly income once. Blipko splits it into Needs (50%), Wants (30%), and Savings (20%) — fully adjustable. Every spend you log is auto-categorized into the right bucket, so you always know where your salary is going.",
 	},
 	{
 		id: "item-4",
-		title: "Can I manage family or shared expenses?",
+		title: "How do I check my budget and get warnings?",
 		content:
-			"Yes. Create a family group with an invite code and share it with members. Everyone logs expenses, and you can see a breakdown of who spent what using the /group command or the family section on the web dashboard.",
+			"Send /status anytime to see how much is left in each bucket and your safe daily spend. Blipko also nudges you automatically when a bucket crosses 80% — so you can adjust before the month runs out.",
 	},
 	{
 		id: "item-5",
 		title: "Is there a web app?",
 		content:
-			"Yes — sign in at blipko.app to see your dashboard with full transaction history, monthly analytics, recurring charges, vendor management, and wallet overview. Works on any browser.",
+			"Yes — sign in at blipko.app for a full dashboard: budget health, expense history with filters and CSV export, monthly trends, and category breakdowns. Edit your income and budget split right there. Works on any browser.",
 	},
 	{
 		id: "item-6",
 		title: "Is it free?",
 		content:
-			"Blipko is free during early access. The core bot features will remain free. We may introduce a paid plan for advanced business features in the future.",
+			"Blipko is free during early access, and the core budgeting features will stay free. We may add a paid plan for advanced features in the future.",
 	},
 ];
