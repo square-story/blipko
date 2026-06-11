@@ -4,7 +4,9 @@ const globals = require('globals');
 
 module.exports = tseslint.config(
     {
-        ignores: ['dist/', '.seed-build/', 'node_modules/', 'eslint.config.js', 'web/.next/', 'web/out/', 'web/build/', 'coverage/', 'playwright-report/'],
+        // web/ is a separate project with its own eslint config (cd web && pnpm lint);
+        // *.cjs are CommonJS scripts that legitimately use require().
+        ignores: ['dist/', '.seed-build/', 'node_modules/', 'eslint.config.js', 'web/', '**/*.cjs', 'coverage/', 'playwright-report/'],
     },
     eslint.configs.recommended,
     ...tseslint.configs.recommended,

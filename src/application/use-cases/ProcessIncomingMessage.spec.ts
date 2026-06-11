@@ -50,8 +50,12 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     categoryRepository = {
       findAllForUser: vi.fn().mockResolvedValue([]),
       findByNameForUser: vi.fn().mockResolvedValue(null),
-      findById: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
-      create: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
+      findById: vi
+        .fn()
+        .mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
+      create: vi
+        .fn()
+        .mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
     };
     budgetConfigRepository = {
       create: vi.fn().mockResolvedValue({}),
@@ -95,7 +99,9 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       monthlyIncome: 50000,
       hasOnboarded: true,
     });
-    expect(budgetConfigRepository.create).toHaveBeenCalledWith({ userId: "u1" });
+    expect(budgetConfigRepository.create).toHaveBeenCalledWith({
+      userId: "u1",
+    });
     expect(aiParser.parseText).not.toHaveBeenCalled();
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("monthly plan");
@@ -165,7 +171,12 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     parseLogRepository.findById.mockResolvedValue({
       id: "plog1",
       rawText: "paid 1500",
-      parsed: { intent: "EXPENSE", amount: 1500, note: "paid", confidence: 0.4 },
+      parsed: {
+        intent: "EXPENSE",
+        amount: 1500,
+        note: "paid",
+        confidence: 0.4,
+      },
     });
     expenseRepository.sumByBucketForMonth.mockResolvedValue(1500);
 
@@ -177,7 +188,11 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(parseLogRepository.findById).toHaveBeenCalledWith("plog1");
     expect(aiParser.parseText).not.toHaveBeenCalled();
     expect(expenseRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 1500, bucket: "WANTS", parseLogId: "plog1" }),
+      expect.objectContaining({
+        amount: 1500,
+        bucket: "WANTS",
+        parseLogId: "plog1",
+      }),
     );
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("Wants left this month");
@@ -192,6 +207,28 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "This month — Day",
     );
+  });
+
+  it("applies the link token even when a Telegram user already exists (merge)", async () => {
+    // Bug regression: previously ensureUserExists returned the existing Telegram
+    // user and skipped the token, leaving two split rows.
+    userRepository.findByTelegramId.mockResolvedValue(onboardedUser);
+    userRepository.linkTelegramByToken.mockResolvedValue({
+      ...onboardedUser,
+      email: "g@example.com",
+    });
+
+    const res = await useCase.execute({
+      platformUserId: "123",
+      textMessage: "/start tok_abc",
+    });
+
+    expect(userRepository.linkTelegramByToken).toHaveBeenCalledWith(
+      "tok_abc",
+      "123",
+    );
+    expect(res.response).toContain("Account linked");
+    expect(aiParser.parseText).not.toHaveBeenCalled();
   });
 
   it("handles the plain 'report' command before AI parsing", async () => {
@@ -226,7 +263,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     aiParser.parseText.mockResolvedValue({
       intent: "UNKNOWN",
       confidence: 0.9,
-      conversational_response: "Hi! Text me a spend like \"chai 30\".",
+      conversational_response: 'Hi! Text me a spend like "chai 30".',
     });
 
     await useCase.execute({ platformUserId: "123", textMessage: "hello" });

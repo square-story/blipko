@@ -12,7 +12,10 @@ import { IParseLogRepository } from "../../domain/repositories/IParseLogReposito
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
-import { MessageProcessor, ProcessContext } from "./processors/MessageProcessor";
+import {
+  MessageProcessor,
+  ProcessContext,
+} from "./processors/MessageProcessor";
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
@@ -180,8 +183,12 @@ export class ProcessIncomingMessageUseCase {
     linkToken?: string,
   ): Promise<{ user: User; wasLinked: boolean }> {
     const existing = await this.userRepository.findByTelegramId(telegramId);
-    if (existing) return { user: existing, wasLinked: false };
+    // No link token: existing Telegram user is the user, as before.
+    if (existing && !linkToken) return { user: existing, wasLinked: false };
 
+    // A link token takes priority — even when a Telegram-only user already
+    // exists — so linking merges it into the web account instead of leaving two
+    // split rows (the bug where bot expenses never reach the dashboard).
     if (linkToken) {
       const linked = await this.userRepository.linkTelegramByToken(
         linkToken,
@@ -195,6 +202,9 @@ export class ProcessIncomingMessageUseCase {
         return { user: linked, wasLinked: true };
       }
     }
+
+    // Token absent/expired but a Telegram user exists → use it.
+    if (existing) return { user: existing, wasLinked: false };
 
     const user = await this.userRepository.create({
       telegramId,

@@ -37,7 +37,9 @@ export async function generateTelegramLinkToken(): Promise<string> {
     update: { token, expiresAt },
   });
 
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+  const botUsername =
+    process.env.TELEGRAM_BOT_USERNAME ??
+    process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
   if (!botUsername) throw new Error("TELEGRAM_BOT_USERNAME not configured");
 
   return `https://t.me/${botUsername}?start=${token}`;
