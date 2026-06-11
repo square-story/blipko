@@ -89,7 +89,7 @@ export function RoundedPieChart({
                   className="fill-background"
                   stroke="none"
                   fontSize={12}
-                  formatter={(value: any) => config[value as string]?.label}
+                  formatter={(value: string | number) => config[value as string]?.label}
                 />
               </Pie>
             </PieChart>
