@@ -35,23 +35,22 @@ jobs:
         cache: 'pnpm'
     - name: Install dependencies
       run: pnpm install
+    - name: Generate Prisma Client
+      run: pnpm prisma generate
     - name: Unit tests
       run: pnpm test:unit
-    - name: Install Playwright Browsers
-      run: pnpm exec playwright install --with-deps
     - name: Create Database Schema
       env:
         DATABASE_URL: "postgresql://user:password@localhost:5432/dbname"
       run: npx prisma db push
-    - name: Run Playwright tests
+    - name: Run Playwright API tests
       env:
         DATABASE_URL: "postgresql://user:password@localhost:5432/dbname"
         GEMINI_API_KEY: "dummy_gemini_key"
-        META_VERIFY_TOKEN: "dummy_verify_token"
-        META_WHATSAPP_TOKEN: "dummy_whatsapp_token"
-        WHATSAPP_PHONE_NUMBER_ID: "dummy_phone_id"
         OPENAI_API_KEY: "dummy_openai_key"
         SARVAM_API_KEY: "dummy_sarvam_key"
+        TELEGRAM_BOT_TOKEN: "dummy_bot_token"
+        TELEGRAM_WEBHOOK_SECRET: "dummy_webhook_secret"
       run: pnpm exec playwright test
     - uses: actions/upload-artifact@v4
       if: always()
