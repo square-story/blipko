@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+// 50/30/20 budgeting buckets
+enum Bucket {
+  NEEDS
+  WANTS
+  SAVINGS
+}
+
+enum ExpenseSource {
+  TEXT
+  VOICE
+}
+
+// Proactive budget nudges — one of each kind per bucket per month.
+enum NudgeKind {
+  WARN_80
+  OVER
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  name        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Platform identity
+  telegramId String? @unique
+
+  // Budget profile
+  monthlyIncome Decimal? @db.Decimal(12, 2)
+  currency      String   @default("INR")
+  locale        String   @default("en-IN")
+  payday        Int      @default(1)
+
+  // Lifecycle
+  isEarlyAdopter Boolean @default(true)
+  hasOnboarded   Boolean @default(false)
+
+  // NextAuth
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  // Core relations
+  expenses     Expense[]
+  budgetConfig BudgetConfig?
+  categories   Category[]
+  logs         ParseLog[]
+  budgetNudges BudgetNudge[]
+
+  conversationMessages ConversationMessage[]
+  telegramLinkToken    TelegramLinkToken?
+}
+
+// Idempotency log for proactive nudges: at most one row per
+// (user, bucket, kind, month), so a nudge is sent once per month, not daily.
+model BudgetNudge {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket    Bucket
+  kind      NudgeKind
+  periodKey String // "YYYY-MM"
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, bucket, kind, periodKey])
+}
+
+model BudgetConfig {
+  id         String @id @default(cuid())
+  userId     String @unique
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  needsPct   Int    @default(50)
+  wantsPct   Int    @default(30)
+  savingsPct Int    @default(20)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// System categories have userId = null; custom categories belong to a user.
+model Category {
+  id       String  @id @default(cuid())
+  name     String
+  bucket   Bucket
+  isSystem Boolean @default(false)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expenses Expense[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+}
+
+model Expense {
+  id     String  @id @default(cuid())
+  amount Decimal @db.Decimal(10, 2)
+  bucket Bucket
+  note   String?
+
+  // Raw capture + parse provenance
+  rawText    String
+  source     ExpenseSource @default(TEXT)
+  confidence Float
+
+  date DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  // Link back to the raw parsed log
+  parseLogId String?   @unique
+  parseLog   ParseLog? @relation(fields: [parseLogId], references: [id])
+
+  // Link to the confirmation message (for reply/undo handling)
+  confirmationMessageId String? @unique
+
+  // Soft delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
+  @@index([userId, date])
+  @@index([userId, bucket, date])
+}
+
+// ─── Infra ────────────────────────────────────────────────────────────────────
+
+// Stores every parse (raw + parsed JSON + confidence). Also serves as the
+// pending-expense store for the low-confidence bucket-confirmation flow.
+model ParseLog {
+  id         String  @id @default(cuid())
+  rawText    String
+  parsed     Json
+  confidence Float?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  expense Expense?
+
+  createdAt DateTime @default(now())
+}
+
+model ProcessedMessage {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  processedAt DateTime @default(now())
+}
+
+model ConversationMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model TelegramLinkToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── Auth (NextAuth) ───────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
