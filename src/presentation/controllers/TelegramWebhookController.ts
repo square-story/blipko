@@ -14,6 +14,7 @@ import { PrismaExpenseRepository } from "../../data/repositories/PrismaExpenseRe
 import { PrismaCategoryRepository } from "../../data/repositories/PrismaCategoryRepository";
 import { PrismaBudgetConfigRepository } from "../../data/repositories/PrismaBudgetConfigRepository";
 import { PrismaParseLogRepository } from "../../data/repositories/PrismaParseLogRepository";
+import { PrismaIncomeRepository } from "../../data/repositories/PrismaIncomeRepository";
 import { PrismaConversationRepository } from "../../data/repositories/PrismaConversationRepository";
 import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeRepository";
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
@@ -54,6 +55,7 @@ const expenseRepository = new PrismaExpenseRepository(prisma);
 const categoryRepository = new PrismaCategoryRepository(prisma);
 const budgetConfigRepository = new PrismaBudgetConfigRepository(prisma);
 const parseLogRepository = new PrismaParseLogRepository(prisma);
+const incomeRepository = new PrismaIncomeRepository(prisma);
 const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
@@ -65,6 +67,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   categoryRepository,
   budgetConfigRepository,
   parseLogRepository,
+  incomeRepository,
   conversationRepository,
   messageService,
 );
@@ -90,18 +93,24 @@ export class TelegramWebhookController {
   async registerBotCommands(): Promise<void> {
     if (!this.botToken) return;
     try {
-      await fetch(`https://api.telegram.org/bot${this.botToken}/setMyCommands`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          commands: [
-            { command: "start",  description: "Set up your budget" },
-            { command: "status", description: "Your budget health this month" },
-            { command: "report", description: "This month's summary" },
-            { command: "help",   description: "How to use the bot" },
-          ],
-        }),
-      });
+      await fetch(
+        `https://api.telegram.org/bot${this.botToken}/setMyCommands`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            commands: [
+              { command: "start", description: "Set up your budget" },
+              {
+                command: "status",
+                description: "Your budget health this month",
+              },
+              { command: "report", description: "This month's summary" },
+              { command: "help", description: "How to use the bot" },
+            ],
+          }),
+        },
+      );
       console.log("Telegram bot commands registered");
     } catch (err) {
       console.error("Failed to register bot commands:", err);
@@ -114,13 +123,17 @@ export class TelegramWebhookController {
       if (this.webhookSecret) {
         const incoming = req.headers["x-telegram-bot-api-secret-token"];
         if (typeof incoming !== "string") {
-          res.status(403).json({ success: false, message: "Forbidden", data: null });
+          res
+            .status(403)
+            .json({ success: false, message: "Forbidden", data: null });
           return;
         }
         const a = Buffer.from(incoming);
         const b = Buffer.from(this.webhookSecret);
         if (a.length !== b.length || !timingSafeEqual(a, b)) {
-          res.status(403).json({ success: false, message: "Forbidden", data: null });
+          res
+            .status(403)
+            .json({ success: false, message: "Forbidden", data: null });
           return;
         }
       }
@@ -243,5 +256,6 @@ export const sendBudgetNudges = new SendBudgetNudgesUseCase(
   expenseRepository,
   budgetConfigRepository,
   nudgeRepository,
+  incomeRepository,
   messageService,
 );

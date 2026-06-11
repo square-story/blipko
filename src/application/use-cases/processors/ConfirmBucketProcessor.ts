@@ -7,6 +7,7 @@ import {
 import { IExpenseRepository } from "../../../domain/repositories/IExpenseRepository";
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
+import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IParseLogRepository } from "../../../domain/repositories/IParseLogRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { ParsedData } from "../../../domain/entities/ParsedData";
@@ -23,6 +24,7 @@ export class ConfirmBucketProcessor implements MessageProcessor {
     private readonly expenseRepository: IExpenseRepository,
     private readonly categoryRepository: ICategoryRepository,
     private readonly budgetConfigRepository: IBudgetConfigRepository,
+    private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
   ) {}
 
@@ -55,6 +57,7 @@ export class ConfirmBucketProcessor implements MessageProcessor {
         expenseRepository: this.expenseRepository,
         categoryRepository: this.categoryRepository,
         budgetConfigRepository: this.budgetConfigRepository,
+        incomeRepository: this.incomeRepository,
         messageService: this.messageService,
       },
       {
@@ -73,9 +76,11 @@ export class ConfirmBucketProcessor implements MessageProcessor {
   }
 
   private async fail(platformUserId: string): Promise<ProcessOutput> {
-    const response =
-      "That entry expired — please send the expense again.";
-    await this.messageService.sendMessage({ to: platformUserId, body: response });
+    const response = "That entry expired — please send the expense again.";
+    await this.messageService.sendMessage({
+      to: platformUserId,
+      body: response,
+    });
     return { response, parsed: { intent: "UNKNOWN", confidence: 1 } };
   }
 }

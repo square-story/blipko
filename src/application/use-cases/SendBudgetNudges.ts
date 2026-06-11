@@ -3,11 +3,13 @@ import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
 import { INudgeRepository } from "../../domain/repositories/INudgeRepository";
+import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
   currentMonthRange,
+  effectiveMonthlyIncome,
   formatMoney,
   monthDayInfo,
   monthPeriodKey,
@@ -32,6 +34,7 @@ export class SendBudgetNudgesUseCase {
     private readonly expenseRepository: IExpenseRepository,
     private readonly budgetConfigRepository: IBudgetConfigRepository,
     private readonly nudgeRepository: INudgeRepository,
+    private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
   ) {}
 
@@ -61,8 +64,12 @@ export class SendBudgetNudgesUseCase {
     periodKey: string,
     daysLeft: number,
   ): Promise<number> {
-    const income = Number(user.monthlyIncome ?? 0);
-    if (income <= 0 || !user.telegramId) return 0;
+    if (!user.telegramId) return 0;
+    const income = effectiveMonthlyIncome(
+      Number(user.monthlyIncome ?? 0),
+      await this.incomeRepository.sumForMonth(user.id, start, end),
+    );
+    if (income <= 0) return 0;
 
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??

@@ -6,11 +6,13 @@ import {
 } from "./MessageProcessor";
 import { IExpenseRepository } from "../../../domain/repositories/IExpenseRepository";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
+import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
   currentMonthRange,
+  effectiveMonthlyIncome,
   formatMoney,
   monthDayInfo,
   pctSpent,
@@ -27,6 +29,7 @@ export class StatusProcessor implements MessageProcessor {
   constructor(
     private readonly expenseRepository: IExpenseRepository,
     private readonly budgetConfigRepository: IBudgetConfigRepository,
+    private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
   ) {}
 
@@ -41,12 +44,15 @@ export class StatusProcessor implements MessageProcessor {
 
   async process(context: ProcessContext): Promise<ProcessOutput> {
     const { user, platformUserId } = context;
-    const monthlyIncome = Number(user.monthlyIncome ?? 0);
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
     const { start, end } = currentMonthRange();
     const { day, daysInMonth, remainingDays } = monthDayInfo();
+    const monthlyIncome = effectiveMonthlyIncome(
+      Number(user.monthlyIncome ?? 0),
+      await this.incomeRepository.sumForMonth(user.id, start, end),
+    );
 
     const lines: string[] = [];
     const dailyParts: string[] = [];

@@ -28,9 +28,11 @@ describe("StatusProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     processor = new StatusProcessor(
       expenseRepository,
       budgetConfigRepository,
+      incomeRepository as any,
       messageService,
     );
   });
@@ -86,8 +88,9 @@ describe("StatusProcessor", () => {
   });
 
   it("flags an over-budget bucket with 🔴", async () => {
-    expenseRepository.sumByBucketForMonth = vi.fn((_u: string, bucket: string) =>
-      Promise.resolve(bucket === "WANTS" ? 18000 : 0),
+    expenseRepository.sumByBucketForMonth = vi.fn(
+      (_u: string, bucket: string) =>
+        Promise.resolve(bucket === "WANTS" ? 18000 : 0),
     );
     await processor.process({
       user,

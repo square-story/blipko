@@ -2,11 +2,13 @@ import { Bucket, ExpenseSource, User } from "@prisma/client";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
+import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
   currentMonthRange,
+  effectiveMonthlyIncome,
   formatMoney,
   sanitizeMd,
 } from "./budgetMath";
@@ -15,6 +17,7 @@ export interface ExpenseFlowDeps {
   expenseRepository: IExpenseRepository;
   categoryRepository: ICategoryRepository;
   budgetConfigRepository: IBudgetConfigRepository;
+  incomeRepository: IIncomeRepository;
   messageService: IMessagingPlatform;
 }
 
@@ -87,8 +90,16 @@ export async function recordExpenseAndReply(
   );
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
-  const monthlyIncome = Number(user.monthlyIncome ?? 0);
-  const budget = bucketBudget(monthlyIncome, config, bucket);
+  const monthIncome = await deps.incomeRepository.sumForMonth(
+    user.id,
+    start,
+    end,
+  );
+  const income = effectiveMonthlyIncome(
+    Number(user.monthlyIncome ?? 0),
+    monthIncome,
+  );
+  const budget = bucketBudget(income, config, bucket);
   const remaining = budget - spent;
 
   const meta = BUCKET_META[bucket];

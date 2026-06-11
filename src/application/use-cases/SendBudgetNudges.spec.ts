@@ -13,8 +13,8 @@ describe("SendBudgetNudges", () => {
 
   // Helper: set per-bucket spend.
   const setSpend = (spend: Record<string, number>) => {
-    expenseRepository.sumByBucketForMonth = vi.fn((_u: string, bucket: string) =>
-      Promise.resolve(spend[bucket] ?? 0),
+    expenseRepository.sumByBucketForMonth = vi.fn(
+      (_u: string, bucket: string) => Promise.resolve(spend[bucket] ?? 0),
     );
   };
 
@@ -33,11 +33,13 @@ describe("SendBudgetNudges", () => {
     };
     nudgeRepository = { recordSentIfNew: vi.fn().mockResolvedValue(true) };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     useCase = new SendBudgetNudgesUseCase(
       userRepository,
       expenseRepository,
       budgetConfigRepository,
       nudgeRepository,
+      incomeRepository as any,
       messageService,
     );
   });

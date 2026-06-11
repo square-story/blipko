@@ -26,7 +26,9 @@ describe("UndoProcessor", () => {
       sumByBucketForMonth: vi.fn().mockResolvedValue(0), // after delete
     };
     categoryRepository = {
-      findById: vi.fn().mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
+      findById: vi
+        .fn()
+        .mockResolvedValue({ id: "c1", name: "Food", bucket: "WANTS" }),
     };
     budgetConfigRepository = {
       findByUserId: vi
@@ -34,18 +36,24 @@ describe("UndoProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     processor = new UndoProcessor(
       expenseRepository,
       categoryRepository,
       budgetConfigRepository,
+      incomeRepository as any,
       messageService,
     );
   });
 
   it("matches 'undo'/'/undo' and the UNDO intent", () => {
     const base = { user, platformUserId: "123" };
-    expect(processor.canHandle({ ...base, textMessage: "undo" } as any)).toBe(true);
-    expect(processor.canHandle({ ...base, textMessage: "/undo" } as any)).toBe(true);
+    expect(processor.canHandle({ ...base, textMessage: "undo" } as any)).toBe(
+      true,
+    );
+    expect(processor.canHandle({ ...base, textMessage: "/undo" } as any)).toBe(
+      true,
+    );
     expect(
       processor.canHandle({
         ...base,
@@ -53,9 +61,9 @@ describe("UndoProcessor", () => {
         parsed: { intent: "UNDO", confidence: 0.9 },
       } as any),
     ).toBe(true);
-    expect(processor.canHandle({ ...base, textMessage: "lunch 30" } as any)).toBe(
-      false,
-    );
+    expect(
+      processor.canHandle({ ...base, textMessage: "lunch 30" } as any),
+    ).toBe(false);
   });
 
   it("removes the last expense and shows restored budget", async () => {
