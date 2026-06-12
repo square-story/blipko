@@ -25,6 +25,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
   let budgetConfigRepository: any;
   let parseLogRepository: any;
   let incomeRepository: any;
+  let recurringRuleRepository: any;
   let conversationRepository: any;
   let aiParser: any;
   let messageService: any;
@@ -74,6 +75,14 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       findLastByUserId: vi.fn().mockResolvedValue(null),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
+    recurringRuleRepository = {
+      create: vi.fn().mockResolvedValue({ id: "rr1" }),
+      findByUserId: vi.fn().mockResolvedValue([]),
+      findById: vi.fn().mockResolvedValue(null),
+      findActiveUnpostedForMonth: vi.fn().mockResolvedValue([]),
+      markPosted: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
+    };
     conversationRepository = {
       getRecent: vi.fn().mockResolvedValue([]),
       append: vi.fn().mockResolvedValue(undefined),
@@ -93,6 +102,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       budgetConfigRepository,
       parseLogRepository,
       incomeRepository,
+      recurringRuleRepository,
       conversationRepository,
       messageService,
     );
@@ -213,7 +223,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(aiParser.parseText).not.toHaveBeenCalled();
     expect(expenseRepository.create).not.toHaveBeenCalled();
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "This month — Day",
+      "This cycle — Day",
     );
   });
 

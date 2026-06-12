@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Bucket } from "@prisma/client";
-import { currentMonthRange } from "@/lib/budget";
+import { currentBudgetPeriod } from "@/lib/budget";
 
 export type CategoryStat = {
   id: string;
@@ -22,7 +22,11 @@ export async function getCategories(): Promise<CategoryStat[]> {
   const session = await auth();
   if (!session?.user?.id) return [];
   const userId = session.user.id;
-  const { start, end } = currentMonthRange();
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { payday: true },
+  });
+  const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
 
   const [categories, spendGroups] = await Promise.all([
     prisma.category.findMany({

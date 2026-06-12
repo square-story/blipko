@@ -8,11 +8,11 @@ import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
-  monthDayInfo,
-  monthPeriodKey,
+  periodDayInfo,
+  periodKey,
   pctSpent,
 } from "./budgetMath";
 
@@ -40,15 +40,11 @@ export class SendBudgetNudgesUseCase {
 
   async execute(): Promise<SendBudgetNudgesResult> {
     const users = await this.userRepository.findOnboardedWithTelegram();
-    const { start, end } = currentMonthRange();
-    const periodKey = monthPeriodKey();
-    const { day, daysInMonth } = monthDayInfo();
-    const daysLeft = daysInMonth - day;
 
     let sent = 0;
     for (const user of users) {
       try {
-        sent += await this.nudgeUser(user, start, end, periodKey, daysLeft);
+        sent += await this.nudgeUser(user);
       } catch (err) {
         // One user's failure must not abort the batch.
         console.error(`Nudge failed for user ${user.id}:`, err);
@@ -57,14 +53,20 @@ export class SendBudgetNudgesUseCase {
     return { sent };
   }
 
-  private async nudgeUser(
-    user: { id: string; telegramId: string | null; monthlyIncome: unknown },
-    start: Date,
-    end: Date,
-    periodKey: string,
-    daysLeft: number,
-  ): Promise<number> {
+  private async nudgeUser(user: {
+    id: string;
+    telegramId: string | null;
+    monthlyIncome: unknown;
+    payday: number;
+  }): Promise<number> {
     if (!user.telegramId) return 0;
+
+    // Per-user payday cycle.
+    const { start, end } = currentBudgetPeriod(user.payday);
+    const cycleKey = periodKey(user.payday);
+    const { day, daysInPeriod } = periodDayInfo(user.payday);
+    const daysLeft = daysInPeriod - day;
+
     const income = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
       await this.incomeRepository.sumForMonth(user.id, start, end),
@@ -93,7 +95,7 @@ export class SendBudgetNudgesUseCase {
           user.id,
           bucket,
           "OVER",
-          periodKey,
+          cycleKey,
         );
         if (isNew) {
           await this.send(
@@ -107,7 +109,7 @@ export class SendBudgetNudgesUseCase {
           user.id,
           bucket,
           "WARN_80",
-          periodKey,
+          cycleKey,
         );
         if (isNew) {
           await this.send(

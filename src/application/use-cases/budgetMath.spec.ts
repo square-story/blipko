@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   bucketBudget,
   currentMonthRange,
+  currentBudgetPeriod,
+  periodDayInfo,
+  periodKey,
   effectiveMonthlyIncome,
   formatMoney,
-  monthDayInfo,
   pctSpent,
   progressBar,
   sanitizeMd,
@@ -54,10 +56,33 @@ describe("budgetMath", () => {
     expect(progressBar(150)).toBe("██████████"); // clamped
   });
 
-  it("reports day-of-month info with at least one remaining day", () => {
-    const info = monthDayInfo(new Date(2026, 4, 10)); // May 10, 31-day month
+  it("payday=1 budget period equals the calendar month", () => {
+    const { start, end } = currentBudgetPeriod(1, new Date(2026, 4, 10));
+    expect(start).toEqual(new Date(2026, 4, 1));
+    expect(end).toEqual(new Date(2026, 5, 1));
+  });
+
+  it("payday cycle spans payday→payday across the month boundary", () => {
+    // June 12 with payday 25 → cycle is May 25 .. Jun 25
+    const before = currentBudgetPeriod(25, new Date(2026, 5, 12));
+    expect(before.start).toEqual(new Date(2026, 4, 25));
+    expect(before.end).toEqual(new Date(2026, 5, 25));
+    // June 26 with payday 25 → cycle is Jun 25 .. Jul 25
+    const after = currentBudgetPeriod(25, new Date(2026, 5, 26));
+    expect(after.start).toEqual(new Date(2026, 5, 25));
+    expect(after.end).toEqual(new Date(2026, 6, 25));
+  });
+
+  it("periodDayInfo counts days within the cycle", () => {
+    const info = periodDayInfo(1, new Date(2026, 4, 10)); // May 10, payday 1
     expect(info.day).toBe(10);
-    expect(info.daysInMonth).toBe(31);
+    expect(info.daysInPeriod).toBe(31);
     expect(info.remainingDays).toBe(22); // 31 - 10 + 1
+  });
+
+  it("periodKey is the cycle start date and differs across cycles", () => {
+    expect(periodKey(25, new Date(2026, 5, 12))).toBe("2026-05-25");
+    expect(periodKey(25, new Date(2026, 5, 26))).toBe("2026-06-25");
+    expect(periodKey(1, new Date(2026, 5, 12))).toBe("2026-06-01");
   });
 });

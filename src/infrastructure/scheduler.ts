@@ -1,10 +1,23 @@
 import cron from "node-cron";
 import { prisma } from "../data/prisma/client";
 import { SendBudgetNudgesUseCase } from "../application/use-cases/SendBudgetNudges";
+import { PostRecurringChargesUseCase } from "../application/use-cases/PostRecurringCharges";
 
 export function startScheduler(
   sendBudgetNudges: SendBudgetNudgesUseCase,
+  postRecurringCharges: PostRecurringChargesUseCase,
 ): void {
+  // Daily recurring auto-post at 6 AM IST (00:30 UTC).
+  cron.schedule("30 0 * * *", async () => {
+    console.log("Scheduler: running PostRecurringCharges");
+    try {
+      const { posted } = await postRecurringCharges.execute();
+      console.log(`Scheduler: PostRecurringCharges posted ${posted} item(s)`);
+    } catch (err) {
+      console.error("Scheduler: PostRecurringCharges failed", err);
+    }
+  });
+
   // Daily budget nudges at 7 PM IST (13:30 UTC).
   cron.schedule("30 13 * * *", async () => {
     console.log("Scheduler: running SendBudgetNudges");
@@ -30,6 +43,6 @@ export function startScheduler(
   });
 
   console.log(
-    "Scheduler started — budget nudges daily 7 PM IST, history pruning weekly",
+    "Scheduler started — recurring auto-post 6 AM IST, budget nudges 7 PM IST, history pruning weekly",
   );
 }

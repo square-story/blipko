@@ -27,6 +27,11 @@ enum NudgeKind {
   OVER
 }
 
+enum RecurringKind {
+  INCOME
+  EXPENSE
+}
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -56,12 +61,13 @@ model User {
   sessions      Session[]
 
   // Core relations
-  expenses     Expense[]
-  incomes      Income[]
-  budgetConfig BudgetConfig?
-  categories   Category[]
-  logs         ParseLog[]
-  budgetNudges BudgetNudge[]
+  expenses       Expense[]
+  incomes        Income[]
+  budgetConfig   BudgetConfig?
+  categories     Category[]
+  logs           ParseLog[]
+  budgetNudges   BudgetNudge[]
+  recurringRules RecurringRule[]
 
   conversationMessages ConversationMessage[]
   telegramLinkToken    TelegramLinkToken?
@@ -103,11 +109,34 @@ model Category {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  expenses Expense[]
+  expenses       Expense[]
+  recurringRules RecurringRule[]
 
   createdAt DateTime @default(now())
 
   @@unique([userId, name])
+}
+
+// A repeating income/expense the scheduler auto-posts each month on dayOfMonth.
+model RecurringRule {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       RecurringKind
+  amount     Decimal       @db.Decimal(12, 2)
+  dayOfMonth Int // 1–28
+  bucket     Bucket? // for EXPENSE
+  categoryId String?
+  category   Category?     @relation(fields: [categoryId], references: [id])
+  note       String?
+  isActive   Boolean       @default(true)
+  // "YYYY-MM" of the last auto-post — idempotency for the daily job.
+  lastPostedKey String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isActive])
 }
 
 model Expense {

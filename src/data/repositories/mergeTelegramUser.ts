@@ -25,6 +25,10 @@ export async function mergeTelegramUser(
     where: { userId: botUserId },
     data: { userId: webUserId },
   });
+  await tx.recurringRule.updateMany({
+    where: { userId: botUserId },
+    data: { userId: webUserId },
+  });
   await tx.parseLog.updateMany({
     where: { userId: botUserId },
     data: { userId: webUserId },

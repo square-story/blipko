@@ -11,7 +11,7 @@ import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
   sanitizeMd,
@@ -60,7 +60,7 @@ export class UndoProcessor implements MessageProcessor {
     await this.expenseRepository.softDelete(target.id);
 
     // Budget auto-corrects: sumByBucketForMonth excludes deleted expenses.
-    const { start, end } = currentMonthRange();
+    const { start, end } = currentBudgetPeriod(user.payday);
     const spent = await this.expenseRepository.sumByBucketForMonth(
       user.id,
       target.bucket,

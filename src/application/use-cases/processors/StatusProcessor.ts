@@ -11,10 +11,10 @@ import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
-  monthDayInfo,
+  periodDayInfo,
   pctSpent,
   progressBar,
 } from "../budgetMath";
@@ -47,8 +47,8 @@ export class StatusProcessor implements MessageProcessor {
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
-    const { start, end } = currentMonthRange();
-    const { day, daysInMonth, remainingDays } = monthDayInfo();
+    const { start, end } = currentBudgetPeriod(user.payday);
+    const { day, daysInPeriod, remainingDays } = periodDayInfo(user.payday);
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
       await this.incomeRepository.sumForMonth(user.id, start, end),
@@ -89,7 +89,7 @@ export class StatusProcessor implements MessageProcessor {
       }
     }
 
-    let body = `📊 This month — Day ${day} of ${daysInMonth}\n\n${lines.join("\n")}`;
+    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n\n${lines.join("\n")}`;
     if (dailyParts.length > 0) {
       body += `\n\nSafe daily spend left:  ${dailyParts.join(" · ")}`;
     }

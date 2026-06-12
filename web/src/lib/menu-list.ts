@@ -5,6 +5,7 @@ import {
   PieChart,
   Settings,
   Tag,
+  RefreshCw,
 } from "lucide-react";
 
 type Submenu = {
@@ -56,6 +57,11 @@ export function getMenuList(): Group[] {
           href: "/dashboard/categories",
           label: "Categories",
           icon: Tag,
+        },
+        {
+          href: "/dashboard/recurring",
+          label: "Recurring",
+          icon: RefreshCw,
         },
       ],
     },

@@ -1,8 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import {
-  IAiParser,
-  ParseContext,
-} from "../../domain/services/IAiParser";
+import { IAiParser, ParseContext } from "../../domain/services/IAiParser";
 import { ParsedData, ParsedDataSchema } from "../../domain/entities/ParsedData";
 import { buildBudgetSystemPrompt } from "./budgetParserPrompt";
 import { env } from "../../config/env";
@@ -13,9 +10,9 @@ const budgetSchema: Schema = {
   properties: {
     intent: {
       type: Type.STRING,
-      enum: ["EXPENSE", "INCOME", "UNDO", "STATUS", "UNKNOWN"],
+      enum: ["EXPENSE", "INCOME", "UNDO", "STATUS", "RECURRING", "UNKNOWN"],
       description:
-        "EXPENSE if the user spent money. INCOME if they received money/declared salary. STATUS for budget-health questions. UNDO to remove the last entry. UNKNOWN for social/non-financial messages.",
+        'EXPENSE if the user spent money. INCOME if they received money/declared salary. STATUS for budget-health questions. UNDO to remove the last entry. RECURRING to set up a repeating monthly income/expense ("every month", "monthly", "on the Nth"). UNKNOWN for social/non-financial messages.',
     },
     amount: {
       type: Type.NUMBER,
@@ -34,6 +31,16 @@ const budgetSchema: Schema = {
     note: {
       type: Type.STRING,
       description: "Short free-text note (e.g. 'lunch', 'auto to office').",
+    },
+    dayOfMonth: {
+      type: Type.NUMBER,
+      description: "RECURRING only: day of month (1-28) it repeats.",
+    },
+    recurringKind: {
+      type: Type.STRING,
+      enum: ["INCOME", "EXPENSE"],
+      description:
+        "RECURRING only: whether the repeating item is income or expense.",
     },
     confidence: {
       type: Type.NUMBER,

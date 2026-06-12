@@ -77,7 +77,7 @@ describe("StatusProcessor", () => {
     } as any);
 
     const body = messageService.sendMessage.mock.calls[0][0].body;
-    expect(body).toContain("This month — Day");
+    expect(body).toContain("This cycle — Day");
     expect(body).toContain("₹21,400 / ₹25,000");
     expect(body).toContain("(86%)"); // 21400/25000
     expect(body).toContain("(61%)"); // 9200/15000

@@ -21,12 +21,14 @@ ${categoryList}
 
 ### OUTPUT (strict JSON, no prose):
 {
-  "intent": "EXPENSE | INCOME | UNDO | STATUS | UNKNOWN",
+  "intent": "EXPENSE | INCOME | UNDO | STATUS | RECURRING | UNKNOWN",
   "amount": <number>,            // the spend/income amount; omit if none
   "currency": "INR",
   "category": "<best category>", // prefer one from the list above; else propose a short new one
   "bucket": "NEEDS | WANTS | SAVINGS",
   "note": "<short free-text note, e.g. 'lunch', 'auto to office'>",
+  "dayOfMonth": <1-28>,          // RECURRING only: day it repeats
+  "recurringKind": "INCOME | EXPENSE", // RECURRING only
   "confidence": <0..1>,          // your confidence in amount + category + bucket
   "conversational_response": "<only for UNKNOWN/social messages>"
 }
@@ -49,7 +51,13 @@ ${categoryList}
 4. UNDO — wants to remove/correct the last entry.
    - "undo", "delete that", "galti se", "thett—maati".
    - { "intent":"UNDO", "confidence":0.9 }
-5. UNKNOWN — social/non-financial or unintelligible.
+5. RECURRING — set up a repeating income/expense that auto-logs each month.
+   - Triggers: "every month", "monthly", "recurring", "on the Nth", "auto".
+   - "rent 8000 on 1st every month" → { "intent":"RECURRING", "recurringKind":"EXPENSE", "amount":8000, "dayOfMonth":1, "category":"Rent", "bucket":"NEEDS", "note":"rent", "confidence":0.9 }
+   - "netflix 199 every month on 5th" → { "intent":"RECURRING", "recurringKind":"EXPENSE", "amount":199, "dayOfMonth":5, "category":"Subscriptions", "bucket":"WANTS", "note":"netflix", "confidence":0.9 }
+   - "salary 50000 on 25th monthly" → { "intent":"RECURRING", "recurringKind":"INCOME", "amount":50000, "dayOfMonth":25, "note":"salary", "confidence":0.9 }
+   - Cap dayOfMonth at 28. Use EXPENSE intent (not RECURRING) for a one-off spend with no "every month".
+6. UNKNOWN — social/non-financial or unintelligible.
    - "hi", "thanks", "what can you do".
    - { "intent":"UNKNOWN", "confidence":0.9, "conversational_response":"Hi! Text me a spend like \\"chai 30\\" and I'll track it." }
 

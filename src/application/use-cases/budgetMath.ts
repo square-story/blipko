@@ -22,6 +22,26 @@ export function currentMonthRange(now: Date = new Date()): {
   return { start, end };
 }
 
+// Clamp a payday to a safe 1–28 (no Feb/30-day edge cases).
+function clampPayday(payday: number): number {
+  return Math.min(Math.max(Math.floor(payday) || 1, 1), 28);
+}
+
+// The current budget cycle [start, end): from the most recent payday on/before
+// `now` to the next payday. payday=1 reproduces the calendar month.
+export function currentBudgetPeriod(
+  payday: number,
+  now: Date = new Date(),
+): { start: Date; end: Date } {
+  const d = clampPayday(payday);
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (now.getDate() >= d) {
+    return { start: new Date(y, m, d), end: new Date(y, m + 1, d) };
+  }
+  return { start: new Date(y, m - 1, d), end: new Date(y, m, d) };
+}
+
 export function bucketPct(split: BudgetSplit, bucket: Bucket): number {
   switch (bucket) {
     case "NEEDS":
@@ -57,27 +77,38 @@ export function formatMoney(amount: number): string {
   return `₹${inr.format(Math.round(amount))}`;
 }
 
-export interface MonthDayInfo {
-  day: number; // 1-based day of month
-  daysInMonth: number;
+export interface PeriodDayInfo {
+  day: number; // 1-based day within the cycle
+  daysInPeriod: number;
   remainingDays: number; // days left including today (>= 1)
 }
 
-// "YYYY-MM" key for the given month — used to scope once-per-month nudges.
-export function monthPeriodKey(now: Date = new Date()): string {
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  return `${year}-${month}`;
+// Opaque per-cycle key (the period start date) — scopes once-per-cycle nudges
+// and could key other per-period state. payday=1 → e.g. "2026-06-01".
+export function periodKey(payday: number, now: Date = new Date()): string {
+  const { start } = currentBudgetPeriod(payday, now);
+  const y = start.getFullYear();
+  const mo = String(start.getMonth() + 1).padStart(2, "0");
+  const d = String(start.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${d}`;
 }
 
-export function monthDayInfo(now: Date = new Date()): MonthDayInfo {
-  const day = now.getDate();
-  const daysInMonth = new Date(
-    now.getFullYear(),
-    now.getMonth() + 1,
-    0,
-  ).getDate();
-  return { day, daysInMonth, remainingDays: daysInMonth - day + 1 };
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function periodDayInfo(
+  payday: number,
+  now: Date = new Date(),
+): PeriodDayInfo {
+  const { start, end } = currentBudgetPeriod(payday, now);
+  const daysInPeriod = Math.round(
+    (end.getTime() - start.getTime()) / MS_PER_DAY,
+  );
+  const day = Math.floor((now.getTime() - start.getTime()) / MS_PER_DAY) + 1;
+  return {
+    day,
+    daysInPeriod,
+    remainingDays: Math.max(1, daysInPeriod - day + 1),
+  };
 }
 
 // Integer percentage of budget spent (0 when budget is 0).

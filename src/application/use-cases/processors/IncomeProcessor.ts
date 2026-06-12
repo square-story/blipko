@@ -9,7 +9,7 @@ import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
   sanitizeMd,
@@ -57,7 +57,7 @@ export class IncomeProcessor implements MessageProcessor {
     });
 
     // Refresh the month's effective income + budgets (sum already includes the new income).
-    const { start, end } = currentMonthRange();
+    const { start, end } = currentBudgetPeriod(user.payday);
     const monthIncome = await this.incomeRepository.sumForMonth(
       user.id,
       start,

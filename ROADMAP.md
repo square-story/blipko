@@ -22,9 +22,10 @@ Ordered roughly by priority within each track.
   transcription confidence so a bad transcript asks to confirm. *Impact: med · Effort: low.*
 
 ### P1 — make the budget match real life
-- **Recurring income & expenses + payday-aware budgeting.** Rent/EMIs/salary that repeat; roll the budget
-  window to the user's `payday` instead of the calendar month. *Impact: high · Effort: med.* (Income-event
-  tracking just shipped is the foundation.)
+- ✅ **Recurring income & expenses + payday-aware budgeting (shipped).** Recurring rules auto-post + notify
+  each month (bot RECURRING intent + web `/dashboard/recurring`); the budget window now follows the user's
+  `payday` (payday→payday cycle; payday=1 = calendar month). Variable-amount bills (reminder-to-confirm) are
+  the remaining fast-follow.
 - **Savings goals.** "Save ₹2L for a trip by Dec" → progress against the SAVINGS bucket. *Impact: high · Effort: med.*
 - **Multi-currency / locale.** `User.currency`/`locale` exist; honor them everywhere (some copy still hardcodes ₹). *Impact: med · Effort: low.*
 - **Income undo + web Income page.** Extend undo to the most recent of expense/income; list income in the
