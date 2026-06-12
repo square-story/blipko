@@ -3,7 +3,6 @@
 import { useEffect, useState, useTransition } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
-import { SlotLabel } from "@/components/ui/slot-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -157,8 +156,7 @@ export default function RecurringPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button onClick={add} disabled={pending}>
-              <Plus className="mr-2 size-4" />{" "}
-              <SlotLabel text={pending ? "Adding…" : "Add recurring"} />
+              <Plus className="mr-2 size-4" /> Add recurring
             </Button>
           </CardContent>
         </Card>

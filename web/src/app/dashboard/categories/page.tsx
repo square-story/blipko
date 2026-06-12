@@ -3,7 +3,6 @@
 import { useEffect, useState, useTransition } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
-import { SlotLabel } from "@/components/ui/slot-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -158,7 +157,7 @@ export default function CategoriesPage() {
               </div>
               <Button onClick={handleAdd} disabled={isPending || !newName.trim()}>
                 <Plus className="mr-2 h-4 w-4" />
-                <SlotLabel text={isPending ? "Adding…" : "Add"} />
+                Add
               </Button>
             </div>
             {addError && (
