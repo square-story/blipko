@@ -9,13 +9,19 @@ import {
 } from "@/components/ui/card";
 import { RoundedPieChart } from "@/components/ui/rounded-pie-chart";
 import { BucketTrendChart } from "../_components/income-expense-chart";
+import { IncomeExpenseTrendChart } from "../_components/income-expense-trend-chart";
 import { formatMoney } from "@/lib/budget";
 
 export default async function Page() {
-    const { monthlyTrend, categoryBreakdown, topCategories } =
-        await getAnalyticsData(6);
-
-    const totalThisMonth = categoryBreakdown.reduce((s, c) => s + c.value, 0);
+    const {
+        monthlyTrend,
+        incomeExpenseTrend,
+        categoryBreakdown,
+        topCategories,
+        incomeThisMonth,
+        spentThisMonth,
+        netThisMonth,
+    } = await getAnalyticsData(6);
 
     return (
         <ContentLayout title="Analytics">
@@ -24,40 +30,46 @@ export default async function Page() {
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Income This Month</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">
+                                {formatMoney(incomeThisMonth)}
+                            </div>
+                            <p className="text-xs text-muted-foreground">money in this month</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">Spent This Month</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatMoney(totalThisMonth)}</div>
+                            <div className="text-2xl font-bold">{formatMoney(spentThisMonth)}</div>
                             <p className="text-xs text-muted-foreground">across all categories</p>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Categories Used</CardTitle>
+                            <CardTitle className="text-sm font-medium">Net This Month</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{categoryBreakdown.length}</div>
-                            <p className="text-xs text-muted-foreground">with spend this month</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Top Category</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {topCategories[0]?.name ?? "—"}
+                            <div
+                                className={`text-2xl font-bold ${netThisMonth >= 0 ? "text-green-600" : "text-red-600"}`}
+                            >
+                                {netThisMonth >= 0 ? "+" : "−"}
+                                {formatMoney(Math.abs(netThisMonth))}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {topCategories[0]
-                                    ? formatMoney(topCategories[0].value)
-                                    : "No spend yet"}
+                                {netThisMonth >= 0 ? "saved this month" : "over budget this month"}
                             </p>
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Income vs spending trend */}
+                <IncomeExpenseTrendChart data={incomeExpenseTrend} />
 
                 {/* Monthly bucket trend */}
                 <BucketTrendChart data={monthlyTrend} />
