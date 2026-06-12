@@ -14,7 +14,7 @@ export function SplitVisual() {
     return (
         <section className="w-full max-w-3xl mx-auto px-6 py-12">
             <div className="text-center mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                <h2 className="font-display tracking-tight text-2xl md:text-3xl font-bold mb-2">
                     Every rupee, auto-sorted
                 </h2>
                 <p className="text-muted-foreground">
@@ -31,7 +31,7 @@ export function SplitVisual() {
                                 <span>
                                     {meta.emoji} {meta.label}
                                 </span>
-                                <span className="text-muted-foreground">{pct}%</span>
+                                <span className="text-muted-foreground tabular-nums">{pct}%</span>
                             </div>
                             <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
                                 <motion.div

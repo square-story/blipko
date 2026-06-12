@@ -31,7 +31,7 @@ export const Header = () => {
               aria-label="home"
               className="flex gap-2 items-center"
             >
-              <p className="font-semibold text-xl tracking-tighter italic">
+              <p className="font-display font-semibold text-xl tracking-tight">
                 Blipko
               </p>
             </Link>

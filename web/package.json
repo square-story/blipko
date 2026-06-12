@@ -44,6 +44,7 @@
     "date-fns": "^4.1.0",
     "dicons": "^1.1.7",
     "framer-motion": "^12.23.25",
+    "geist": "^1.7.2",
     "gsap": "^3.13.0",
     "immer": "^11.0.1",
     "lucide-react": "^0.555.0",

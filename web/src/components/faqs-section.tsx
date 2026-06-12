@@ -13,8 +13,8 @@ export function FaqsSection() {
 	return (
 		<div className="mx-auto w-full max-w-3xl space-y-7 px-4 pt-16">
 			<div className="space-y-2">
-				<h2 className="font-semibold text-3xl md:text-4xl">
-					Frequently Asked Questions
+				<h2 className="font-display tracking-tight font-semibold text-3xl md:text-4xl">
+					Frequently asked questions
 				</h2>
 				<p className="max-w-2xl text-muted-foreground">
 					Got questions? Here are answers about how Blipko works for Kerala users.
@@ -79,7 +79,7 @@ const questions = [
 		id: "item-5",
 		title: "Is there a web app?",
 		content:
-			"Yes — sign in at blipko.app for a full dashboard: budget health, expense history with filters and CSV export, monthly trends, and category breakdowns. Edit your income and budget split right there. Works on any browser.",
+			"Yes — sign in at blipko.lol for a full dashboard: budget health, expense history with filters and CSV export, monthly trends, and category breakdowns. Edit your income and budget split right there. Works on any browser.",
 	},
 	{
 		id: "item-6",

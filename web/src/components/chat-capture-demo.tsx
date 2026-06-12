@@ -7,7 +7,7 @@ export function ChatCaptureDemo() {
     return (
         <section className="w-full max-w-2xl mx-auto px-6 py-12">
             <div className="text-center mb-8">
-                <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                <h2 className="font-display tracking-tight text-2xl md:text-3xl font-bold mb-2">
                     Just type what you spent
                 </h2>
                 <p className="text-muted-foreground">
@@ -38,8 +38,8 @@ export function ChatCaptureDemo() {
                     className="flex justify-start"
                 >
                     <div className="rounded-2xl rounded-bl-sm bg-muted px-4 py-3 text-sm space-y-1 max-w-[80%]">
-                        <div className="font-medium">✅ ₹220 → Wants · Food</div>
-                        <div className="text-muted-foreground">
+                        <div className="font-medium tabular-nums">✅ ₹220 → Wants · Food</div>
+                        <div className="text-muted-foreground tabular-nums">
                             Wants left this month: ₹14,780 / ₹15,000
                         </div>
                     </div>

@@ -8,6 +8,7 @@ import {
   generateWebsiteSchema,
 } from "@/lib/seo";
 import { Analytics } from "@vercel/analytics/next";
+import { GeistMono } from "geist/font/mono";
 import { DM_Sans } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
@@ -83,7 +84,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body
-        className={`${dmSans.variable} antialiased`}
+        className={`${dmSans.variable} ${GeistMono.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"

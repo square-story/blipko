@@ -27,11 +27,19 @@ interface HomeContentProps {
 
 export const HomeContent = ({ session }: HomeContentProps) => {
     return (
-        <main className="relative min-h-screen overflow-hidden flex flex-col items-center">
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-green-500/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 blur-[120px] rounded-full" />
+        <main className="relative min-h-dvh overflow-hidden flex flex-col items-center">
+            <div aria-hidden className="fixed inset-0 pointer-events-none -z-10">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand/15 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-brand/5 blur-[140px] rounded-full" />
             </div>
+            <div
+                aria-hidden
+                className="fixed inset-0 pointer-events-none -z-10 opacity-[0.04]"
+                style={{
+                    backgroundImage:
+                        "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+                }}
+            />
 
             {/* Hero Section */}
             <motion.div
@@ -51,7 +59,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 <motion.p
                     variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
                     transition={{ duration: 0.8 }}
-                    className="text-lg md:text-xl text-muted-foreground font-medium"
+                    className="text-lg md:text-xl text-brand font-medium"
                     lang="ml"
                 >
                     ശമ്പളം എവിടെ പോകുന്നു?
@@ -61,7 +69,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
                     transition={{ duration: 0.8 }}
                 >
-                    <LineShadowText className="italic text-7xl md:text-9xl font-bold">
+                    <LineShadowText className="font-display tracking-tight text-7xl md:text-9xl font-bold">
                         Blipko
                     </LineShadowText>
                 </motion.div>
@@ -70,10 +78,10 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                     variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
                     transition={{ duration: 0.8 }}
                 >
-                    <TextAnimate className="text-lg md:text-2xl text-gray-400 max-w-2xl mb-4 font-medium">
+                    <TextAnimate className="text-lg md:text-2xl text-muted-foreground max-w-2xl mb-4 font-medium text-balance">
                         Know where your salary goes. Just chat.
                     </TextAnimate>
-                    <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto mb-10">
+                    <p className="text-sm md:text-base text-muted-foreground max-w-[60ch] mx-auto mb-10 text-pretty">
                         Log any spend in plain Malayalam, Manglish, or English — by text or voice.
                         Blipko sorts it into a 50/30/20 budget and tells you what&apos;s left, instantly.
                     </p>
@@ -93,7 +101,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                                     href={TELEGRAM_URL}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="group relative flex h-12 w-[220px] items-center justify-between rounded-full border-2 border-[#229ED9] bg-[#229ED9] font-medium text-white hover:opacity-90 transition-opacity"
+                                    className="group relative flex h-12 w-[220px] items-center justify-between rounded-full border-2 border-[#229ED9] bg-[#229ED9] font-medium text-white transition hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#229ED9] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                 >
                                     <span className="pl-5 flex items-center gap-2">
                                         <Send className="h-4 w-4" />
@@ -102,7 +110,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                                 </Link>
                                 <Link
                                     href="/dashboard"
-                                    className="group relative flex h-12 w-[220px] items-center justify-between rounded-full border-2 border-[#394481] bg-primary font-medium text-accent hover:opacity-90 transition-opacity"
+                                    className="group relative flex h-12 w-[220px] items-center justify-between rounded-full border-2 border-primary bg-primary font-medium text-primary-foreground transition hover:opacity-90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                 >
                                     <span className="pl-5">Open Dashboard</span>
                                     <div className="relative mr-1 h-9 w-9 overflow-hidden rounded-full bg-black dark:bg-white">
