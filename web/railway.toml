@@ -1,6 +1,8 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm build"
+# Generate the Prisma client from the committed web/prisma/schema.prisma before
+# the Next build (standalone web context has no ../prisma to sync from).
+buildCommand = "pnpm prisma generate && pnpm build"
 
 [deploy]
 startCommand = "pnpm start"
