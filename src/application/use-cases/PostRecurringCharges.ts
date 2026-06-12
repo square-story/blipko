@@ -5,7 +5,7 @@ import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
-import { BUCKET_META, formatMoney, sanitizeMd } from "./budgetMath";
+import { postRecurringRule } from "./postRecurringRule";
 
 export interface PostRecurringChargesResult {
   posted: number;
@@ -52,46 +52,23 @@ export class PostRecurringChargesUseCase {
   }
 
   private async post(rule: RecurringRule, monthKey: string): Promise<void> {
-    const amount = Number(rule.amount);
-    const rawText = `[recurring] ${rule.note ?? rule.kind.toLowerCase()}`;
-
-    let body: string;
-    if (rule.kind === "INCOME") {
-      await this.incomeRepository.create({
-        userId: rule.userId,
-        amount,
-        rawText,
-        confidence: 1,
-        source: rule.note ?? "recurring",
-        note: rule.note ?? undefined,
-      });
-      const label = rule.note ? ` (${sanitizeMd(rule.note)})` : "";
-      body = `📌 Auto-logged income ${formatMoney(amount)}${label} — reply "undo" to remove.`;
-    } else {
-      const bucket = rule.bucket ?? "NEEDS";
-      await this.expenseRepository.create({
-        userId: rule.userId,
-        amount,
-        bucket,
-        note: rule.note ?? undefined,
-        rawText,
-        confidence: 1,
-        categoryId: rule.categoryId ?? undefined,
-      });
-      const categoryName = rule.categoryId
-        ? ((await this.categoryRepository.findById(rule.categoryId))?.name ??
-          null)
-        : null;
-      const where = categoryName ? ` · ${sanitizeMd(categoryName)}` : "";
-      body = `📌 Auto-logged ${formatMoney(amount)} → ${BUCKET_META[bucket].label}${where}${rule.note ? ` (${sanitizeMd(rule.note)})` : ""} — reply "undo" to remove.`;
-    }
-
-    // Record idempotency before notifying (a duplicate is worse than a missed DM).
-    await this.recurringRuleRepository.markPosted(rule.id, monthKey);
+    const summary = await postRecurringRule(
+      {
+        recurringRuleRepository: this.recurringRuleRepository,
+        expenseRepository: this.expenseRepository,
+        incomeRepository: this.incomeRepository,
+        categoryRepository: this.categoryRepository,
+      },
+      rule,
+      monthKey,
+    );
 
     const user = await this.userRepository.findById(rule.userId);
     if (user?.telegramId) {
-      await this.messageService.sendMessage({ to: user.telegramId, body });
+      await this.messageService.sendMessage({
+        to: user.telegramId,
+        body: `📌 Auto-logged ${summary} — reply "undo" to remove.`,
+      });
     }
   }
 }

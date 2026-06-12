@@ -19,6 +19,7 @@ import {
   ProcessContext,
 } from "./processors/MessageProcessor";
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
+import { RecurringConfirmProcessor } from "./processors/RecurringConfirmProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
 import { ReportProcessor } from "./processors/ReportProcessor";
@@ -65,6 +66,13 @@ export class ProcessIncomingMessageUseCase {
         categoryRepository,
         budgetConfigRepository,
         incomeRepository,
+        messageService,
+      ),
+      new RecurringConfirmProcessor(
+        recurringRuleRepository,
+        expenseRepository,
+        incomeRepository,
+        categoryRepository,
         messageService,
       ),
       new OnboardingProcessor(

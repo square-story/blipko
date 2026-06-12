@@ -49,9 +49,14 @@ export class StatusProcessor implements MessageProcessor {
       DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
     const { day, daysInPeriod, remainingDays } = periodDayInfo(user.payday);
+    const loggedIncome = await this.incomeRepository.sumForMonth(
+      user.id,
+      start,
+      end,
+    );
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      await this.incomeRepository.sumForMonth(user.id, start, end),
+      loggedIncome,
     );
 
     const lines: string[] = [];
@@ -89,7 +94,7 @@ export class StatusProcessor implements MessageProcessor {
       }
     }
 
-    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n\n${lines.join("\n")}`;
+    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n💵 Income: ${formatMoney(loggedIncome)} (budget on ${formatMoney(monthlyIncome)})\n\n${lines.join("\n")}`;
     if (dailyParts.length > 0) {
       body += `\n\nSafe daily spend left:  ${dailyParts.join(" · ")}`;
     }

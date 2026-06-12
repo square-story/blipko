@@ -64,7 +64,8 @@ describe("IncomeProcessor", () => {
     );
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("Income ₹5,000");
-    expect(body).toContain("This month: ₹55,000");
+    expect(body).toContain("Income this cycle: ₹55,000");
+    expect(body).toContain("Budget on ₹55,000");
     expect(body).toContain("Needs ₹27,500"); // 55000 * 50%
     expect(body).toContain("Wants ₹16,500"); // 55000 * 30%
     expect(body).toContain("Savings ₹11,000"); // 55000 * 20%

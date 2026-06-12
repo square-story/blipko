@@ -47,15 +47,17 @@ export class RecurringSetupProcessor implements MessageProcessor {
     const kind = parsed.recurringKind ?? "EXPENSE";
 
     if (kind === "INCOME") {
-      await this.recurringRuleRepository.create({
+      const rule = await this.recurringRuleRepository.create({
         userId: user.id,
         kind: "INCOME",
         amount,
         dayOfMonth: day,
         note: parsed.note,
       });
-      return this.reply(
+      return this.finish(
         platformUserId,
+        rule.id,
+        day,
         `🔁 Recurring income set: ${formatMoney(amount)}${parsed.note ? ` (${sanitizeMd(parsed.note)})` : ""} on day ${day} — I'll auto-log it each month.`,
       );
     }
@@ -80,7 +82,7 @@ export class RecurringSetupProcessor implements MessageProcessor {
       categoryName = created.name;
     }
 
-    await this.recurringRuleRepository.create({
+    const rule = await this.recurringRuleRepository.create({
       userId: user.id,
       kind: "EXPENSE",
       amount,
@@ -91,10 +93,42 @@ export class RecurringSetupProcessor implements MessageProcessor {
     });
 
     const where = categoryName ? ` · ${sanitizeMd(categoryName)}` : "";
-    return this.reply(
+    return this.finish(
       platformUserId,
+      rule.id,
+      day,
       `🔁 Recurring set: ${formatMoney(amount)} → ${BUCKET_META[bucket].label}${where} on day ${day} — I'll auto-log it each month.`,
     );
+  }
+
+  // If the rule's day already passed this calendar month, the daily cron would
+  // post it on its next run — so ask the user whether to add it for this month
+  // now (Yes), or skip to next month (No, which marks it posted). Future day →
+  // just confirm; the cron posts it on the day.
+  private async finish(
+    platformUserId: string,
+    ruleId: string,
+    dayOfMonth: number,
+    baseMsg: string,
+  ): Promise<ProcessOutput> {
+    const now = new Date();
+    const daysInMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+    ).getDate();
+    const dueDay = Math.min(dayOfMonth, daysInMonth);
+
+    if (now.getDate() >= dueDay) {
+      const body = `${baseMsg}\n\nDay ${dayOfMonth} already passed this month — add it for this month now too?`;
+      await this.messageService.sendInteractiveMessage(platformUserId, body, [
+        { id: `rec:${ruleId}:yes`, title: "✅ Add this month" },
+        { id: `rec:${ruleId}:no`, title: "No, next month" },
+      ]);
+      return { response: body, parsed: { intent: "RECURRING", confidence: 1 } };
+    }
+
+    return this.reply(platformUserId, baseMsg);
   }
 
   private async reply(

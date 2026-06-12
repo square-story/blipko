@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { RecurringSetupProcessor } from "./RecurringSetupProcessor";
 
 const user = { id: "u1", telegramId: "123" };
@@ -11,6 +11,9 @@ describe("RecurringSetupProcessor", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Fix "today" to the 15th so day 1 is in the past and day 25 is in the future.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 15));
     recurringRuleRepository = {
       create: vi.fn().mockResolvedValue({ id: "rr1" }),
     };
@@ -20,12 +23,19 @@ describe("RecurringSetupProcessor", () => {
         .fn()
         .mockResolvedValue({ id: "c1", name: "Rent", bucket: "NEEDS" }),
     };
-    messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    messageService = {
+      sendMessage: vi.fn().mockResolvedValue("m1"),
+      sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),
+    };
     processor = new RecurringSetupProcessor(
       recurringRuleRepository,
       categoryRepository,
       messageService,
     );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("handles only the RECURRING intent", () => {
@@ -41,7 +51,7 @@ describe("RecurringSetupProcessor", () => {
     ).toBe(false);
   });
 
-  it("creates a recurring expense with resolved category + bucket", async () => {
+  it("creates a recurring expense and prompts for the current month when the day passed", async () => {
     await processor.process({
       user,
       platformUserId: "123",
@@ -50,7 +60,7 @@ describe("RecurringSetupProcessor", () => {
         intent: "RECURRING",
         recurringKind: "EXPENSE",
         amount: 8000,
-        dayOfMonth: 1,
+        dayOfMonth: 1, // already passed (today = 15th)
         category: "Rent",
         bucket: "NEEDS",
         note: "rent",
@@ -68,12 +78,17 @@ describe("RecurringSetupProcessor", () => {
         categoryId: "c1",
       }),
     );
-    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "Recurring set",
-    );
+    const [, body, buttons] =
+      messageService.sendInteractiveMessage.mock.calls[0];
+    expect(body).toContain("Recurring set");
+    expect(body).toContain("add it for this month");
+    expect(buttons.map((b: any) => b.id)).toEqual([
+      "rec:rr1:yes",
+      "rec:rr1:no",
+    ]);
   });
 
-  it("creates a recurring income", async () => {
+  it("creates a recurring income with no prompt when the day is still ahead", async () => {
     await processor.process({
       user,
       platformUserId: "123",
@@ -82,7 +97,7 @@ describe("RecurringSetupProcessor", () => {
         intent: "RECURRING",
         recurringKind: "INCOME",
         amount: 50000,
-        dayOfMonth: 25,
+        dayOfMonth: 25, // still ahead (today = 15th)
         note: "salary",
         confidence: 0.9,
       },
@@ -95,6 +110,7 @@ describe("RecurringSetupProcessor", () => {
         dayOfMonth: 25,
       }),
     );
+    expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Recurring income",
     );

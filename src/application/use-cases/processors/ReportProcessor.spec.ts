@@ -63,7 +63,8 @@ describe("ReportProcessor", () => {
 
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("summary");
-    expect(body).toContain("Income ₹50,000");
+    expect(body).toContain("Income logged ₹0");
+    expect(body).toContain("budget on ₹50,000");
     expect(body).toContain("₹23,400 / ₹25,000");
     expect(body).toContain("under by ₹1,600");
     expect(body).toContain("₹16,200 / ₹15,000");
