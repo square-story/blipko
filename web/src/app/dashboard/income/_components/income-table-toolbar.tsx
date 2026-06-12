@@ -9,8 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Download } from "lucide-react";
 import { toast } from "sonner";
-import { SlotLabel } from "@/components/ui/slot-label";
-import { useTransientFlag } from "@/hooks/use-transient-flag";
 import { exportIncomeCsv, type IncomeFilters } from "@/lib/actions/income";
 
 interface IncomeTableToolbarProps<TData> {
@@ -24,7 +22,6 @@ export function IncomeTableToolbar<TData>({
 }: IncomeTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
   const [isExporting, startExport] = React.useTransition();
-  const [exported, flashExported] = useTransientFlag();
 
   const handleExport = () =>
     startExport(async () => {
@@ -40,7 +37,6 @@ export function IncomeTableToolbar<TData>({
       a.download = `income-${new Date().toISOString().split("T")[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      flashExported();
     });
 
   return (
@@ -72,9 +68,7 @@ export function IncomeTableToolbar<TData>({
         disabled={isExporting}
       >
         <Download className="mr-2 h-4 w-4" />
-        <SlotLabel
-          text={isExporting ? "Exporting…" : exported ? "Exported" : "Export CSV"}
-        />
+        Export CSV
       </Button>
     </DataTableAdvancedToolbar>
   );

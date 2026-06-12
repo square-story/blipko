@@ -10,8 +10,6 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SlotLabel } from "@/components/ui/slot-label";
-import { useTransientFlag } from "@/hooks/use-transient-flag";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -85,7 +83,6 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
     const [wants, setWants] = useState(initial.wantsPct);
     const [savings, setSavings] = useState(initial.savingsPct);
     const [isPending, startTransition] = useTransition();
-    const [saved, flashSaved] = useTransientFlag();
 
     const sum = needs + wants + savings;
     const splitValid = sum === 100;
@@ -114,7 +111,6 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                 savingsPct: savings,
             });
             if (res.success) {
-                flashSaved();
                 toast.success("Budget settings saved");
             } else {
                 toast.error(res.message ?? "Failed to save");
@@ -204,9 +200,7 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                     onClick={handleSave}
                     disabled={isPending || !splitValid || !paydayValid}
                 >
-                    <SlotLabel
-                        text={isPending ? "Saving…" : saved ? "Saved" : "Save changes"}
-                    />
+                    Save changes
                 </Button>
             </CardContent>
         </Card>
