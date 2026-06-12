@@ -1,4 +1,5 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { TransactionsTabs } from "@/components/transactions-tabs";
 import { ExpenseTable } from "./expense-table";
 import { getExpenses } from "@/lib/actions/expenses";
 import { getCategories } from "@/lib/actions/categories";
@@ -38,8 +39,9 @@ export default async function Page({ searchParams }: PageProps) {
     }));
 
     return (
-        <ContentLayout title="Expenses">
+        <ContentLayout title="Transactions">
             <div className="space-y-4">
+                <TransactionsTabs />
                 <ExpenseTable
                     data={data}
                     pageCount={pageCount}
