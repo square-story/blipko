@@ -16,11 +16,17 @@ export async function getAnalyticsData(months: number = 6) {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
 
-  // Per-bucket spend per month over the window.
-  const expenses = await prisma.expense.findMany({
-    where: { userId, isDeleted: false, date: { gte: startDate } },
-    select: { date: true, amount: true, bucket: true },
-  });
+  // Per-bucket spend + income per month over the window.
+  const [expenses, incomes] = await Promise.all([
+    prisma.expense.findMany({
+      where: { userId, isDeleted: false, date: { gte: startDate } },
+      select: { date: true, amount: true, bucket: true },
+    }),
+    prisma.income.findMany({
+      where: { userId, isDeleted: false, date: { gte: startDate } },
+      select: { date: true, amount: true },
+    }),
+  ]);
 
   type MonthEntry = {
     month: string;
@@ -29,6 +35,7 @@ export async function getAnalyticsData(months: number = 6) {
     SAVINGS: number;
   };
   const monthMap = new Map<string, MonthEntry>();
+  const incomeMap = new Map<string, number>(); // monthKey → income total
 
   for (let i = 0; i < months; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - (months - 1) + i, 1);
@@ -38,6 +45,7 @@ export async function getAnalyticsData(months: number = 6) {
       year: "2-digit",
     });
     monthMap.set(key, { month: label, NEEDS: 0, WANTS: 0, SAVINGS: 0 });
+    incomeMap.set(key, 0);
   }
 
   for (const e of expenses) {
@@ -47,7 +55,20 @@ export async function getAnalyticsData(months: number = 6) {
     entry[e.bucket as Bucket] += Number(e.amount);
   }
 
+  for (const i of incomes) {
+    const key = `${i.date.getFullYear()}-${String(i.date.getMonth() + 1).padStart(2, "0")}`;
+    if (incomeMap.has(key))
+      incomeMap.set(key, incomeMap.get(key)! + Number(i.amount));
+  }
+
   const monthlyTrend = Array.from(monthMap.values());
+
+  // Income vs spending per month (net = income − spend).
+  const incomeExpenseTrend = Array.from(monthMap.entries()).map(([key, m]) => {
+    const spend = m.NEEDS + m.WANTS + m.SAVINGS;
+    const income = incomeMap.get(key) ?? 0;
+    return { month: m.month, income, spend, net: income - spend };
+  });
 
   // Category breakdown (current month).
   const { start, end } = currentMonthRange(now);
@@ -80,10 +101,23 @@ export async function getAnalyticsData(months: number = 6) {
 
   const topCategories = categoryBreakdown.slice(0, 5);
 
+  // Current-month income + net (income − spend).
+  const incomeAgg = await prisma.income.aggregate({
+    _sum: { amount: true },
+    where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+  });
+  const incomeThisMonth = Number(incomeAgg._sum.amount ?? 0);
+  const spentThisMonth = categoryBreakdown.reduce((s, c) => s + c.value, 0);
+  const netThisMonth = incomeThisMonth - spentThisMonth;
+
   return {
     monthlyTrend,
+    incomeExpenseTrend,
     buckets: BUCKETS,
     categoryBreakdown,
     topCategories,
+    incomeThisMonth,
+    spentThisMonth,
+    netThisMonth,
   };
 }
