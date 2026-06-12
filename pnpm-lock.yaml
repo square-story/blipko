@@ -240,6 +240,9 @@ importers:
       resend:
         specifier: ^6.5.2
         version: 6.5.2
+      slot-text:
+        specifier: ^0.2.2
+        version: 0.2.2(react@19.2.0)
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -4289,6 +4292,17 @@ packages:
   slice-ansi@7.1.2:
     resolution: {integrity: sha512-iOBWFgUX7caIZiuutICxVgX1SdxwAVFFKwt1EvMYYec/NWO5meOJ6K5uQxhrYBdQJne4KxiqZc+KptFOWFSI9w==}
     engines: {node: '>=18'}
+
+  slot-text@0.2.2:
+    resolution: {integrity: sha512-/XJR7fQKDxZQ0aA/s9kMHSz571GtiRIt0wZloHZ4yTMfIBFSwO/yGYcKZ+6YjchWEEjQ9x49s/xqTBuY+F+Vyw==}
+    peerDependencies:
+      react: '>=18 <20'
+      vue: '>=3.4 <4'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      vue:
+        optional: true
 
   sonner@2.0.7:
     resolution: {integrity: sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==}
@@ -8977,6 +8991,10 @@ snapshots:
     dependencies:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
+
+  slot-text@0.2.2(react@19.2.0):
+    optionalDependencies:
+      react: 19.2.0
 
   sonner@2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
