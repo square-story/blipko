@@ -45,7 +45,7 @@ export function getMenuList(): Group[] {
       menus: [
         {
           href: "/dashboard/expenses",
-          label: "Expenses",
+          label: "Transactions",
           icon: Receipt,
         },
         {
