@@ -10,6 +10,7 @@ import { ICategoryRepository } from "../../domain/repositories/ICategoryReposito
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
 import { IParseLogRepository } from "../../domain/repositories/IParseLogRepository";
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
+import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
@@ -24,6 +25,7 @@ import { ReportProcessor } from "./processors/ReportProcessor";
 import { UndoProcessor } from "./processors/UndoProcessor";
 import { ExpenseProcessor } from "./processors/ExpenseProcessor";
 import { IncomeProcessor } from "./processors/IncomeProcessor";
+import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
 
 export interface ProcessIncomingMessageInput {
@@ -52,6 +54,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly budgetConfigRepository: IBudgetConfigRepository,
     private readonly parseLogRepository: IParseLogRepository,
     private readonly incomeRepository: IIncomeRepository,
+    private readonly recurringRuleRepository: IRecurringRuleRepository,
     private readonly conversationRepository: IConversationRepository,
     private readonly messageService: IMessagingPlatform,
   ) {
@@ -114,6 +117,11 @@ export class ProcessIncomingMessageUseCase {
       new IncomeProcessor(
         incomeRepository,
         budgetConfigRepository,
+        messageService,
+      ),
+      new RecurringSetupProcessor(
+        recurringRuleRepository,
+        categoryRepository,
         messageService,
       ),
       new FallbackProcessor(messageService),

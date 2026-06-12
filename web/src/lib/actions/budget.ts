@@ -10,7 +10,7 @@ import {
   BUCKETS,
   DEFAULT_SPLIT,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   pctSpent,
   type BudgetSplit,
@@ -28,19 +28,22 @@ export async function getBudgetOverview() {
   const session = await auth();
   if (!session?.user?.id) redirect("/");
   const userId = session.user.id;
-  const { start, end } = currentMonthRange();
 
-  const [user, config, grouped, recent, categoryGroups, incomeAgg] =
+  // Fetch the user first so the budget window can follow their payday cycle.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      monthlyIncome: true,
+      currency: true,
+      locale: true,
+      hasOnboarded: true,
+      payday: true,
+    },
+  });
+  const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
+
+  const [config, grouped, recent, categoryGroups, incomeAgg] =
     await Promise.all([
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          monthlyIncome: true,
-          currency: true,
-          locale: true,
-          hasOnboarded: true,
-        },
-      }),
       prisma.budgetConfig.findUnique({ where: { userId } }),
       prisma.expense.groupBy({
         by: ["bucket"],
@@ -128,10 +131,18 @@ export async function getBudgetOverview() {
     date: e.date,
   }));
 
+  // Human label for the current cycle, e.g. "Jun 25 – Jul 24".
+  const fmt = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+  });
+  const periodLabel = `${fmt.format(start)} – ${fmt.format(new Date(end.getTime() - 86400000))}`;
+
   return {
     monthlyIncome,
     expectedIncome,
     incomeThisMonth,
+    periodLabel,
     currency,
     locale,
     split,

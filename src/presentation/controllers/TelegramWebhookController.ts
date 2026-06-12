@@ -15,9 +15,11 @@ import { PrismaCategoryRepository } from "../../data/repositories/PrismaCategory
 import { PrismaBudgetConfigRepository } from "../../data/repositories/PrismaBudgetConfigRepository";
 import { PrismaParseLogRepository } from "../../data/repositories/PrismaParseLogRepository";
 import { PrismaIncomeRepository } from "../../data/repositories/PrismaIncomeRepository";
+import { PrismaRecurringRuleRepository } from "../../data/repositories/PrismaRecurringRuleRepository";
 import { PrismaConversationRepository } from "../../data/repositories/PrismaConversationRepository";
 import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeRepository";
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
+import { PostRecurringChargesUseCase } from "../../application/use-cases/PostRecurringCharges";
 import { prisma } from "../../data/prisma/client";
 import { env } from "../../config/env";
 
@@ -56,6 +58,7 @@ const categoryRepository = new PrismaCategoryRepository(prisma);
 const budgetConfigRepository = new PrismaBudgetConfigRepository(prisma);
 const parseLogRepository = new PrismaParseLogRepository(prisma);
 const incomeRepository = new PrismaIncomeRepository(prisma);
+const recurringRuleRepository = new PrismaRecurringRuleRepository(prisma);
 const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
@@ -68,6 +71,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   budgetConfigRepository,
   parseLogRepository,
   incomeRepository,
+  recurringRuleRepository,
   conversationRepository,
   messageService,
 );
@@ -106,6 +110,10 @@ export class TelegramWebhookController {
                 description: "Your budget health this month",
               },
               { command: "report", description: "This month's summary" },
+              {
+                command: "recurring",
+                description: "Manage repeating income/expenses",
+              },
               { command: "help", description: "How to use the bot" },
             ],
           }),
@@ -257,5 +265,14 @@ export const sendBudgetNudges = new SendBudgetNudgesUseCase(
   budgetConfigRepository,
   nudgeRepository,
   incomeRepository,
+  messageService,
+);
+
+export const postRecurringCharges = new PostRecurringChargesUseCase(
+  recurringRuleRepository,
+  expenseRepository,
+  incomeRepository,
+  userRepository,
+  categoryRepository,
   messageService,
 );

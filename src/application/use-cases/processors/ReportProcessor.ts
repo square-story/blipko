@@ -11,7 +11,7 @@ import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
   sanitizeMd,
@@ -46,7 +46,7 @@ export class ReportProcessor implements MessageProcessor {
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
-    const { start, end } = currentMonthRange();
+    const { start, end } = currentBudgetPeriod(user.payday);
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
       await this.incomeRepository.sumForMonth(user.id, start, end),

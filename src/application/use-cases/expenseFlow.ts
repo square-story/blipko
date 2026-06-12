@@ -7,7 +7,7 @@ import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import {
   BUCKET_META,
   bucketBudget,
-  currentMonthRange,
+  currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
   sanitizeMd,
@@ -81,7 +81,7 @@ export async function recordExpenseAndReply(
   });
 
   // Remaining budget for this bucket this month (sum already includes the new expense).
-  const { start, end } = currentMonthRange();
+  const { start, end } = currentBudgetPeriod(user.payday);
   const spent = await deps.expenseRepository.sumByBucketForMonth(
     user.id,
     bucket,

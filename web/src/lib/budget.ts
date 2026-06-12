@@ -31,6 +31,21 @@ export function currentMonthRange(now: Date = new Date()): {
   return { start, end };
 }
 
+// The current budget cycle [start, end): most recent payday on/before `now` to
+// the next payday. payday=1 reproduces the calendar month. Mirrors the backend.
+export function currentBudgetPeriod(
+  payday: number,
+  now: Date = new Date(),
+): { start: Date; end: Date } {
+  const d = Math.min(Math.max(Math.floor(payday) || 1, 1), 28);
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (now.getDate() >= d) {
+    return { start: new Date(y, m, d), end: new Date(y, m + 1, d) };
+  }
+  return { start: new Date(y, m - 1, d), end: new Date(y, m, d) };
+}
+
 export function bucketPct(split: BudgetSplit, bucket: Bucket): number {
   switch (bucket) {
     case "NEEDS":

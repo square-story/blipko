@@ -31,6 +31,7 @@ async function OverviewSection({
         monthlyIncome,
         expectedIncome,
         incomeThisMonth,
+        periodLabel,
         currency,
         buckets,
         totalSpent,
@@ -71,11 +72,11 @@ async function OverviewSection({
                 </Stat>
 
                 <Stat>
-                    <StatLabel>Spent This Month</StatLabel>
+                    <StatLabel>Spent This Cycle</StatLabel>
                     <StatValue>
                         <AnimatedNumber value={totalSpent} format={currencyFormat} />
                     </StatValue>
-                    <StatDescription>Across all buckets</StatDescription>
+                    <StatDescription>{periodLabel}</StatDescription>
                     <StatIndicator color="warning">
                         <TrendingDown className="h-4 w-4" />
                     </StatIndicator>

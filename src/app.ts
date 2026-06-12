@@ -7,6 +7,7 @@ import { telegramRoutes } from "./presentation/routes/telegramRoutes";
 import {
   telegramWebhookController,
   sendBudgetNudges,
+  postRecurringCharges,
 } from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
 
@@ -43,7 +44,7 @@ const port = env.PORT;
 if (process.env.NODE_ENV !== "test") {
   const server = app.listen(port, () => {
     process.stdout.write(`🚀 Blipko budget bot listening on port ${port}\n`);
-    startScheduler(sendBudgetNudges);
+    startScheduler(sendBudgetNudges, postRecurringCharges);
     telegramWebhookController.registerBotCommands().catch(console.error);
   });
 

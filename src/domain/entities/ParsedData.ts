@@ -10,6 +10,7 @@ export const PARSED_INTENTS = [
   "INCOME",
   "UNDO",
   "STATUS",
+  "RECURRING",
   "UNKNOWN",
 ] as const;
 export type ParsedIntent = (typeof PARSED_INTENTS)[number];
@@ -23,6 +24,9 @@ export const ParsedDataSchema = z.object({
   category: z.string().optional(),
   bucket: z.enum(BUCKETS).optional(),
   note: z.string().optional(),
+  // For RECURRING: which day of the month it recurs, and income vs expense.
+  dayOfMonth: z.number().optional(),
+  recurringKind: z.enum(["INCOME", "EXPENSE"]).optional(),
   confidence: z.number().min(0).max(1),
   conversational_response: z.string().optional(),
 });

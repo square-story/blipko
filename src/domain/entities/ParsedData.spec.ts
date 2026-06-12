@@ -14,6 +14,19 @@ describe("ParsedDataSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a RECURRING parse with dayOfMonth + recurringKind", () => {
+    const result = ParsedDataSchema.safeParse({
+      intent: "RECURRING",
+      recurringKind: "EXPENSE",
+      amount: 8000,
+      dayOfMonth: 1,
+      category: "Rent",
+      bucket: "NEEDS",
+      confidence: 0.9,
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects an unknown intent", () => {
     const result = ParsedDataSchema.safeParse({
       intent: "PAID",
