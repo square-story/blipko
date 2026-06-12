@@ -10,6 +10,7 @@ import {
 import { RoundedPieChart } from "@/components/ui/rounded-pie-chart";
 import { BucketTrendChart } from "../_components/income-expense-chart";
 import { IncomeExpenseTrendChart } from "../_components/income-expense-trend-chart";
+import { AnimatedNumber } from "@/components/animated-number";
 import { formatMoney } from "@/lib/budget";
 
 export default async function Page() {
@@ -23,6 +24,12 @@ export default async function Page() {
         netThisMonth,
     } = await getAnalyticsData(6);
 
+    const currencyFormat = {
+        style: "currency" as const,
+        currency: "INR",
+        trailingZeroDisplay: "stripIfInteger" as const,
+    };
+
     return (
         <ContentLayout title="Analytics">
             <div className="flex flex-col gap-6 p-4 md:p-8 pt-6">
@@ -34,7 +41,7 @@ export default async function Page() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-600">
-                                {formatMoney(incomeThisMonth)}
+                                <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
                             </div>
                             <p className="text-xs text-muted-foreground">money in this month</p>
                         </CardContent>
@@ -45,7 +52,9 @@ export default async function Page() {
                             <CardTitle className="text-sm font-medium">Spent This Month</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatMoney(spentThisMonth)}</div>
+                            <div className="text-2xl font-bold">
+                                <AnimatedNumber value={spentThisMonth} format={currencyFormat} />
+                            </div>
                             <p className="text-xs text-muted-foreground">across all categories</p>
                         </CardContent>
                     </Card>
@@ -58,8 +67,10 @@ export default async function Page() {
                             <div
                                 className={`text-2xl font-bold ${netThisMonth >= 0 ? "text-green-600" : "text-red-600"}`}
                             >
-                                {netThisMonth >= 0 ? "+" : "−"}
-                                {formatMoney(Math.abs(netThisMonth))}
+                                <AnimatedNumber
+                                    value={netThisMonth}
+                                    format={{ ...currencyFormat, signDisplay: "always" }}
+                                />
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 {netThisMonth >= 0 ? "saved this month" : "over budget this month"}
