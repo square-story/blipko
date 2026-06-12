@@ -35,6 +35,8 @@ jobs:
         cache: 'pnpm'
     - name: Install dependencies
       run: pnpm install
+    - name: Web Prisma schema in sync with root
+      run: diff -q prisma/schema.prisma web/prisma/schema.prisma
     - name: Generate Prisma Client
       run: pnpm prisma generate
     - name: Unit tests
