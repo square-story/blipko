@@ -47,9 +47,14 @@ export class ReportProcessor implements MessageProcessor {
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
+    const loggedIncome = await this.incomeRepository.sumForMonth(
+      user.id,
+      start,
+      end,
+    );
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      await this.incomeRepository.sumForMonth(user.id, start, end),
+      loggedIncome,
     );
     const monthName = new Intl.DateTimeFormat("en-IN", {
       month: "long",
@@ -67,7 +72,7 @@ export class ReportProcessor implements MessageProcessor {
       lines.push(this.bucketLine(bucket, spent, budget));
     }
 
-    let body = `📅 ${monthName} summary\n\nIncome ${formatMoney(monthlyIncome)}\n${lines.join("\n")}`;
+    let body = `📅 ${monthName} summary\n\nIncome logged ${formatMoney(loggedIncome)} (budget on ${formatMoney(monthlyIncome)})\n${lines.join("\n")}`;
 
     const leaks = await this.expenseRepository.topCategoriesForMonth(
       user.id,

@@ -295,7 +295,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       expect.objectContaining({ amount: 5000, userId: "u1" }),
     );
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "This month: ₹55,000",
+      "Income this cycle: ₹55,000",
     );
   });
 

@@ -71,7 +71,8 @@ export class IncomeProcessor implements MessageProcessor {
 
     const label = parsed.note ? ` (${sanitizeMd(parsed.note)})` : "";
     const response = `✅ Income ${formatMoney(amount)}${label}
-This month: ${formatMoney(effective)} → ${BUCKET_META.NEEDS.emoji} Needs ${formatMoney(bucketBudget(effective, config, "NEEDS"))} · ${BUCKET_META.WANTS.emoji} Wants ${formatMoney(bucketBudget(effective, config, "WANTS"))} · ${BUCKET_META.SAVINGS.emoji} Savings ${formatMoney(bucketBudget(effective, config, "SAVINGS"))}`;
+💵 Income this cycle: ${formatMoney(monthIncome)}
+Budget on ${formatMoney(effective)} → ${BUCKET_META.NEEDS.emoji} Needs ${formatMoney(bucketBudget(effective, config, "NEEDS"))} · ${BUCKET_META.WANTS.emoji} Wants ${formatMoney(bucketBudget(effective, config, "WANTS"))} · ${BUCKET_META.SAVINGS.emoji} Savings ${formatMoney(bucketBudget(effective, config, "SAVINGS"))}`;
 
     await this.messageService.sendMessage({
       to: platformUserId,

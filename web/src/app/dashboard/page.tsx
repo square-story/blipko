@@ -54,17 +54,15 @@ async function OverviewSection({
             {/* Headline stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Stat>
-                    <StatLabel>Budget Income</StatLabel>
+                    <StatLabel>Income This Cycle</StatLabel>
                     <StatValue>
-                        <AnimatedNumber value={monthlyIncome} format={currencyFormat} />
+                        <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
                     </StatValue>
                     <StatDescription>
-                        {incomeThisMonth > 0
-                            ? `${formatMoney(incomeThisMonth, currency)} logged this month` +
-                              (monthlyIncome > incomeThisMonth
-                                  ? ` · ${formatMoney(expectedIncome, currency)} expected`
-                                  : "")
-                            : "Your expected monthly baseline"}
+                        Logged this cycle · budget on {formatMoney(monthlyIncome, currency)}
+                        {monthlyIncome > incomeThisMonth
+                            ? ` (expected ${formatMoney(expectedIncome, currency)})`
+                            : ""}
                     </StatDescription>
                     <StatIndicator color="success">
                         <Wallet className="h-4 w-4" />
