@@ -61,6 +61,7 @@
     "react-hook-form": "^7.67.0",
     "recharts": "^2.15.4",
     "resend": "^6.5.2",
+    "slot-text": "^0.2.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "vaul": "^1.1.2",

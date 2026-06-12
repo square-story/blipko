@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { SlotLabel } from "@/components/ui/slot-label";
 import { generateTelegramLinkToken, getTelegramConnectionStatus } from "@/lib/actions/user";
 
 export function TelegramCard() {
@@ -57,7 +58,7 @@ export function TelegramCard() {
                 ) : (
                     <Button onClick={handleConnect} disabled={loading} variant="outline">
                         <SendIcon className="mr-2 size-4" />
-                        {loading ? "Opening…" : "Connect Telegram"}
+                        <SlotLabel text={loading ? "Opening…" : "Connect Telegram"} />
                     </Button>
                 )}
             </CardContent>
