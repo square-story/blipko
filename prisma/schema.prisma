@@ -21,15 +21,26 @@ enum ExpenseSource {
   VOICE
 }
 
-// Proactive budget nudges — one of each kind per bucket per month.
+// Proactive budget nudges. WARN_* / OVER are once per bucket per cycle;
+// CHECKIN is a once-per-day summary used by the higher reminder dosages.
 enum NudgeKind {
+  WARN_50
   WARN_80
   OVER
+  CHECKIN
 }
 
 enum RecurringKind {
   INCOME
   EXPENSE
+}
+
+// How hard the bot nudges the user. Default OFF — opt-in only.
+enum NotificationDosage {
+  OFF
+  GENTLE
+  AGGRESSIVE
+  RELENTLESS
 }
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -53,6 +64,14 @@ model User {
   // Lifecycle
   isEarlyAdopter Boolean @default(true)
   hasOnboarded   Boolean @default(false)
+
+  // Onboarding wizard state (null once DONE) + a draft of in-progress choices
+  // (captured income, toggled category groups) across button presses.
+  onboardingStep  String?
+  onboardingDraft Json?
+
+  // Reminder dosage (opt-in; default OFF).
+  notificationDosage NotificationDosage @default(OFF)
 
   // NextAuth
   emailVerified DateTime?
@@ -100,11 +119,24 @@ model BudgetConfig {
 }
 
 // System categories have userId = null; custom categories belong to a user.
+// Categories form a 2-level tree: parent groups (isGroup = true, e.g.
+// "Essentials") contain leaf categories (e.g. "Rent"). Leaves are what
+// expenses tag; the leaf bucket stays authoritative for 50/30/20, so a group
+// may span buckets (Food & Drinks → Groceries=NEEDS, Eating Out=WANTS).
 model Category {
   id       String  @id @default(cuid())
   name     String
   bucket   Bucket
   isSystem Boolean @default(false)
+  isGroup  Boolean @default(false)
+
+  // Per-leaf monthly budget suggestion (editable; null = uncapped).
+  monthlyBudget Decimal? @db.Decimal(12, 2)
+
+  // Self-relation: a leaf points to its parent group.
+  parentId String?
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryChildren")
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
