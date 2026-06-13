@@ -23,6 +23,7 @@ import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { RecurringConfirmProcessor } from "./processors/RecurringConfirmProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
 import { SettingsProcessor } from "./processors/SettingsProcessor";
+import { HelpProcessor } from "./processors/HelpProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
 import { ReportProcessor } from "./processors/ReportProcessor";
 import { UndoProcessor } from "./processors/UndoProcessor";
@@ -89,6 +90,7 @@ export class ProcessIncomingMessageUseCase {
         messageService,
       ),
       new SettingsProcessor(userRepository, messageService),
+      new HelpProcessor(messageService),
       new StatusProcessor(
         expenseRepository,
         budgetConfigRepository,
