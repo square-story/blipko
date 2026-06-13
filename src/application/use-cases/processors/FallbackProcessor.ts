@@ -21,7 +21,7 @@ export class FallbackProcessor implements MessageProcessor {
     };
     const body =
       parsed.conversational_response ??
-      'I didn\'t catch that. Try logging a spend like "chai 30" or "auto 80 office".';
+      'I didn\'t catch that. Try logging a spend like "chai 30" or "auto 80 office" — or type /help.';
     await this.messageService.sendMessage({
       to: context.platformUserId,
       body,
