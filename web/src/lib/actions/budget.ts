@@ -172,6 +172,7 @@ export async function getBudgetSettings() {
         payday: true,
         currency: true,
         locale: true,
+        notificationDosage: true,
       },
     }),
     prisma.budgetConfig.findUnique({ where: { userId } }),
@@ -185,6 +186,7 @@ export async function getBudgetSettings() {
     needsPct: config?.needsPct ?? DEFAULT_SPLIT.needsPct,
     wantsPct: config?.wantsPct ?? DEFAULT_SPLIT.wantsPct,
     savingsPct: config?.savingsPct ?? DEFAULT_SPLIT.savingsPct,
+    notificationDosage: user?.notificationDosage ?? "OFF",
   };
 }
 
@@ -197,6 +199,9 @@ const settingsSchema = z
     needsPct: z.number().int().min(0).max(100).optional(),
     wantsPct: z.number().int().min(0).max(100).optional(),
     savingsPct: z.number().int().min(0).max(100).optional(),
+    notificationDosage: z
+      .enum(["OFF", "GENTLE", "AGGRESSIVE", "RELENTLESS"])
+      .optional(),
   })
   .refine(
     (d) => {
@@ -220,6 +225,7 @@ export async function updateBudgetSettings(input: {
   needsPct?: number;
   wantsPct?: number;
   savingsPct?: number;
+  notificationDosage?: "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
 }): Promise<{ success: boolean; message?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
@@ -239,11 +245,14 @@ export async function updateBudgetSettings(input: {
     payday?: number;
     currency?: string;
     locale?: string;
+    notificationDosage?: "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
   } = {};
   if (d.monthlyIncome !== undefined) userData.monthlyIncome = d.monthlyIncome;
   if (d.payday !== undefined) userData.payday = d.payday;
   if (d.currency !== undefined) userData.currency = d.currency;
   if (d.locale !== undefined) userData.locale = d.locale;
+  if (d.notificationDosage !== undefined)
+    userData.notificationDosage = d.notificationDosage;
 
   if (Object.keys(userData).length > 0) {
     await prisma.user.update({ where: { id: userId }, data: userData });

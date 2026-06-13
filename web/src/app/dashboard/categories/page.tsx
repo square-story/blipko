@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ import {
   createCategory,
   renameCategory,
   setCategoryBucket,
+  setCategoryBudget,
   deleteCategory,
   type CategoryStat,
 } from "@/lib/actions/categories";
@@ -52,6 +53,7 @@ export default function CategoriesPage() {
   const [editing, setEditing] = useState<CategoryStat | null>(null);
   const [editName, setEditName] = useState("");
   const [editBucket, setEditBucket] = useState<Bucket>("NEEDS");
+  const [editBudget, setEditBudget] = useState("");
   const [editError, setEditError] = useState("");
 
   const load = () =>
@@ -62,6 +64,13 @@ export default function CategoriesPage() {
   useEffect(() => {
     load();
   }, []);
+
+  // Group rows are organizational only — used to label children, not listed.
+  const groupNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of categories) if (c.isGroup) m.set(c.id, c.name);
+    return m;
+  }, [categories]);
 
   const handleAdd = () =>
     startTransition(async () => {
@@ -79,6 +88,7 @@ export default function CategoriesPage() {
     setEditing(cat);
     setEditName(cat.name);
     setEditBucket(cat.bucket);
+    setEditBudget(cat.monthlyBudget == null ? "" : String(cat.monthlyBudget));
     setEditError("");
   };
 
@@ -99,6 +109,15 @@ export default function CategoriesPage() {
           return;
         }
       }
+      const trimmed = editBudget.trim();
+      const nextBudget = trimmed === "" ? null : Number(trimmed);
+      if (nextBudget !== editing.monthlyBudget) {
+        const r = await setCategoryBudget(editing.id, nextBudget);
+        if (!r.success) {
+          setEditError(r.message ?? "Failed to set budget");
+          return;
+        }
+      }
       setEditing(null);
       load();
     });
@@ -113,8 +132,8 @@ export default function CategoriesPage() {
     <ContentLayout title="Categories">
       <div className="space-y-6">
         <p className="text-sm text-muted-foreground">
-          System categories come with Blipko. Add your own and assign each to a
-          50/30/20 bucket.
+          Your categories, grouped into 50/30/20 buckets. Set a monthly limit on
+          any of them — the bot warns you as you approach it.
         </p>
 
         {/* Add a custom category */}
@@ -134,7 +153,9 @@ export default function CategoriesPage() {
                     setNewName(e.target.value);
                     setAddError("");
                   }}
-                  onKeyDown={(e) => e.key === "Enter" && newName.trim() && handleAdd()}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && newName.trim() && handleAdd()
+                  }
                 />
               </div>
               <div className="space-y-1">
@@ -166,9 +187,11 @@ export default function CategoriesPage() {
           </CardContent>
         </Card>
 
-        {/* Grouped by bucket */}
+        {/* Grouped by bucket (leaf categories only) */}
         {BUCKETS.map((bucket) => {
-          const inBucket = categories.filter((c) => c.bucket === bucket);
+          const inBucket = categories.filter(
+            (c) => c.bucket === bucket && !c.isGroup,
+          );
           return (
             <Card key={bucket}>
               <CardHeader>
@@ -181,46 +204,62 @@ export default function CategoriesPage() {
                   <p className="text-sm text-muted-foreground">No categories.</p>
                 ) : (
                   <div className="divide-y">
-                    {inBucket.map((cat) => (
-                      <div
-                        key={cat.id}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{cat.name}</span>
-                          {cat.isSystem && (
-                            <Badge variant="secondary" className="text-xs">
-                              System
-                            </Badge>
-                          )}
+                    {inBucket.map((cat) => {
+                      const group = cat.parentId
+                        ? groupNameById.get(cat.parentId)
+                        : null;
+                      return (
+                        <div
+                          key={cat.id}
+                          className="flex items-center justify-between py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{cat.name}</span>
+                            {group && (
+                              <span className="text-xs text-muted-foreground">
+                                {group}
+                              </span>
+                            )}
+                            {cat.isSystem && (
+                              <Badge variant="secondary" className="text-xs">
+                                System
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm tabular-nums text-muted-foreground">
+                              {fmt(cat.spend)}
+                              {cat.monthlyBudget != null && (
+                                <span className="text-muted-foreground/70">
+                                  {" "}
+                                  / {formatMoney(cat.monthlyBudget)}
+                                </span>
+                              )}
+                            </span>
+                            {!cat.isSystem && (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => openEdit(cat)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => handleDelete(cat)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground">
-                            {fmt(cat.spend)}
-                          </span>
-                          {!cat.isSystem && (
-                            <>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => openEdit(cat)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-destructive"
-                                onClick={() => handleDelete(cat)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -263,6 +302,19 @@ export default function CategoriesPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Monthly limit (optional)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={editBudget}
+                placeholder="No limit"
+                onChange={(e) => {
+                  setEditBudget(e.target.value);
+                  setEditError("");
+                }}
+              />
             </div>
             {editError && <p className="text-sm text-destructive">{editError}</p>}
             <div className="flex gap-2">
