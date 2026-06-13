@@ -8,6 +8,8 @@ import { TelegramMediaService } from "../../data/messaging/TelegramMediaService"
 import { GeminiParser } from "../../data/ai/GeminiParser";
 import { OpenAIParser } from "../../data/ai/OpenAIParser";
 import { FallbackAiParser } from "../../data/ai/FallbackAiParser";
+import { OpenAiQueryAgent } from "../../data/ai/OpenAiQueryAgent";
+import { FinancialDataTools } from "../../application/use-cases/query/FinancialDataTools";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
 import { PrismaUserRepository } from "../../data/repositories/PrismaUserRepository";
 import { PrismaExpenseRepository } from "../../data/repositories/PrismaExpenseRepository";
@@ -63,6 +65,18 @@ const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
 
+// Read-only conversational Q&A agent (QUERY intent). Reuses the repositories +
+// budget math; can only read, never writes.
+const financialDataTools = new FinancialDataTools(
+  userRepository,
+  expenseRepository,
+  incomeRepository,
+  budgetConfigRepository,
+  recurringRuleRepository,
+  categoryRepository,
+);
+const queryAgent = new OpenAiQueryAgent(financialDataTools);
+
 const processIncomingMessage = new ProcessIncomingMessageUseCase(
   aiParser,
   userRepository,
@@ -74,6 +88,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   recurringRuleRepository,
   conversationRepository,
   messageService,
+  queryAgent,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(

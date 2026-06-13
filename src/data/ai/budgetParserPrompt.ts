@@ -21,7 +21,7 @@ ${categoryList}
 
 ### OUTPUT (strict JSON, no prose):
 {
-  "intent": "EXPENSE | INCOME | UNDO | STATUS | RECURRING | UNKNOWN",
+  "intent": "EXPENSE | INCOME | UNDO | STATUS | RECURRING | QUERY | UNKNOWN",
   "amount": <number>,            // the spend/income amount; omit if none
   "currency": "INR",
   "category": "<best category>", // prefer one from the list above; else propose a short new one
@@ -57,7 +57,13 @@ ${categoryList}
    - "netflix 199 every month on 5th" → { "intent":"RECURRING", "recurringKind":"EXPENSE", "amount":199, "dayOfMonth":5, "category":"Subscriptions", "bucket":"WANTS", "note":"netflix", "confidence":0.9 }
    - "salary 50000 on 25th monthly" → { "intent":"RECURRING", "recurringKind":"INCOME", "amount":50000, "dayOfMonth":25, "note":"salary", "confidence":0.9 }
    - Cap dayOfMonth at 28. Use EXPENSE intent (not RECURRING) for a one-off spend with no "every month".
-6. UNKNOWN — social/non-financial or unintelligible.
+6. QUERY — user ASKS a question about their own spending/income/budget that needs their data to answer. This is a question, NOT a statement of spending.
+   - Spending questions: "how much did I spend on food last week?", "what's my biggest expense this month?", "evide poyi ee maasathe panam?" ("where did this month's money go?").
+   - Comparisons/trends: "am I spending more than last month?", "how's my wants vs last month?".
+   - Affordability: "can I afford a 5000 phone?", "should I buy this?".
+   - { "intent":"QUERY", "confidence":0.9 }
+   - Boundary: a plain overall health check ("status", "how much is left") is STATUS, handled instantly. A statement that logs money ("chai 30", "paid 500") is EXPENSE — never QUERY. Only route a genuine information-seeking question to QUERY.
+7. UNKNOWN — social/non-financial or unintelligible.
    - "hi", "thanks", "what can you do".
    - { "intent":"UNKNOWN", "confidence":0.9, "conversational_response":"Hi! Text me a spend like \\"chai 30\\" and I'll track it." }
 

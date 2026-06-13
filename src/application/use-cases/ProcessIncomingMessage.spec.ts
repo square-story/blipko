@@ -29,6 +29,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
   let conversationRepository: any;
   let aiParser: any;
   let messageService: any;
+  let queryAgent: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -93,6 +94,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       sendInteractiveMessage: vi.fn().mockResolvedValue("msg-id-456"),
       sendTypingIndicator: vi.fn(),
     };
+    queryAgent = { answer: vi.fn().mockResolvedValue("agent answer") };
 
     useCase = new ProcessIncomingMessageUseCase(
       aiParser,
@@ -105,6 +107,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       recurringRuleRepository,
       conversationRepository,
       messageService,
+      queryAgent,
     );
   });
 
