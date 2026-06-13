@@ -1,7 +1,7 @@
 import {
   IMessagingPlatform,
   SendMessagePayload,
-  InlineButton,
+  InlineButtonRows,
 } from "../../application/interfaces/IMessagingPlatform";
 import { env } from "../../config/env";
 
@@ -41,11 +41,11 @@ export class TelegramMessageService implements IMessagingPlatform {
   async sendInteractiveMessage(
     to: string,
     body: string,
-    buttons: InlineButton[],
+    rows: InlineButtonRows,
   ): Promise<string> {
-    const inline_keyboard = [
-      buttons.map((b) => ({ text: b.title, callback_data: b.id })),
-    ];
+    const inline_keyboard = rows.map((row) =>
+      row.map((b) => ({ text: b.title, callback_data: b.id })),
+    );
     const res = await fetch(`${this.base}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,6 +64,33 @@ export class TelegramMessageService implements IMessagingPlatform {
     }
     const data = (await res.json()) as { result?: { message_id?: number } };
     return String(data.result?.message_id ?? "");
+  }
+
+  async editInteractiveMessage(
+    to: string,
+    messageId: string,
+    body: string,
+    rows: InlineButtonRows,
+  ): Promise<void> {
+    const inline_keyboard = rows.map((row) =>
+      row.map((b) => ({ text: b.title, callback_data: b.id })),
+    );
+    const res = await fetch(`${this.base}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: to,
+        message_id: Number(messageId),
+        text: body,
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard },
+      }),
+    });
+    // Telegram returns 400 "message is not modified" on a no-op edit — ignore.
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      console.warn(`Telegram editMessageText ${res.status}: ${err}`);
+    }
   }
 
   async acknowledgeInteraction(callbackQueryId: string): Promise<void> {

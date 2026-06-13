@@ -1,4 +1,4 @@
-import { PrismaClient, User } from "@prisma/client";
+import { Prisma, PrismaClient, User } from "@prisma/client";
 import {
   IUserRepository,
   CreateUserDTO,
@@ -30,6 +30,18 @@ export class PrismaUserRepository implements IUserRepository {
         }),
         ...(data.hasOnboarded !== undefined && {
           hasOnboarded: data.hasOnboarded,
+        }),
+        ...(data.onboardingStep !== undefined && {
+          onboardingStep: data.onboardingStep,
+        }),
+        ...(data.onboardingDraft !== undefined && {
+          onboardingDraft:
+            data.onboardingDraft === null
+              ? Prisma.JsonNull
+              : data.onboardingDraft,
+        }),
+        ...(data.notificationDosage !== undefined && {
+          notificationDosage: data.notificationDosage,
         }),
       },
     });

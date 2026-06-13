@@ -22,6 +22,7 @@ import {
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { RecurringConfirmProcessor } from "./processors/RecurringConfirmProcessor";
 import { OnboardingProcessor } from "./processors/OnboardingProcessor";
+import { SettingsProcessor } from "./processors/SettingsProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
 import { ReportProcessor } from "./processors/ReportProcessor";
 import { UndoProcessor } from "./processors/UndoProcessor";
@@ -36,6 +37,9 @@ export interface ProcessIncomingMessageInput {
   textMessage: string;
   platformUsername?: string | undefined;
   replyToMessageId?: string | undefined;
+  // The message_id of the inline-keyboard message, when this is a button press —
+  // lets processors edit that message in place (e.g. multi-select toggles).
+  callbackMessageId?: string | undefined;
 }
 
 export interface ProcessIncomingMessageOutput {
@@ -81,8 +85,10 @@ export class ProcessIncomingMessageUseCase {
       new OnboardingProcessor(
         userRepository,
         budgetConfigRepository,
+        categoryRepository,
         messageService,
       ),
+      new SettingsProcessor(userRepository, messageService),
       new StatusProcessor(
         expenseRepository,
         budgetConfigRepository,
@@ -168,6 +174,7 @@ export class ProcessIncomingMessageUseCase {
       platformUserId: payload.platformUserId,
       textMessage: payload.textMessage,
       replyToMessageId: payload.replyToMessageId,
+      callbackMessageId: payload.callbackMessageId,
       conversationHistory: history,
     };
 

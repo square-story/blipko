@@ -52,6 +52,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     };
     categoryRepository = {
       findAllForUser: vi.fn().mockResolvedValue([]),
+      cloneGroupsForUser: vi.fn().mockResolvedValue(5),
       findByNameForUser: vi.fn().mockResolvedValue(null),
       findById: vi
         .fn()
@@ -92,6 +93,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("msg-id-123"),
       sendInteractiveMessage: vi.fn().mockResolvedValue("msg-id-456"),
+      editInteractiveMessage: vi.fn().mockResolvedValue(undefined),
       sendTypingIndicator: vi.fn(),
     };
     queryAgent = { answer: vi.fn().mockResolvedValue("agent answer") };
@@ -111,24 +113,27 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     );
   });
 
-  it("onboards a new user from their income number and shows the 50/30/20 split", async () => {
+  it("captures income, shows the split, and moves to category selection", async () => {
     userRepository.findByTelegramId.mockResolvedValue(newUser);
+    budgetConfigRepository.findByUserId.mockResolvedValue(null);
 
     await useCase.execute({ platformUserId: "123", textMessage: "50000" });
 
-    expect(userRepository.update).toHaveBeenCalledWith("u1", {
-      monthlyIncome: 50000,
-      hasOnboarded: true,
-    });
+    expect(userRepository.update).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        monthlyIncome: 50000,
+        onboardingStep: "PICK_GROUPS",
+      }),
+    );
     expect(budgetConfigRepository.create).toHaveBeenCalledWith({
       userId: "u1",
     });
     expect(aiParser.parseText).not.toHaveBeenCalled();
-    const body = messageService.sendMessage.mock.calls[0][0].body;
-    expect(body).toContain("monthly plan");
+    const [, body, rows] = messageService.sendInteractiveMessage.mock.calls[0];
     expect(body).toContain("25,000"); // Needs
     expect(body).toContain("15,000"); // Wants
-    expect(body).toContain("10,000"); // Savings
+    expect(rows.flat().some((b: any) => b.id === "ob:done")).toBe(true);
   });
 
   it("records a confident expense and shows remaining bucket budget", async () => {
@@ -178,10 +183,9 @@ describe("ProcessIncomingMessage (budget flow)", () => {
 
     expect(parseLogRepository.create).toHaveBeenCalled();
     expect(expenseRepository.create).not.toHaveBeenCalled();
-    const [, body, buttons] =
-      messageService.sendInteractiveMessage.mock.calls[0];
+    const [, body, rows] = messageService.sendInteractiveMessage.mock.calls[0];
     expect(body).toContain("which bucket");
-    expect(buttons.map((b: any) => b.id)).toEqual([
+    expect(rows.flat().map((b: any) => b.id)).toEqual([
       "bkt:plog1:NEEDS",
       "bkt:plog1:WANTS",
       "bkt:plog1:SAVINGS",

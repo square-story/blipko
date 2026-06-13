@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SendBudgetNudgesUseCase } from "./SendBudgetNudges";
 
-const user = { id: "u1", telegramId: "123", monthlyIncome: 50000 };
+const user = {
+  id: "u1",
+  telegramId: "123",
+  monthlyIncome: 50000,
+  payday: 1,
+  notificationDosage: "GENTLE",
+};
 
 describe("SendBudgetNudges", () => {
   let userRepository: any;
@@ -94,5 +100,33 @@ describe("SendBudgetNudges", () => {
 
     expect(nudgeRepository.recordSentIfNew).not.toHaveBeenCalled();
     expect(messageService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the user's dosage is OFF", async () => {
+    userRepository.findOnboardedWithTelegram.mockResolvedValue([
+      { ...user, notificationDosage: "OFF" },
+    ]);
+    setSpend({ WANTS: 16200 });
+
+    const { sent } = await useCase.execute();
+
+    expect(sent).toBe(0);
+    expect(messageService.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("adds a daily check-in summary for RELENTLESS on top of alerts", async () => {
+    userRepository.findOnboardedWithTelegram.mockResolvedValue([
+      { ...user, notificationDosage: "RELENTLESS" },
+    ]);
+    setSpend({ WANTS: 16200 }); // over → OVER alert + daily CHECKIN
+
+    const { sent } = await useCase.execute();
+
+    expect(sent).toBe(2);
+    const kinds = nudgeRepository.recordSentIfNew.mock.calls.map(
+      (c: any) => c[2],
+    );
+    expect(kinds).toContain("OVER");
+    expect(kinds).toContain("CHECKIN");
   });
 });
