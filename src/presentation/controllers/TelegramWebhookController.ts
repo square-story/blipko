@@ -129,6 +129,7 @@ export class TelegramWebhookController {
                 command: "recurring",
                 description: "Manage repeating income/expenses",
               },
+              { command: "settings", description: "Reminders & preferences" },
               { command: "help", description: "How to use the bot" },
             ],
           }),
@@ -185,6 +186,9 @@ export class TelegramWebhookController {
           platformUserId,
           platformUsername: cq.from.username ?? cq.from.first_name,
           textMessage: cq.data ?? "",
+          callbackMessageId: cq.message?.message_id
+            ? String(cq.message.message_id)
+            : undefined,
         });
 
         res

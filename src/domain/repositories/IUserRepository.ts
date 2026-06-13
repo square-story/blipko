@@ -1,4 +1,4 @@
-import { User } from "@prisma/client";
+import { NotificationDosage, Prisma, User } from "@prisma/client";
 
 export interface CreateUserDTO {
   telegramId?: string;
@@ -11,6 +11,9 @@ export interface UpdateUserDTO {
   name?: string;
   monthlyIncome?: number;
   hasOnboarded?: boolean;
+  onboardingStep?: string | null;
+  onboardingDraft?: Prisma.InputJsonValue | null;
+  notificationDosage?: NotificationDosage;
 }
 
 export interface IUserRepository {

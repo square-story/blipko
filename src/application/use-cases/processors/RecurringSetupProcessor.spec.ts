@@ -78,11 +78,10 @@ describe("RecurringSetupProcessor", () => {
         categoryId: "c1",
       }),
     );
-    const [, body, buttons] =
-      messageService.sendInteractiveMessage.mock.calls[0];
+    const [, body, rows] = messageService.sendInteractiveMessage.mock.calls[0];
     expect(body).toContain("Recurring set");
     expect(body).toContain("add it for this month");
-    expect(buttons.map((b: any) => b.id)).toEqual([
+    expect(rows.flat().map((b: any) => b.id)).toEqual([
       "rec:rr1:yes",
       "rec:rr1:no",
     ]);

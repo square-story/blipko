@@ -122,8 +122,10 @@ export class RecurringSetupProcessor implements MessageProcessor {
     if (now.getDate() >= dueDay) {
       const body = `${baseMsg}\n\nDay ${dayOfMonth} already passed this month — add it for this month now too?`;
       await this.messageService.sendInteractiveMessage(platformUserId, body, [
-        { id: `rec:${ruleId}:yes`, title: "✅ Add this month" },
-        { id: `rec:${ruleId}:no`, title: "No, next month" },
+        [
+          { id: `rec:${ruleId}:yes`, title: "✅ Add this month" },
+          { id: `rec:${ruleId}:no`, title: "No, next month" },
+        ],
       ]);
       return { response: body, parsed: { intent: "RECURRING", confidence: 1 } };
     }

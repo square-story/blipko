@@ -1,4 +1,4 @@
-import { Bucket } from "@prisma/client";
+import { Bucket, NotificationDosage } from "@prisma/client";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
@@ -19,15 +19,23 @@ import {
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 // Savings overspend is good, not a leak — only nudge the spending buckets.
 const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
-const WARN_THRESHOLD = 0.8;
+
+// Today as "YYYY-MM-DD" — the idempotency key for daily kinds (CHECKIN, and the
+// repeated OVER for RELENTLESS) so they fire once per day, not on every run.
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export interface SendBudgetNudgesResult {
   sent: number;
 }
 
-// Proactively warns users before they blow a bucket (80%) and once they go over.
-// Each nudge is sent at most once per bucket per month (idempotency via
-// INudgeRepository), so a daily run does not spam. Build-brief step 9.
+// Proactive reminders, gated by each user's notificationDosage:
+//   OFF        → nothing.
+//   GENTLE     → WARN_80 + OVER, once per bucket per cycle (the original behavior).
+//   AGGRESSIVE → adds WARN_50 + a once-a-day CHECKIN summary.
+//   RELENTLESS → as AGGRESSIVE, and OVER repeats daily until they're back under.
+// Idempotency via INudgeRepository keeps a single daily run from spamming.
 export class SendBudgetNudgesUseCase {
   constructor(
     private readonly userRepository: IUserRepository,
@@ -58,12 +66,17 @@ export class SendBudgetNudgesUseCase {
     telegramId: string | null;
     monthlyIncome: unknown;
     payday: number;
+    notificationDosage: NotificationDosage;
   }): Promise<number> {
-    if (!user.telegramId) return 0;
+    const dosage = user.notificationDosage;
+    if (!user.telegramId || dosage === "OFF") return 0;
+
+    const loud = dosage === "AGGRESSIVE" || dosage === "RELENTLESS";
 
     // Per-user payday cycle.
     const { start, end } = currentBudgetPeriod(user.payday);
     const cycleKey = periodKey(user.payday);
+    const dayKey = todayKey();
     const { day, daysInPeriod } = periodDayInfo(user.payday);
     const daysLeft = daysInPeriod - day;
 
@@ -78,6 +91,7 @@ export class SendBudgetNudgesUseCase {
       DEFAULT_SPLIT;
 
     let sent = 0;
+    const summary: string[] = [];
     for (const bucket of WATCHED) {
       const budget = bucketBudget(income, config, bucket);
       if (budget <= 0) continue;
@@ -89,35 +103,73 @@ export class SendBudgetNudgesUseCase {
         end,
       );
       const meta = BUCKET_META[bucket];
+      summary.push(`${meta.emoji} ${meta.label} ${pctSpent(spent, budget)}%`);
 
       if (spent > budget) {
-        const isNew = await this.nudgeRepository.recordSentIfNew(
-          user.id,
-          bucket,
-          "OVER",
-          cycleKey,
-        );
-        if (isNew) {
+        // RELENTLESS repeats the over-budget alert daily; others once per cycle.
+        const overKey = dosage === "RELENTLESS" ? dayKey : cycleKey;
+        if (
+          await this.nudgeRepository.recordSentIfNew(
+            user.id,
+            bucket,
+            "OVER",
+            overKey,
+          )
+        ) {
           await this.send(
             user.telegramId,
-            `🔴 You've gone over ${meta.label} by ${formatMoney(spent - budget)} this month.`,
+            `🔴 You've gone over ${meta.label} by ${formatMoney(spent - budget)} this cycle.`,
           );
           sent++;
         }
-      } else if (spent / budget >= WARN_THRESHOLD) {
-        const isNew = await this.nudgeRepository.recordSentIfNew(
-          user.id,
-          bucket,
-          "WARN_80",
-          cycleKey,
-        );
-        if (isNew) {
+      } else if (spent / budget >= 0.8) {
+        if (
+          await this.nudgeRepository.recordSentIfNew(
+            user.id,
+            bucket,
+            "WARN_80",
+            cycleKey,
+          )
+        ) {
           await this.send(
             user.telegramId,
             `⚠️ Heads up — ${meta.label} at ${pctSpent(spent, budget)}% (${formatMoney(spent)} of ${formatMoney(budget)}) with ${daysLeft} days left.`,
           );
           sent++;
         }
+      } else if (loud && spent / budget >= 0.5) {
+        if (
+          await this.nudgeRepository.recordSentIfNew(
+            user.id,
+            bucket,
+            "WARN_50",
+            cycleKey,
+          )
+        ) {
+          await this.send(
+            user.telegramId,
+            `👀 ${meta.label} is halfway — ${pctSpent(spent, budget)}% used with ${daysLeft} days left.`,
+          );
+          sent++;
+        }
+      }
+    }
+
+    // Aggressive/Relentless also get a once-a-day check-in summary.
+    if (loud && summary.length > 0) {
+      if (
+        await this.nudgeRepository.recordSentIfNew(
+          user.id,
+          "NEEDS",
+          "CHECKIN",
+          dayKey,
+        )
+      ) {
+        await this.send(
+          user.telegramId,
+          `📊 Daily check-in — ${summary.join(" · ")} · ${daysLeft} days left.`,
+        );
+        sent++;
       }
     }
     return sent;

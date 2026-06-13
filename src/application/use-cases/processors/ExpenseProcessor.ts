@@ -103,9 +103,11 @@ export class ExpenseProcessor implements MessageProcessor {
       context.platformUserId,
       body,
       [
-        { id: `bkt:${log.id}:NEEDS`, title: "🏠 Need" },
-        { id: `bkt:${log.id}:WANTS`, title: "🎯 Want" },
-        { id: `bkt:${log.id}:SAVINGS`, title: "💰 Savings" },
+        [
+          { id: `bkt:${log.id}:NEEDS`, title: "🏠 Need" },
+          { id: `bkt:${log.id}:WANTS`, title: "🎯 Want" },
+          { id: `bkt:${log.id}:SAVINGS`, title: "💰 Savings" },
+        ],
       ],
     );
     return { response: body, parsed };
