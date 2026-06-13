@@ -128,3 +128,33 @@ export function progressBar(pct: number, width = 10): string {
 export function sanitizeMd(text: string): string {
   return text.replace(/[*_`[\]]/g, "").trim();
 }
+
+export interface SelectedLeaf {
+  name: string;
+  bucket: Bucket;
+  weight: number;
+}
+
+// Suggest a monthly budget per selected leaf category. Each bucket's budget
+// (income × split%) is split across the leaves in that bucket in proportion to
+// their weights, normalized over only the leaves the user actually selected — so
+// the per-category suggestions always add up to the bucket budget. Returns a map
+// keyed by leaf name → rounded ₹ amount.
+export function suggestCategoryBudgets(
+  income: number,
+  split: BudgetSplit,
+  leaves: SelectedLeaf[],
+): Map<string, number> {
+  const result = new Map<string, number>();
+  const buckets: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
+  for (const bucket of buckets) {
+    const inBucket = leaves.filter((l) => l.bucket === bucket);
+    const totalWeight = inBucket.reduce((s, l) => s + l.weight, 0);
+    if (totalWeight <= 0) continue;
+    const budget = bucketBudget(income, split, bucket);
+    for (const leaf of inBucket) {
+      result.set(leaf.name, Math.round((budget * leaf.weight) / totalWeight));
+    }
+  }
+  return result;
+}

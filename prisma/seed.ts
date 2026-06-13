@@ -1,46 +1,66 @@
-import { PrismaClient, Bucket } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { CATEGORY_TEMPLATE } from "../src/domain/categoryTemplate";
 
 const prisma = new PrismaClient();
 
-// System categories, each pre-assigned to a 50/30/20 bucket.
-const SYSTEM_CATEGORIES: Array<{ name: string; bucket: Bucket }> = [
-  // Needs
-  { name: "Rent", bucket: "NEEDS" },
-  { name: "Groceries", bucket: "NEEDS" },
-  { name: "Utilities", bucket: "NEEDS" },
-  { name: "Transport", bucket: "NEEDS" },
-  { name: "EMI", bucket: "NEEDS" },
-  // Wants
-  { name: "Food", bucket: "WANTS" },
-  { name: "Entertainment", bucket: "WANTS" },
-  { name: "Shopping", bucket: "WANTS" },
-  { name: "Subscriptions", bucket: "WANTS" },
-  // Savings
-  { name: "Savings", bucket: "SAVINGS" },
-  { name: "Investment", bucket: "SAVINGS" },
-];
+// Seeds the SYSTEM category taxonomy (userId = null): each parent group plus its
+// leaf children, linked via parentId. Idempotent — existing system rows (incl.
+// the old flat ones like "Rent") are reconciled in place, never duplicated.
+async function upsertSystemCategory(data: {
+  name: string;
+  bucket: "NEEDS" | "WANTS" | "SAVINGS";
+  isGroup: boolean;
+  parentId: string | null;
+}) {
+  const existing = await prisma.category.findFirst({
+    where: { userId: null, name: data.name },
+  });
+  if (existing) {
+    await prisma.category.update({
+      where: { id: existing.id },
+      data: {
+        bucket: data.bucket,
+        isGroup: data.isGroup,
+        isSystem: true,
+        parentId: data.parentId,
+      },
+    });
+    return existing.id;
+  }
+  const created = await prisma.category.create({
+    data: {
+      name: data.name,
+      bucket: data.bucket,
+      isGroup: data.isGroup,
+      isSystem: true,
+      parentId: data.parentId,
+    },
+  });
+  return created.id;
+}
 
 async function main() {
-  for (const cat of SYSTEM_CATEGORIES) {
-    // System categories have userId = null. The [userId, name] unique constraint
-    // treats NULL userId rows as distinct in Postgres, so guard on existence.
-    const existing = await prisma.category.findFirst({
-      where: { userId: null, name: cat.name },
+  let groups = 0;
+  let leaves = 0;
+  for (const group of CATEGORY_TEMPLATE) {
+    const groupId = await upsertSystemCategory({
+      name: group.name,
+      bucket: group.bucket,
+      isGroup: true,
+      parentId: null,
     });
-    if (existing) {
-      if (existing.bucket !== cat.bucket) {
-        await prisma.category.update({
-          where: { id: existing.id },
-          data: { bucket: cat.bucket },
-        });
-      }
-      continue;
+    groups++;
+    for (const child of group.children) {
+      await upsertSystemCategory({
+        name: child.name,
+        bucket: child.bucket,
+        isGroup: false,
+        parentId: groupId,
+      });
+      leaves++;
     }
-    await prisma.category.create({
-      data: { name: cat.name, bucket: cat.bucket, isSystem: true },
-    });
   }
-  console.log(`Seeded ${SYSTEM_CATEGORIES.length} system categories.`);
+  console.log(`Seeded ${groups} system groups and ${leaves} leaf categories.`);
 }
 
 main()
