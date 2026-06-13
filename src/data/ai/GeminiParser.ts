@@ -10,9 +10,17 @@ const budgetSchema: Schema = {
   properties: {
     intent: {
       type: Type.STRING,
-      enum: ["EXPENSE", "INCOME", "UNDO", "STATUS", "RECURRING", "UNKNOWN"],
+      enum: [
+        "EXPENSE",
+        "INCOME",
+        "UNDO",
+        "STATUS",
+        "RECURRING",
+        "QUERY",
+        "UNKNOWN",
+      ],
       description:
-        'EXPENSE if the user spent money. INCOME if they received money/declared salary. STATUS for budget-health questions. UNDO to remove the last entry. RECURRING to set up a repeating monthly income/expense ("every month", "monthly", "on the Nth"). UNKNOWN for social/non-financial messages.',
+        'EXPENSE if the user spent money. INCOME if they received money/declared salary. STATUS for a plain overall budget-health check ("status", "how much is left"). UNDO to remove the last entry. RECURRING to set up a repeating monthly income/expense ("every month", "monthly", "on the Nth"). QUERY when the user ASKS a data-backed question about their spending/income/budget ("how much did I spend on food?", "biggest expense?", "can I afford X?", trends/comparisons) — a question, never a statement that logs money. UNKNOWN for social/non-financial messages.',
     },
     amount: {
       type: Type.NUMBER,

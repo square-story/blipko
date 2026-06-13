@@ -12,6 +12,7 @@ import { IParseLogRepository } from "../../domain/repositories/IParseLogReposito
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
+import { IFinancialQueryAgent } from "../../domain/services/IFinancialQueryAgent";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
 import {
@@ -27,6 +28,7 @@ import { UndoProcessor } from "./processors/UndoProcessor";
 import { ExpenseProcessor } from "./processors/ExpenseProcessor";
 import { IncomeProcessor } from "./processors/IncomeProcessor";
 import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
+import { QueryProcessor } from "./processors/QueryProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
 
 export interface ProcessIncomingMessageInput {
@@ -58,6 +60,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly recurringRuleRepository: IRecurringRuleRepository,
     private readonly conversationRepository: IConversationRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly queryAgent: IFinancialQueryAgent,
   ) {
     this.preParseProcessors = [
       new ConfirmBucketProcessor(
@@ -132,6 +135,7 @@ export class ProcessIncomingMessageUseCase {
         categoryRepository,
         messageService,
       ),
+      new QueryProcessor(queryAgent, messageService),
       new FallbackProcessor(messageService),
     ];
   }

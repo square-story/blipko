@@ -41,5 +41,35 @@ export interface IExpenseRepository {
     monthEnd: Date,
     limit: number,
   ): Promise<Array<{ name: string; total: number }>>;
+  // Top spending categories over an arbitrary [from, to) range, optionally
+  // scoped to one bucket. Generalizes topCategoriesForMonth for Q&A.
+  categoryTotals(
+    userId: string,
+    from: Date,
+    to: Date,
+    bucket: Bucket | null,
+    limit: number,
+  ): Promise<Array<{ name: string; total: number }>>;
+  // Recent non-deleted expenses, newest first, with optional category-name and
+  // date-range filters. For conversational Q&A ("last few spends on food").
+  findRecent(
+    userId: string,
+    opts: RecentExpenseFilter,
+  ): Promise<RecentExpenseRow[]>;
   softDelete(id: string): Promise<void>;
+}
+
+export interface RecentExpenseFilter {
+  limit: number;
+  categoryName?: string | undefined;
+  from?: Date | undefined;
+  to?: Date | undefined;
+}
+
+export interface RecentExpenseRow {
+  date: Date;
+  amount: number;
+  bucket: Bucket;
+  categoryName: string;
+  note: string | null;
 }

@@ -11,6 +11,7 @@ export const PARSED_INTENTS = [
   "UNDO",
   "STATUS",
   "RECURRING",
+  "QUERY",
   "UNKNOWN",
 ] as const;
 export type ParsedIntent = (typeof PARSED_INTENTS)[number];
