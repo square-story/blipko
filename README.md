@@ -2,8 +2,6 @@
 
 ![Blipko Banner](public/Banner.png)
 
-# Blipko
-
 ### Know where your salary goes. Just chat.
 
 **Blipko is a conversational personal-budget tracker on Telegram.** Log what you spend in plain language —
