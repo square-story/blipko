@@ -12,6 +12,9 @@ export type CategoryStat = {
   name: string;
   bucket: Bucket;
   isSystem: boolean;
+  isGroup: boolean;
+  parentId: string | null;
+  monthlyBudget: number | null;
   spend: number;
 };
 
@@ -50,6 +53,9 @@ export async function getCategories(): Promise<CategoryStat[]> {
     name: c.name,
     bucket: c.bucket,
     isSystem: c.userId === null,
+    isGroup: c.isGroup,
+    parentId: c.parentId,
+    monthlyBudget: c.monthlyBudget === null ? null : Number(c.monthlyBudget),
     spend: spendById.get(c.id) ?? 0,
   }));
 }
@@ -57,6 +63,7 @@ export async function getCategories(): Promise<CategoryStat[]> {
 export async function createCategory(
   name: string,
   bucket: Bucket,
+  opts?: { parentId?: string | null; monthlyBudget?: number | null },
 ): Promise<{ success: boolean; message?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
@@ -72,12 +79,49 @@ export async function createCategory(
   if (existing)
     return { success: false, message: "A category with that name exists" };
 
+  // A parent, if given, must be one of the user's own group categories.
+  let parentId: string | null = null;
+  if (opts?.parentId) {
+    const parent = await ownedCategory(opts.parentId, session.user.id);
+    if (!parent?.isGroup)
+      return { success: false, message: "Invalid parent group" };
+    parentId = parent.id;
+  }
+
   await prisma.category.create({
     data: {
       name: parsedName.data,
       bucket: parsedBucket.data,
       userId: session.user.id,
+      parentId,
+      monthlyBudget: opts?.monthlyBudget ?? null,
     },
+  });
+
+  revalidatePath("/dashboard/categories");
+  return { success: true };
+}
+
+export async function setCategoryBudget(
+  id: string,
+  monthlyBudget: number | null,
+): Promise<{ success: boolean; message?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  if (
+    monthlyBudget !== null &&
+    (!Number.isFinite(monthlyBudget) || monthlyBudget < 0)
+  )
+    return { success: false, message: "Invalid amount" };
+
+  const cat = await ownedCategory(id, session.user.id);
+  if (!cat)
+    return { success: false, message: "Category not found or not editable" };
+
+  await prisma.category.update({
+    where: { id },
+    data: { monthlyBudget },
   });
 
   revalidatePath("/dashboard/categories");

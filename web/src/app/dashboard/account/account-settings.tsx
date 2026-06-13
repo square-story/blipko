@@ -58,6 +58,8 @@ export function AppearanceCard() {
     );
 }
 
+export type NotificationDosage = "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
+
 export type BudgetSettings = {
     monthlyIncome: number;
     payday: number;
@@ -66,6 +68,7 @@ export type BudgetSettings = {
     needsPct: number;
     wantsPct: number;
     savingsPct: number;
+    notificationDosage: NotificationDosage;
 };
 
 const CURRENCIES = [
@@ -75,6 +78,13 @@ const CURRENCIES = [
     { value: "GBP", label: "GBP (£)", locale: "en-GB" },
 ];
 
+const DOSAGES: { value: NotificationDosage; label: string }[] = [
+    { value: "OFF", label: "Off — no reminders" },
+    { value: "GENTLE", label: "Gentle — 1–2 a day" },
+    { value: "AGGRESSIVE", label: "Aggressive — + daily check-in" },
+    { value: "RELENTLESS", label: "Relentless — daily + repeats" },
+];
+
 export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
     const [income, setIncome] = useState(String(initial.monthlyIncome));
     const [payday, setPayday] = useState(String(initial.payday));
@@ -82,6 +92,9 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
     const [needs, setNeeds] = useState(initial.needsPct);
     const [wants, setWants] = useState(initial.wantsPct);
     const [savings, setSavings] = useState(initial.savingsPct);
+    const [dosage, setDosage] = useState<NotificationDosage>(
+        initial.notificationDosage,
+    );
     const [isPending, startTransition] = useTransition();
 
     const sum = needs + wants + savings;
@@ -109,6 +122,7 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                 needsPct: needs,
                 wantsPct: wants,
                 savingsPct: savings,
+                notificationDosage: dosage,
             });
             if (res.success) {
                 toast.success("Budget settings saved");
@@ -194,6 +208,28 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                             onChange={setSavings}
                         />
                     </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="dosage">Telegram reminders</Label>
+                    <Select
+                        value={dosage}
+                        onValueChange={(v) => setDosage(v as NotificationDosage)}
+                    >
+                        <SelectTrigger id="dosage">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {DOSAGES.map((d) => (
+                                <SelectItem key={d.value} value={d.value}>
+                                    {d.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                        How often the bot nudges you when a bucket runs hot.
+                    </p>
                 </div>
 
                 <Button
