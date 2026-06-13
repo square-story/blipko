@@ -1,64 +1,133 @@
+<div align="center">
+
 ![Blipko Banner](public/Banner.png)
 
-# Blipko – Telegram Expense Tracker
+# Blipko
 
-### Zero-UI bookkeeping for households and small businesses
+### Know where your salary goes. Just chat.
 
-Blipko is a Telegram chatbot that turns casual messages into structured financial records. Type, speak, or describe a transaction in any language — the bot parses it with AI and keeps your books.
+**Blipko is a conversational personal-budget tracker on Telegram.** Log what you spend in plain language —
+by text or voice, in English, Hindi, Hinglish, Malayalam, or Manglish — and Blipko sorts it into a 50/30/20
+budget, tells you what's left, and answers questions about your money. No app to install. No forms. Just a chat.
 
-No app to install. No form to fill. Just Telegram.
+[![Live](https://img.shields.io/badge/live-blipko.lol-a3b18a?style=flat-square)](https://blipko.lol)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000?style=flat-square&logo=nextdotjs)](https://nextjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Prisma-4169e1?style=flat-square&logo=postgresql&logoColor=white)](https://www.prisma.io/)
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-229ED9?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
----
-
-## What it does
-
-**Log transactions in plain language**
-```
-"Raju ko 500 diya"             → Paid ₹500 to Raju (logged)
-"Amit se 2000 aaya"            → Received ₹2000 from Amit (logged)
-"paid 300 groceries"           → Paid ₹300, category: groceries
-```
-
-**Query your records**
-```
-"Raju balance"                 → Raju owes ₹1500
-"who hasn't paid?"             → Lists all contacts with pending balance
-"how much did I spend today?"  → Today's summary
-"total spend this month"       → Monthly total
-```
-
-**Multiple wallets**
-```
-"Shop: collected 3000 Arun"    → Logged under Shop wallet
-"paid 200 auto fare"           → Logged under Personal (default)
-```
-
-**Family group accounts**
-```
-"create family group"          → Creates group, gives invite code
-[member sends invite code]     → Joins group, transactions roll up to head
-"family summary"               → Per-member spend breakdown (admin only)
-```
-
-**Recurring reminders**
-```
-"remind me rent 8000 on 1st every month"
-→ Bot notifies 2 days before due
-→ Tap "Mark as Paid" → transaction auto-logged
-```
-
-**Voice notes** — send a voice message, bot transcribes and logs the transaction.
+</div>
 
 ---
 
-## Who it's for
+## Why Blipko
 
-| User | Use case |
+Most months, the salary just… disappears. Traditional budgeting apps ask you to install something, open it,
+tap through forms, and pick categories — so most people quit by week two.
+
+Blipko removes every bit of that friction. You already have Telegram open. Type `chai 30` and it's logged,
+categorized, and counted against your budget in under a second. The discipline of budgeting, with the effort
+of texting a friend.
+
+---
+
+## How it works
+
+```
+You:   chai 30
+Blipko: ✅ ₹30 → Wants · Food
+        Wants left this cycle: ₹14,770 / ₹15,000
+
+You:   🎤 (voice note) "auto eighty to office"
+Blipko: ✅ ₹80 → Needs · Transport
+
+You:   /status
+Blipko: 📊 This cycle — Day 15 of 30
+        🏠 Needs   ▓▓▓░░░░░░░  ₹12,500 / ₹25,000  (50%)
+        🎯 Wants   ▓▓▓▓░░░░░░  ₹9,200 / ₹15,000   (61%)
+        💰 Savings ▓░░░░░░░░░  ₹2,000 / ₹10,000   (20%)
+        Safe daily spend left:  Needs ₹833/day · Wants ₹420/day
+
+You:   can I afford a 4000 pair of shoes?
+Blipko: You've got ₹5,800 left in Wants with 15 days to go, so ₹4,000 fits —
+        but it leaves you ~₹120/day. Doable if you go easy on eating out.
+```
+
+---
+
+## Features
+
+### 💬 Conversational capture
+Log a spend the way you'd say it — `chai 30`, `auto 80 office`, `petrol 500 koduthu`, `netflix 199`. The AI
+reads informal, code-mixed Indian languages (English / Hindi / Hinglish / Malayalam / Manglish), extracts the
+amount, picks the category, and assigns a bucket. Send a **voice note** and it's transcribed and logged too.
+
+### 🪣 Automatic 50/30/20 budgeting
+Every spend lands in **Needs (50%)**, **Wants (30%)**, or **Savings (20%)** — the proven rule, fully
+adjustable. Budgets run on a **payday-aware cycle** (set your payday; day 1 = calendar month), and your
+effective income is `max(expected salary, income logged this cycle)` so salaried and variable-income users
+both work.
+
+### 🧭 Guided onboarding
+A short wizard, not a form: enter your take-home income → tap the spending groups you actually have (common
+ones pre-ticked) → Blipko auto-creates their subcategories with **income-based budget suggestions** → choose
+how hard it should nudge you. Three taps and you're tracking.
+
+### 🗂️ Category taxonomy with per-category limits
+Seven parent groups (Essentials, Food & Drinks, Transportation, Entertainment & Leisure, Health & Wellness,
+Miscellaneous, Savings) break down into leaf categories (Rent, Groceries, Eating Out, Fuel…). Each leaf can
+carry a **monthly limit**, editable on the web or via chat.
+
+### 🤖 Ask anything
+Beyond logging, Blipko answers free-form questions grounded in *your* real data via a tool-calling agent:
+
+> "how much did I spend on food this month?" · "what's my biggest expense?" · "am I spending more than last month?"
+
+### 🔔 Reminders you control
+Proactive nudges before you blow a bucket — but **opt-in by intensity**, default off:
+
+| Dosage | What you get |
 |---|---|
-| Shop owner | Track customer credit, daily collections |
-| Freelancer | Track who owes you, log client payments |
-| Household head | Family expense tracking, per-member breakdown |
-| Anyone | Log spend/income without opening an app |
+| **Off** | Nothing (default) |
+| **Gentle** | 80% and over-budget warnings, once per cycle |
+| **Aggressive** | + a 50% heads-up and a daily check-in |
+| **Relentless** | Daily check-in and repeated over-budget alerts |
+
+### 🔁 Recurring income & expenses
+`rent 8000 on 1st every month` sets up a rule that auto-posts each cycle. Salary, subscriptions, EMIs — set
+once, tracked forever.
+
+### 📊 Web dashboard
+Sign in with Google at **[blipko.lol](https://blipko.lol)** for the full picture: animated overview KPIs,
+income-vs-spending and per-bucket trends, category breakdowns, a filterable transaction list (expenses +
+income tabs, CSV export), category & per-category-limit editing, recurring management, and all your settings.
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `/start` | Set up (or redo) your budget — runs the onboarding wizard |
+| `/status` | Budget health this cycle + safe daily spend |
+| `/report` | This cycle's summary and your biggest leaks |
+| `/recurring` | Manage repeating income/expenses |
+| `/settings` | Change your reminder intensity |
+| `/help` | Full guide to everything the bot can do |
+| `undo` | Remove your last entry |
+| *(just ask)* | "how much on groceries?", "can I afford X?", "biggest expense?" |
+
+---
+
+## Screenshots
+
+<div align="center">
+
+![Dashboard](public/screenshot01.png)
+![Analytics](public/screenshot02.png)
+
+</div>
 
 ---
 
@@ -66,119 +135,123 @@ No app to install. No form to fill. Just Telegram.
 
 | Layer | Tech |
 |---|---|
-| Runtime | Node.js + Express |
-| Language | TypeScript (strict) |
-| Database | PostgreSQL via Prisma Accelerate |
-| ORM | Prisma |
-| AI | Gemini 2.0 Flash (primary) + GPT-4o-mini (fallback) |
-| Transcription | Sarvam AI (voice notes) |
-| Messaging | Telegram Bot API |
-| Scheduler | node-cron |
-| Dashboard | Next.js 15 (App Router) |
+| Backend | Node.js + Express, TypeScript (strict, Clean Architecture) |
+| Database | PostgreSQL via Prisma (hosted on Railway) |
+| AI parsing | OpenAI `gpt-4o-mini` (primary) → Gemini 2.0 Flash (fallback), structured output |
+| Q&A agent | OpenAI function-calling over read-only data tools |
+| Voice | Sarvam AI transcription |
+| Messaging | Telegram Bot API (webhook) |
+| Scheduler | node-cron (recurring auto-post, nudges, pruning) |
+| Web | Next.js 16 (App Router) + React 19, NextAuth v5 (Google), Server Actions |
+| Tests | Vitest (unit) + Playwright (API/E2E) |
 
 ---
 
 ## Architecture
 
-Clean Architecture — domain → application → data → presentation. The backend and web dashboard are separate runtimes sharing one Prisma schema.
+Two runtimes share one `prisma/schema.prisma`. The backend follows Clean Architecture; the web app talks to
+the DB directly through Server Actions (no REST layer between them).
 
 ```
-blipko/              ← Backend: Express + Prisma
+blipko/                  ← Backend: Express + Prisma (TypeScript, CommonJS)
   src/
-    domain/          ← Interfaces and entity types (no external imports)
-    application/     ← Use cases and processors
-    data/            ← Prisma repos, AI parsers, Telegram service
-    presentation/    ← Express routes and webhook controller
-  prisma/            ← Shared schema
-└── web/             ← Frontend: Next.js dashboard (Server Actions, no REST layer)
+    domain/              ← Entities, repository & service interfaces (no outer imports)
+    application/         ← Use cases + message processors (the business logic)
+    data/                ← Prisma repositories, AI parsers, Telegram + Sarvam services
+    presentation/        ← Express routes + Telegram webhook controller
+  prisma/                ← Shared schema, migrations, seed
+└── web/                 ← Frontend: Next.js dashboard (Server Actions)
 ```
 
-Message flow:
+**Message flow**
+
 ```
-Telegram → TelegramWebhookController
-         → ProcessIncomingMessageUseCase
-             1. ensureUserExists
-             2. Load conversation history (context-aware AI)
-             3. Keyword processors (no AI): Start, GroupOnboarding, DuePayment, Confirmation
-             4. GeminiParser.parseText → ParsedData
-             5. First matching processor handles the intent
+Telegram → TelegramWebhookController → ProcessIncomingMessageUseCase
+  1. ensureUserExists (+ link Telegram ↔ web account)
+  2. load recent conversation history
+  3. pre-parse processors (no AI): onboarding wizard, button callbacks, /status, /report,
+     /settings, /help, undo
+  4. AI parse → ParsedData { intent, amount, category, bucket, confidence, … }
+  5. intent processor handles it: Expense · Income · Recurring · Query (ask-anything) · Fallback
 ```
+
+Low-confidence parses ask you to confirm the bucket with inline buttons; every Telegram message ID is recorded
+so duplicate deliveries are dropped.
 
 ---
 
-## Running locally
+## Local development
 
 ### Prerequisites
-- pnpm
-- Node.js 20+
-- Telegram bot token (from @BotFather)
-- Prisma Accelerate API key (or a direct PostgreSQL URL)
-- Gemini API key
+- Node.js 20+ and **pnpm**
+- A PostgreSQL database URL
+- Telegram bot token (from [@BotFather](https://t.me/BotFather))
+- OpenAI and Gemini API keys (Sarvam key for voice notes, optional)
 
-### 1. Clone and install
-
+### 1 · Install
 ```bash
 git clone https://github.com/square-story/blipko.git
 cd blipko
 pnpm install
 ```
 
-### 2. Environment
-
+### 2 · Configure
 ```bash
 cp .env.example .env
-# Fill in: DATABASE_URL, GEMINI_API_KEY, OPENAI_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET
+# DATABASE_URL, OPENAI_API_KEY, GEMINI_API_KEY,
+# TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, SARVAM_API_KEY, PORT
 ```
 
-### 3. Migrate
-
+### 3 · Database
 ```bash
-npx prisma migrate deploy
-pnpm prisma:generate
+pnpm prisma:migrate     # apply migrations
+pnpm prisma:generate    # generate the client
+pnpm db:seed            # seed the system category taxonomy
 ```
 
-### 4. Run
-
+### 4 · Run
 ```bash
-pnpm dev          # backend on :4000
-cd web && pnpm dev  # dashboard on :3000
+pnpm dev                # backend (ts-node-dev) on $PORT
+cd web && pnpm dev      # dashboard on :3000
 ```
 
-### 5. Expose to Telegram
-
+### 5 · Point Telegram at your local bot
 ```bash
-ngrok http 4000
+ngrok http <PORT>
+WEBHOOK_URL=https://<your-ngrok>.ngrok.app pnpm webhook:set
+# registers https://<ngrok>/api/webhooks/telegram with your secret token
 ```
 
+The dashboard needs its own env — copy `web/.env.example` → `web/.env.local` and fill in `AUTH_SECRET`,
+`AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `DATABASE_URL`.
+
+---
+
+## Testing
+
 ```bash
-source .env && curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
-  -d "url=https://YOUR_NGROK_URL/api/webhooks/telegram" \
-  -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}" | jq
+pnpm test:unit          # Vitest unit tests (processors, budget math, agents)
+pnpm test               # Playwright API/E2E suite (auto-starts the server)
+pnpm lint               # ESLint
 ```
 
 ---
 
-## Web dashboard
+## Deployment
 
-Sign in with Google at `http://localhost:3000`. Shows:
-
-- Overview stats (spend, income, net)
-- Monthly analytics and category breakdown
-- Transaction list with filters
-- Wallet management
-- Recurring charges and upcoming dues
-- Family group — per-member spend cards and transaction drilldown
-
-Dashboard env: copy `web/.env.example` → `web/.env.local` and fill in `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `DATABASE_URL`.
+Deployed on **Railway** as two services (backend + Next.js web) plus a managed PostgreSQL instance, all on one
+schema. The backend's pre-deploy step runs `prisma migrate deploy`; the web build syncs the shared schema
+before generating its Prisma client. Live at **[blipko.lol](https://blipko.lol)**.
 
 ---
 
-## Supported languages
+## Roadmap
 
-English, Hindi, Manglish, Malayalam, Hinglish. The AI prompt is tuned for informal Indian transaction descriptions.
+- **Weekly habit tracking** — weekly budgets and urgency nudges for high-frequency habits (coffee, eating out)
+  to break the "small daily dose" spend pattern.
 
 ---
 
-## Author
+## License & author
 
-Built by **[Mohammed Sadik](https://sadik.is-a.dev)**
+MIT — see [LICENSE](LICENSE). Built by **[Mohammed Sadik](https://sadik.is-a.dev)**.
