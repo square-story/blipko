@@ -71,12 +71,14 @@ Package manager is **pnpm** throughout.
 ### Backend (root)
 
 ```bash
-pnpm dev              # ts-node-dev watch mode
+pnpm dev              # ts-node-dev watch mode (src/app.ts)
 pnpm build            # tsc → dist/
 pnpm start            # node dist/app.js
 pnpm lint             # eslint
 pnpm prisma:migrate   # prisma migrate dev (applies pending migrations)
 pnpm prisma:generate  # regenerate Prisma client after schema changes
+pnpm db:seed          # compile + run prisma/seed.ts
+pnpm webhook:set      # register the Telegram webhook (needs TELEGRAM_BOT_TOKEN, WEBHOOK_URL, TELEGRAM_WEBHOOK_SECRET)
 ```
 
 ### Testing
@@ -104,7 +106,7 @@ pnpm build    # Next.js production build
 pnpm lint     # eslint
 ```
 
-The web `postinstall` script runs `prisma generate` pointing at `../prisma/schema.prisma`, so the Prisma client in `web/` always reflects the root schema.
+The web `postinstall` runs `scripts/sync-prisma-schema.mjs` then `prisma generate`, so the Prisma client in `web/` always reflects the root `../prisma/schema.prisma`.
 
 ---
 
@@ -119,81 +121,102 @@ blipko/          ← Backend: Node.js + Express + Prisma (TypeScript, CommonJS)
 
 Both read the **same** `prisma/schema.prisma`. The web app accesses the DB directly via `web/src/lib/prisma.ts` (Next.js Server Actions) — there is no REST layer between them.
 
+**Product:** a personal budget tracker driven over **Telegram**. The user texts what they spend ("chai 30"); the bot categorizes it into a budget bucket and nudges them as budgets fill up. A Next.js dashboard visualizes the same data.
+
 ### Backend: Clean Architecture layers
 
 ```
 domain/          ← Pure interfaces and entity types. No imports from outer layers.
-  entities/      ← ParsedData, Transaction (domain types, not Prisma types)
-  repositories/  ← I*Repository interfaces + DTOs
-  services/      ← IAiParser interface
+  entities/      ← ParsedData (Zod schema + ParsedIntent / Bucket literals)
+  repositories/  ← I*Repository interfaces
+  services/      ← IAiParser, IFinancialQueryAgent, IFinancialDataTools
+  categoryTemplate.ts  ← default category taxonomy used by onboarding
 
 application/     ← Use cases. Depends only on domain interfaces.
+  interfaces/    ← IMessagingPlatform (platform-agnostic send/edit)
   use-cases/
     ProcessIncomingMessage.ts   ← Main orchestrator
     ProcessVoiceMessage.ts      ← Transcribes audio then delegates
-    processors/                 ← One processor per parsed intent
+    PostRecurringCharges.ts     ← Posts due recurring rules as expenses/income
+    SendBudgetNudges.ts         ← Dosage-aware budget reminder nudges
+    budgetMath.ts, suggestCategoryBudgets.ts  ← budget helpers
+    processors/                 ← One processor per parsed intent / command
 
 data/            ← Concrete implementations. Only layer that imports Prisma.
   repositories/  ← Prisma*Repository classes
-  ai/            ← GeminiParser, OpenAIParser, FallbackAiParser, SarvamTranscriptionService
-  messaging/     ← WhatsAppMessageService, WhatsAppMediaService
+  ai/            ← GeminiParser, OpenAIParser, FallbackAiParser,
+                   OpenAiQueryAgent, SarvamTranscriptionService, budgetParserPrompt
+  messaging/     ← TelegramMessageService, TelegramMediaService
 
-presentation/    ← Express routes and controllers
+presentation/    ← Express routes + controllers (TelegramWebhookController)
 ```
 
 ### Message processing flow
 
 ```
-WhatsApp webhook
-  → WebhookController
+Telegram webhook (POST /api/webhooks/telegram)
+  → TelegramWebhookController   (idempotency: ProcessedMessage written here)
   → ProcessIncomingMessageUseCase.execute()
-      1. ensureUserExists()           (IUserRepository)
-      2. Check quick-reply keywords   (no AI)
-      3. Try StartProcessor / ConfirmationProcessor without AI
-      4. GeminiParser.parseText()     → ParsedData
-      5. Iterate processors, first canHandle() wins
+      1. ensureUserExists()        — handles `/start <linkToken>` web↔bot linking
+      2. Load recent conversation history (last 6 turns)
+      3. preParseProcessors  — first canHandle() wins, NO AI
+      4. aiParser.parseText(text, { categories, history }) → ParsedData
+      5. postParseProcessors — first canHandle() wins
+         (conversation turns saved fire-and-forget after a post-parse handle)
 ```
 
-**Processors** (`src/application/use-cases/processors/`):
+**Processors** (`src/application/use-cases/processors/`), implement `MessageProcessor`.
 
-| Processor | Intent(s) handled |
+Pre-parse (button callbacks, commands, onboarding — run before AI):
+
+| Processor | Handles |
 |---|---|
-| `ConfirmationProcessor` | Confirmation button replies |
-| `StartProcessor` | `/start`, first message |
-| `ReplyProcessor` | User replies to a confirmation message |
+| `ConfirmBucketProcessor` | inline-keyboard bucket disambiguation replies |
+| `RecurringConfirmProcessor` | recurring income/expense confirm buttons |
+| `OnboardingProcessor` | multi-step wizard: income → category groups → reminder dosage |
+| `SettingsProcessor` | settings (e.g. notification dosage) |
+| `HelpProcessor` | `/help` |
+| `StatusProcessor` | `/status` — budget health, safe daily spend |
+| `ReportProcessor` | `/report` — monthly summary |
+| `UndoProcessor` | undo last entry |
+
+Post-parse (dispatched on `ParsedData.intent`):
+
+| Processor | Intent |
+|---|---|
+| `StatusProcessor` | `STATUS` |
 | `UndoProcessor` | `UNDO` |
-| `ChatProcessor` | `CHAT` |
-| `QueryProcessor` | `QUERY` (CONTACT_BALANCE, UNPAID_CONTACTS, TOTAL_SPEND, …) |
-| `BalanceProcessor` | `BALANCE` |
-| `TransactionProcessor` | `CREDIT`, `DEBIT` |
-| `DailySummaryProcessor` | `VIEW_DAILY_SUMMARY` |
+| `ExpenseProcessor` | `EXPENSE` |
+| `IncomeProcessor` | `INCOME` |
+| `RecurringSetupProcessor` | `RECURRING` |
+| `QueryProcessor` | `QUERY` (delegates to `OpenAiQueryAgent`) |
+| `FallbackProcessor` | everything else (`canHandle` always true) |
 
 ### AI parsing
 
-`GeminiParser` uses Gemini's structured output (JSON schema enforcement) with `responseMimeType: "application/json"` and `responseSchema`. The schema is defined inline in `GeminiParser.ts`. `OpenAIParser` mirrors the same interface. `FallbackAiParser` chains them: Gemini → OpenAI → hard-coded fallback.
+`GeminiParser` uses Gemini structured output (`responseMimeType: "application/json"` + `responseSchema`). `OpenAIParser` mirrors the interface. `FallbackAiParser` chains them: Gemini → OpenAI → hard-coded fallback. Parser output is validated against `ParsedDataSchema` (Zod) in `domain/entities/ParsedData.ts`; the user's existing categories are passed in as hints.
 
-CREDIT = money leaving the user (paid, lent). DEBIT = money coming in (received, earned). This is the inverse of accounting convention — it reflects the user's perspective.
+**Intents:** `EXPENSE`, `INCOME`, `UNDO`, `STATUS`, `RECURRING`, `QUERY`, `UNKNOWN`.
+**Buckets:** `NEEDS`, `WANTS`, `SAVINGS` (50/30/20-style budgeting).
 
-All contact name lookups from AI-parsed text **must** go through `findSimilarByName()` (Levenshtein + honorific normalization), never raw `findByName()`.
+`QUERY` is handled by a separate agent (`OpenAiQueryAgent` / `IFinancialQueryAgent`) with data-access tools, not by the structured parser.
 
 ### Frontend: Server Actions pattern
 
-All data fetching and mutations in `web/` use **Next.js Server Actions** in `web/src/lib/actions/`. There are no custom API routes in the frontend. Prisma is called directly from Server Actions.
+All data fetching/mutations in `web/` use **Next.js Server Actions** in `web/src/lib/actions/` — no custom API routes. Prisma is called directly (`web/src/lib/prisma.ts`).
 
-Key actions: `dashboard.ts` (overview stats), `analytics.ts` (monthly trend, overdue, category breakdown), `transactions.ts`, `vendors.ts`.
+Actions: `analytics.ts`, `budget.ts`, `categories.ts`, `expenses.ts`, `income.ts`, `recurring.ts`, `user.ts`. Dashboard pages live under `web/src/app/dashboard/` (analytics, categories, expenses, income, recurring, account, …).
 
 ### Idempotency
 
-Every incoming WhatsApp message ID is written to `ProcessedMessage` before processing. Duplicate deliveries are silently dropped.
+Every incoming Telegram update ID is written to `ProcessedMessage` (in `TelegramWebhookController`) before processing. Duplicate deliveries are silently dropped.
 
-### Schema highlights
+### Schema highlights (`prisma/schema.prisma`)
 
-- `LedgerAccount` + `TransactionLine` — double-entry accounting (not yet wired to transaction creation, schema is ready)
-- `Organization` + `BusinessUnit` — optional FKs on `Contact`; existing single-user flow is unaffected
-- `RecurringCharge` → `DueEntry` — periodic billing (BullMQ job not yet wired)
-- `AuditLog` — schema present; repository writes not yet instrumented
-- `Account` in the schema is **NextAuth's OAuth account model**, not a financial account
-
-### Active branch
-
-`refactor/double-entry` — extended schema (LedgerAccount, TransactionLine, Organization, BusinessUnit, RecurringCharge, DueEntry, Deposit, Contribution, AuditLog), implemented QueryProcessor, extended GeminiParser query schema, implemented analytics dashboard page.
+- Core financial models: `Expense`, `Income`, `BudgetConfig` (per-bucket + per-category budgets), `Category` (user taxonomy), `RecurringRule`.
+- `BudgetNudge` + `NotificationDosage` enum (`OFF | GENTLE | AGGRESSIVE | RELENTLESS`) — dosage-aware reminders; sent by `SendBudgetNudges`.
+- `Bucket` enum: `NEEDS | WANTS | SAVINGS`. `ExpenseSource`, `NudgeKind`, `RecurringKind` enums.
+- `ConversationMessage` — rolling chat history fed back to the AI parser.
+- `ProcessedMessage` — idempotency ledger. `ParseLog` — raw parser audit.
+- `TelegramLinkToken` — short-lived token linking a web account to a Telegram chat (`/start <token>`).
+- `Account` / `Session` / `VerificationToken` are **NextAuth** models (web auth), not financial accounts.

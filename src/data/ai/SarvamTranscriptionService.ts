@@ -12,11 +12,18 @@ export interface TranscriptionResult {
 
 export class SarvamTranscriptionService {
   private readonly client: SarvamAIClient;
+  private readonly apiKey: string;
 
   constructor(apiKey: string = env.SARVAM_API_KEY) {
+    this.apiKey = apiKey.trim();
     this.client = new SarvamAIClient({
       apiSubscriptionKey: apiKey,
     });
+  }
+
+  // Voice transcription is optional — disabled when no Sarvam key is configured.
+  get enabled(): boolean {
+    return this.apiKey.length > 0;
   }
 
   /**
@@ -58,7 +65,11 @@ export class SarvamTranscriptionService {
           model: "saaras:v2.5",
         });
       } finally {
-        try { fs.unlinkSync(tempFilePath); } catch { /* ignore cleanup failure */ }
+        try {
+          fs.unlinkSync(tempFilePath);
+        } catch {
+          /* ignore cleanup failure */
+        }
       }
 
       console.log(`Transcription successful: "${response.transcript}"`);

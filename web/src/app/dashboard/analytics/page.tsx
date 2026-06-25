@@ -22,11 +22,12 @@ export default async function Page() {
         incomeThisMonth,
         spentThisMonth,
         netThisMonth,
+        currency,
     } = await getAnalyticsData(6);
 
     const currencyFormat = {
         style: "currency" as const,
-        currency: "INR",
+        currency,
         trailingZeroDisplay: "stripIfInteger" as const,
     };
 
@@ -113,7 +114,7 @@ export default async function Page() {
                                                 <div className="flex items-center justify-between text-sm">
                                                     <span className="font-medium">{c.name}</span>
                                                     <span className="text-muted-foreground">
-                                                        {formatMoney(c.value)}
+                                                        {formatMoney(c.value, currency)}
                                                     </span>
                                                 </div>
                                                 <div className="h-2 w-full rounded-full bg-muted">

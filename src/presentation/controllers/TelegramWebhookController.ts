@@ -23,6 +23,8 @@ import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeReposi
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
 import { PostRecurringChargesUseCase } from "../../application/use-cases/PostRecurringCharges";
 import { prisma } from "../../data/prisma/client";
+import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
+import { logger } from "../../utils/logger";
 import { env } from "../../config/env";
 
 // ── Telegram Update shape ────────────────────────────────────────────────────
@@ -65,6 +67,9 @@ const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
 
+// Runs multiple repository writes atomically (e.g. recurring post + markPosted).
+const runInTransaction: RunInTransaction = (fn) => prisma.$transaction(fn);
+
 // Read-only conversational Q&A agent (QUERY intent). Reuses the repositories +
 // budget math; can only read, never writes.
 const financialDataTools = new FinancialDataTools(
@@ -89,6 +94,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   conversationRepository,
   messageService,
   queryAgent,
+  runInTransaction,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(
@@ -170,13 +176,11 @@ export class TelegramWebhookController {
         const platformUserId = String(cq.from.id);
         const updateId = "cb:" + String(update.update_id);
 
-        const isProcessed =
-          await this.processedMessageRepository.exists(updateId);
-        if (isProcessed) {
+        const claimed = await this.processedMessageRepository.claim(updateId);
+        if (!claimed) {
           res.status(200).json({ success: true });
           return;
         }
-        await this.processedMessageRepository.create(updateId);
 
         // Ack the button press immediately so Telegram stops showing the spinner
         await this.messageService.acknowledgeInteraction(cq.id);
@@ -214,19 +218,24 @@ export class TelegramWebhookController {
         : undefined;
 
       // Dedup
-      const isProcessed =
-        await this.processedMessageRepository.exists(messageId);
-      if (isProcessed) {
+      const claimed = await this.processedMessageRepository.claim(messageId);
+      if (!claimed) {
         res.status(200).json({ success: true, message: "Already processed" });
         return;
       }
-      await this.processedMessageRepository.create(messageId);
 
       await this.messageService.sendTypingIndicator(platformUserId);
 
       // ── Voice / audio ─────────────────────────────────────────────────────
       const audioFileId = msg.voice?.file_id ?? msg.audio?.file_id;
       if (audioFileId) {
+        if (!this.processVoiceMessage.enabled) {
+          const body =
+            'Voice messages aren\'t enabled right now — please type your expense instead, e.g. "chai 30".';
+          await this.messageService.sendMessage({ to: platformUserId, body });
+          res.status(200).json({ success: true, data: { response: body } });
+          return;
+        }
         const result = await this.processVoiceMessage.execute({
           platformUserId,
           audioFileId,
@@ -263,7 +272,11 @@ export class TelegramWebhookController {
         data: { response: result.response, intent: result.parsed.intent },
       });
     } catch (error) {
-      console.error("TelegramWebhookController error:", error);
+      logger.error("Webhook processing failed", {
+        component: "telegram-webhook",
+        updateId: (req.body as TelegramUpdate)?.update_id,
+        err: error,
+      });
       next(error);
     }
   }
@@ -294,4 +307,5 @@ export const postRecurringCharges = new PostRecurringChargesUseCase(
   userRepository,
   categoryRepository,
   messageService,
+  runInTransaction,
 );

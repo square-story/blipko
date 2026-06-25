@@ -32,8 +32,10 @@ export async function getCategories(): Promise<CategoryStat[]> {
   const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
 
   const [categories, spendGroups] = await Promise.all([
+    // Only the user's own categories. System rows (userId = null) are the bot's
+    // fallback taxonomy and would otherwise duplicate the user's cloned copies.
     prisma.category.findMany({
-      where: { OR: [{ userId: null }, { userId }] },
+      where: { userId },
       orderBy: [{ bucket: "asc" }, { name: "asc" }],
     }),
     prisma.expense.groupBy({

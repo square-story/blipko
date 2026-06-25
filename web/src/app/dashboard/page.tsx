@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getBudgetOverview } from "@/lib/actions/budget";
+import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
 import {
     Stat,
     StatLabel,
@@ -41,6 +42,8 @@ async function OverviewSection({
         hasOnboarded,
     } = await overviewPromise;
 
+    const taxonomy = hasOnboarded ? [] : await getOnboardingTaxonomy();
+
     const currencyFormat = {
         style: "currency" as const,
         currency,
@@ -49,7 +52,7 @@ async function OverviewSection({
 
     return (
         <>
-            {!hasOnboarded && <Onboarding />}
+            {!hasOnboarded && <Onboarding taxonomy={taxonomy} />}
 
             {/* Headline stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

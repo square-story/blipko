@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { updateBudgetSettings } from "@/lib/actions/budget";
-import { BUCKET_META } from "@/lib/budget";
+import { BUCKET_META, CURRENCIES, DOSAGES } from "@/lib/budget";
 
 export function AppearanceCard() {
     const { theme, setTheme } = useTheme();
@@ -70,20 +70,6 @@ export type BudgetSettings = {
     savingsPct: number;
     notificationDosage: NotificationDosage;
 };
-
-const CURRENCIES = [
-    { value: "INR", label: "INR (₹)", locale: "en-IN" },
-    { value: "USD", label: "USD ($)", locale: "en-US" },
-    { value: "EUR", label: "EUR (€)", locale: "en-IE" },
-    { value: "GBP", label: "GBP (£)", locale: "en-GB" },
-];
-
-const DOSAGES: { value: NotificationDosage; label: string }[] = [
-    { value: "OFF", label: "Off — no reminders" },
-    { value: "GENTLE", label: "Gentle — 1–2 a day" },
-    { value: "AGGRESSIVE", label: "Aggressive — + daily check-in" },
-    { value: "RELENTLESS", label: "Relentless — daily + repeats" },
-];
 
 export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
     const [income, setIncome] = useState(String(initial.monthlyIncome));
@@ -222,7 +208,7 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                         <SelectContent>
                             {DOSAGES.map((d) => (
                                 <SelectItem key={d.value} value={d.value}>
-                                    {d.label}
+                                    {d.label} — {d.hint}
                                 </SelectItem>
                             ))}
                         </SelectContent>

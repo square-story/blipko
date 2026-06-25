@@ -38,7 +38,12 @@ export class ExpenseProcessor implements MessageProcessor {
     const { user, platformUserId, textMessage } = context;
 
     const amount = parsed.amount;
-    if (typeof amount !== "number" || amount <= 0 || amount > MAX_AMOUNT) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      amount > MAX_AMOUNT
+    ) {
       const response =
         'Hmm, I couldn\'t catch the amount. Try something like "chai 30".';
       await this.messageService.sendMessage({

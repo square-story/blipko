@@ -12,6 +12,7 @@ import { IParseLogRepository } from "../../domain/repositories/IParseLogReposito
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
+import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { IFinancialQueryAgent } from "../../domain/services/IFinancialQueryAgent";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
@@ -66,6 +67,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly conversationRepository: IConversationRepository,
     private readonly messageService: IMessagingPlatform,
     private readonly queryAgent: IFinancialQueryAgent,
+    private readonly runTransaction: RunInTransaction,
   ) {
     this.preParseProcessors = [
       new ConfirmBucketProcessor(
@@ -82,6 +84,7 @@ export class ProcessIncomingMessageUseCase {
         incomeRepository,
         categoryRepository,
         messageService,
+        runTransaction,
       ),
       new OnboardingProcessor(
         userRepository,

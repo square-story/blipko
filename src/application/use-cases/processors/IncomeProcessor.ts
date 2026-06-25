@@ -37,7 +37,12 @@ export class IncomeProcessor implements MessageProcessor {
     const { user, platformUserId, textMessage } = context;
 
     const amount = parsed.amount;
-    if (typeof amount !== "number" || amount <= 0 || amount > MAX_AMOUNT) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      amount > MAX_AMOUNT
+    ) {
       const response =
         'Hmm, I couldn\'t catch the income amount. Try something like "got salary 50000".';
       await this.messageService.sendMessage({

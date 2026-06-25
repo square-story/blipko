@@ -20,6 +20,11 @@ export class ProcessVoiceMessageUseCase {
     private readonly processMessageUseCase: ProcessIncomingMessageUseCase,
   ) {}
 
+  // Whether voice transcription is configured (Sarvam key present).
+  get enabled(): boolean {
+    return this.transcriptionService.enabled;
+  }
+
   async execute(
     input: ProcessVoiceMessageInput,
   ): Promise<ProcessVoiceMessageOutput> {

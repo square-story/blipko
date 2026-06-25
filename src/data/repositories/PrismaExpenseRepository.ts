@@ -5,12 +5,13 @@ import {
   RecentExpenseFilter,
   RecentExpenseRow,
 } from "../../domain/repositories/IExpenseRepository";
+import { TxClient } from "../../domain/repositories/UnitOfWork";
 
 export class PrismaExpenseRepository implements IExpenseRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async create(data: CreateExpenseDTO): Promise<Expense> {
-    return this.prisma.expense.create({
+  async create(data: CreateExpenseDTO, tx?: TxClient): Promise<Expense> {
+    return (tx ?? this.prisma).expense.create({
       data: {
         userId: data.userId,
         amount: data.amount,

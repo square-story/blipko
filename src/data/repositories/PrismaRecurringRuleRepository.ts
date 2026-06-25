@@ -3,6 +3,7 @@ import {
   CreateRecurringRuleDTO,
   IRecurringRuleRepository,
 } from "../../domain/repositories/IRecurringRuleRepository";
+import { TxClient } from "../../domain/repositories/UnitOfWork";
 
 export class PrismaRecurringRuleRepository implements IRecurringRuleRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -38,8 +39,8 @@ export class PrismaRecurringRuleRepository implements IRecurringRuleRepository {
     });
   }
 
-  async markPosted(id: string, monthKey: string): Promise<void> {
-    await this.prisma.recurringRule.update({
+  async markPosted(id: string, monthKey: string, tx?: TxClient): Promise<void> {
+    await (tx ?? this.prisma).recurringRule.update({
       where: { id },
       data: { lastPostedKey: monthKey },
     });

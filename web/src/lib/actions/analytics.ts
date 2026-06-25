@@ -16,6 +16,12 @@ export async function getAnalyticsData(months: number = 6) {
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { currency: true },
+  });
+  const currency = user?.currency ?? "INR";
+
   // Per-bucket spend + income per month over the window.
   const [expenses, incomes] = await Promise.all([
     prisma.expense.findMany({
@@ -119,5 +125,6 @@ export async function getAnalyticsData(months: number = 6) {
     incomeThisMonth,
     spentThisMonth,
     netThisMonth,
+    currency,
   };
 }

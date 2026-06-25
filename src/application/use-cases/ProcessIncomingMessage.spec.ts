@@ -110,6 +110,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       conversationRepository,
       messageService,
       queryAgent,
+      async (fn: any) => fn({}),
     );
   });
 

@@ -11,6 +11,7 @@ async function upsertSystemCategory(data: {
   bucket: "NEEDS" | "WANTS" | "SAVINGS";
   isGroup: boolean;
   parentId: string | null;
+  weight: number;
 }) {
   const existing = await prisma.category.findFirst({
     where: { userId: null, name: data.name },
@@ -23,6 +24,7 @@ async function upsertSystemCategory(data: {
         isGroup: data.isGroup,
         isSystem: true,
         parentId: data.parentId,
+        weight: data.weight,
       },
     });
     return existing.id;
@@ -34,6 +36,7 @@ async function upsertSystemCategory(data: {
       isGroup: data.isGroup,
       isSystem: true,
       parentId: data.parentId,
+      weight: data.weight,
     },
   });
   return created.id;
@@ -48,6 +51,7 @@ async function main() {
       bucket: group.bucket,
       isGroup: true,
       parentId: null,
+      weight: 0,
     });
     groups++;
     for (const child of group.children) {
@@ -56,6 +60,7 @@ async function main() {
         bucket: child.bucket,
         isGroup: false,
         parentId: groupId,
+        weight: child.weight,
       });
       leaves++;
     }

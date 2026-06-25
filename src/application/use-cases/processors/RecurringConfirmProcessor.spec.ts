@@ -38,6 +38,7 @@ describe("RecurringConfirmProcessor", () => {
       incomeRepository,
       categoryRepository,
       messageService,
+      async (fn: any) => fn({}),
     );
   });
 
@@ -56,10 +57,12 @@ describe("RecurringConfirmProcessor", () => {
 
     expect(expenseRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u1", amount: 8000, bucket: "NEEDS" }),
+      expect.anything(),
     );
     expect(recurringRuleRepository.markPosted).toHaveBeenCalledWith(
       "rr1",
       expect.any(String),
+      expect.anything(),
     );
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Added for this month",

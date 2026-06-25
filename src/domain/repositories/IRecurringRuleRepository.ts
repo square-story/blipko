@@ -1,4 +1,5 @@
 import { Bucket, RecurringKind, RecurringRule } from "@prisma/client";
+import { TxClient } from "./UnitOfWork";
 
 export interface CreateRecurringRuleDTO {
   userId: string;
@@ -16,6 +17,6 @@ export interface IRecurringRuleRepository {
   findById(id: string): Promise<RecurringRule | null>;
   // Active rules not yet posted for the given "YYYY-MM" key.
   findActiveUnpostedForMonth(monthKey: string): Promise<RecurringRule[]>;
-  markPosted(id: string, monthKey: string): Promise<void>;
+  markPosted(id: string, monthKey: string, tx?: TxClient): Promise<void>;
   delete(id: string, userId: string): Promise<void>;
 }
