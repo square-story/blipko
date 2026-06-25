@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowRightIcon, SendIcon, CheckIcon } from "lucide-react";
+import { ArrowRightIcon, SendIcon, CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Confetti } from "@/components/ui/confetti";
-import { CATEGORY_TEMPLATE } from "@/lib/category-template";
 import {
   BUCKETS,
   BUCKET_META,
@@ -40,23 +40,33 @@ import {
   generateTelegramLinkToken,
   getTelegramConnectionStatus,
 } from "@/lib/actions/user";
-import { submitOnboarding } from "@/lib/actions/onboarding";
+import {
+  submitOnboarding,
+  type OnboardingGroup,
+} from "@/lib/actions/onboarding";
 
 const TOTAL_STEPS = 4;
 
-const DEFAULT_GROUPS = new Set(
-  CATEGORY_TEMPLATE.filter((g) => g.defaultSelected).map((g) => g.key),
-);
-
-export default function Onboarding() {
+export default function Onboarding({
+  taxonomy,
+}: {
+  taxonomy: OnboardingGroup[];
+}) {
+  // Leaf names of the default-selected groups (pre-checked on first render).
+  const defaultLeafNames = taxonomy
+    .filter((g) => g.defaultSelected)
+    .flatMap((g) => g.children.map((c) => c.name));
   const [step, setStep] = useState(1);
   const [open, setOpen] = useState(true);
 
   // Step 1
   const [income, setIncome] = useState("");
   const [currency, setCurrency] = useState("INR");
-  // Step 2
-  const [groups, setGroups] = useState<Set<string>>(new Set(DEFAULT_GROUPS));
+  // Step 2 — selected leaf names + which group cards are expanded
+  const [selected, setSelected] = useState<Set<string>>(
+    new Set(defaultLeafNames),
+  );
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Step 3
   const [dosage, setDosage] = useState<NotificationDosage>("GENTLE");
 
@@ -71,13 +81,35 @@ export default function Onboarding() {
   const incomeValid = Number.isFinite(incomeNum) && incomeNum > 0;
   const locale = localeForCurrency(currency);
 
-  const toggleGroup = (key: string) =>
-    setGroups((prev) => {
+  const selectedCount = (leaves: { name: string }[]) =>
+    leaves.filter((l) => selected.has(l.name)).length;
+
+  const toggleLeaf = (name: string) =>
+    setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
+
+  // Expand/collapse a group's chips. Expanding a group with nothing selected
+  // auto-selects all its leaves (the "I spend on this → here are the parts"
+  // bloom); collapsing keeps the selection.
+  const toggleGroup = (key: string, leafNames: string[]) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      const willExpand = !next.has(key);
+      if (willExpand) {
+        next.add(key);
+        if (leafNames.every((n) => !selected.has(n))) {
+          setSelected((s) => new Set([...s, ...leafNames]));
+        }
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  };
 
   // Persist everything (income + dosage + categories), then advance to Telegram.
   const saveAndContinue = async () => {
@@ -86,7 +118,7 @@ export default function Onboarding() {
       monthlyIncome: incomeNum,
       currency,
       notificationDosage: dosage,
-      groupKeys: [...groups],
+      leafNames: [...selected],
     });
     setSaving(false);
     if (res.success) {
@@ -136,7 +168,7 @@ export default function Onboarding() {
   return (
     <>
       {step === 4 && (
-        <Confetti className="fixed inset-0 h-full w-full pointer-events-none z-[100]" />
+        <Confetti className="fixed inset-0 h-full w-full pointer-events-none z-100" />
       )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
@@ -218,37 +250,91 @@ export default function Onboarding() {
                 <DialogHeader>
                   <DialogTitle>What do you spend on?</DialogTitle>
                   <DialogDescription>
-                    We&apos;ll set up categories with suggested limits. Tweak any
-                    of them later.
+                    Tap a group to see what&apos;s inside — pick the bits that
+                    fit. We&apos;ll suggest a budget for each.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-2">
-                  {CATEGORY_TEMPLATE.map((g) => {
-                    const checked = groups.has(g.key);
+                <div className="-mx-1 max-h-80 space-y-2 overflow-y-auto px-1">
+                  {taxonomy.map((g) => {
+                    const leafNames = g.children.map((c) => c.name);
+                    const count = selectedCount(g.children);
+                    const isExpanded = expanded.has(g.key);
                     return (
-                      <button
+                      <div
                         key={g.key}
-                        type="button"
-                        onClick={() => toggleGroup(g.key)}
                         className={cn(
-                          "flex items-center gap-2 rounded-lg border p-3 text-left text-sm transition-colors",
-                          checked
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:bg-muted/50",
+                          "rounded-lg border transition-colors",
+                          count > 0 ? "border-primary/60" : "border-border",
                         )}
                       >
-                        <span
-                          className={cn(
-                            "flex size-4 shrink-0 items-center justify-center rounded-sm border",
-                            checked
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-input",
-                          )}
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(g.key, leafNames)}
+                          className="flex w-full items-center gap-2 p-3 text-left text-sm"
                         >
-                          {checked && <CheckIcon className="size-3" />}
-                        </span>
-                        <span>{g.name}</span>
-                      </button>
+                          <span
+                            className={cn(
+                              "flex size-4 shrink-0 items-center justify-center rounded-sm border",
+                              count > 0
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-input",
+                            )}
+                          >
+                            {count > 0 && <CheckIcon className="size-3" />}
+                          </span>
+                          <span className="flex-1 font-medium">{g.name}</span>
+                          {count > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {count}/{leafNames.length}
+                            </span>
+                          )}
+                          <ChevronDown
+                            className={cn(
+                              "size-4 text-muted-foreground transition-transform",
+                              isExpanded && "rotate-180",
+                            )}
+                          />
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {isExpanded && (
+                            <motion.div
+                              key="chips"
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+                                {g.children.map((c, i) => {
+                                  const on = selected.has(c.name);
+                                  return (
+                                    <motion.button
+                                      key={c.name}
+                                      type="button"
+                                      onClick={() => toggleLeaf(c.name)}
+                                      initial={{ opacity: 0, scale: 0.85, y: 4 }}
+                                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                                      transition={{ delay: i * 0.03 }}
+                                      className={cn(
+                                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                                        on
+                                          ? "border-primary bg-primary/10 text-primary"
+                                          : "border-input text-muted-foreground hover:bg-muted/50",
+                                      )}
+                                    >
+                                      {on && (
+                                        <CheckIcon className="mr-1 inline size-3" />
+                                      )}
+                                      {c.name}
+                                    </motion.button>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     );
                   })}
                 </div>

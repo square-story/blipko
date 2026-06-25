@@ -133,6 +133,10 @@ model Category {
   // Per-leaf monthly budget suggestion (editable; null = uncapped).
   monthlyBudget Decimal? @db.Decimal(12, 2)
 
+  // Relative share of its bucket, used to suggest budgets during onboarding.
+  // Only meaningful on system leaf rows; 0 on groups and user-created rows.
+  weight Int @default(0)
+
   // Self-relation: a leaf points to its parent group.
   parentId String?
   parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)

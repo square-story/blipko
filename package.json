@@ -9,7 +9,7 @@
     "start": "node dist/app.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "db:seed": "tsc prisma/seed.ts --module commonjs --target es2021 --esModuleInterop --skipLibCheck --outDir .seed-build && node .seed-build/seed.js",
+    "db:seed": "tsc prisma/seed.ts --module commonjs --target es2021 --esModuleInterop --skipLibCheck --outDir .seed-build && node .seed-build/prisma/seed.js",
     "test": "playwright test",
     "test:unit": "vitest",
     "lint": "eslint .",
