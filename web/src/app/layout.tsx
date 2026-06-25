@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { SoundProvider } from "@/components/providers/sound-provider";
 import { Toaster } from "@/components/ui/sonner";
 import {
   constructMetadata,
@@ -94,6 +95,7 @@ export default function RootLayout({
           <NuqsAdapter>
             {children}
           </NuqsAdapter>
+          <SoundProvider />
           <Analytics />
           <Toaster />
         </ThemeProvider>

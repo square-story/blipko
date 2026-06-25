@@ -12,6 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useSoundStore } from "@/hooks/use-sound-store";
+import { playSound } from "@/lib/sound";
 import {
     Select,
     SelectContent,
@@ -19,12 +22,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateBudgetSettings } from "@/lib/actions/budget";
 import { BUCKET_META, CURRENCIES, DOSAGES } from "@/lib/budget";
 
 export function AppearanceCard() {
     const { theme, setTheme } = useTheme();
+    const soundEnabled = useSoundStore((s) => s.enabled);
+    const setSoundEnabled = useSoundStore((s) => s.setEnabled);
     const [mounted, setMounted] = useState(false);
     // next-themes: render only after mount to avoid a hydration mismatch on the bound value.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -52,6 +57,24 @@ export function AppearanceCard() {
                             <SelectItem value="system">System</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+
+                <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-0.5">
+                        <Label htmlFor="sound">Interaction sounds</Label>
+                        <p className="text-xs text-muted-foreground">
+                            Subtle crisp clicks and chimes as you use the dashboard.
+                        </p>
+                    </div>
+                    <Checkbox
+                        id="sound"
+                        checked={soundEnabled}
+                        onCheckedChange={(v) => {
+                            const on = v === true;
+                            setSoundEnabled(on);
+                            if (on) playSound("tick");
+                        }}
+                    />
                 </div>
             </CardContent>
         </Card>

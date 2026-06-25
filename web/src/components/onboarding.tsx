@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ArrowRightIcon, SendIcon, CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -44,6 +44,7 @@ import {
   submitOnboarding,
   type OnboardingGroup,
 } from "@/lib/actions/onboarding";
+import { playSound } from "@/lib/sound";
 
 const TOTAL_STEPS = 4;
 
@@ -84,18 +85,21 @@ export default function Onboarding({
   const selectedCount = (leaves: { name: string }[]) =>
     leaves.filter((l) => selected.has(l.name)).length;
 
-  const toggleLeaf = (name: string) =>
+  const toggleLeaf = (name: string) => {
+    playSound("tick");
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(name)) next.delete(name);
       else next.add(name);
       return next;
     });
+  };
 
   // Expand/collapse a group's chips. Expanding a group with nothing selected
   // auto-selects all its leaves (the "I spend on this → here are the parts"
   // bloom); collapsing keeps the selection.
   const toggleGroup = (key: string, leafNames: string[]) => {
+    playSound("tick");
     setExpanded((prev) => {
       const next = new Set(prev);
       const willExpand = !next.has(key);
@@ -122,6 +126,7 @@ export default function Onboarding({
     });
     setSaving(false);
     if (res.success) {
+      playSound("celebrate");
       setStep(4);
     } else {
       toast.error(res.message ?? "Couldn't save your setup — please try again.");
@@ -130,8 +135,10 @@ export default function Onboarding({
 
   const handleNext = () => {
     if (step === 1 && !incomeValid) return;
-    if (step < 3) setStep(step + 1);
-    else if (step === 3) void saveAndContinue();
+    if (step < 3) {
+      playSound("tick");
+      setStep(step + 1);
+    } else if (step === 3) void saveAndContinue();
   };
 
   const handleOpenTelegram = async () => {
@@ -357,7 +364,10 @@ export default function Onboarding({
                       <button
                         key={dose.value}
                         type="button"
-                        onClick={() => setDosage(dose.value)}
+                        onClick={() => {
+                          playSound("tick");
+                          setDosage(dose.value);
+                        }}
                         className={cn(
                           "flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors",
                           selected
