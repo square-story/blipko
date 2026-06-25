@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useSoundStore } from "@/hooks/use-sound-store";
 import { playSound } from "@/lib/sound";
 import {
@@ -66,13 +66,12 @@ export function AppearanceCard() {
                             Subtle crisp clicks and chimes as you use the dashboard.
                         </p>
                     </div>
-                    <Checkbox
+                    <Switch
                         id="sound"
                         checked={soundEnabled}
                         onCheckedChange={(v) => {
-                            const on = v === true;
-                            setSoundEnabled(on);
-                            if (on) playSound("tick");
+                            setSoundEnabled(v);
+                            if (v) playSound("tick");
                         }}
                     />
                 </div>
