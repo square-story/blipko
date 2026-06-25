@@ -4,6 +4,7 @@ import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
+import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { postRecurringRule } from "./postRecurringRule";
 
@@ -22,6 +23,7 @@ export class PostRecurringChargesUseCase {
     private readonly userRepository: IUserRepository,
     private readonly categoryRepository: ICategoryRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly runTransaction: RunInTransaction,
   ) {}
 
   async execute(now: Date = new Date()): Promise<PostRecurringChargesResult> {
@@ -58,6 +60,7 @@ export class PostRecurringChargesUseCase {
         expenseRepository: this.expenseRepository,
         incomeRepository: this.incomeRepository,
         categoryRepository: this.categoryRepository,
+        runTransaction: this.runTransaction,
       },
       rule,
       monthKey,

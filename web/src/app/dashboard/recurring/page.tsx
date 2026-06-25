@@ -26,6 +26,7 @@ import {
   deleteRecurringRule,
   type RecurringRuleView,
 } from "@/lib/actions/recurring";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export default function RecurringPage() {
   const [rules, setRules] = useState<RecurringRuleView[]>([]);
@@ -190,14 +191,16 @@ export default function RecurringPage() {
                       </div>
                       <Badge variant="outline">{r.kind.toLowerCase()}</Badge>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove(r.id)}
-                      disabled={pending}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <ConfirmDialog
+                      title="Delete this recurring item?"
+                      description="It will stop auto-posting each month. This can't be undone."
+                      onConfirm={() => remove(r.id)}
+                      trigger={
+                        <Button variant="ghost" size="icon" disabled={pending}>
+                          <Trash2 className="size-4" />
+                        </Button>
+                      }
+                    />
                   </li>
                 ))}
               </ul>

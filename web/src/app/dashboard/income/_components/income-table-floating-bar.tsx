@@ -11,6 +11,7 @@ import {
 } from "@/components/data-table/data-table-action-bar";
 import { toast } from "sonner";
 import { IncomeData, deleteIncome } from "@/lib/actions/income";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface IncomeTableFloatingBarProps {
   table: Table<IncomeData>;
@@ -18,6 +19,7 @@ interface IncomeTableFloatingBarProps {
 
 export function IncomeTableFloatingBar({ table }: IncomeTableFloatingBarProps) {
   const [isPending, startTransition] = React.useTransition();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   const handleDelete = React.useCallback(() => {
     startTransition(async () => {
@@ -40,7 +42,7 @@ export function IncomeTableFloatingBar({ table }: IncomeTableFloatingBarProps) {
     <DataTableActionBar table={table}>
       <DataTableActionBarSelection table={table} />
       <DataTableActionBarAction
-        onClick={handleDelete}
+        onClick={() => setConfirmOpen(true)}
         isPending={isPending}
         className="text-red-600 hover:bg-red-600/10 hover:text-red-700"
         tooltip="Delete income"
@@ -48,6 +50,13 @@ export function IncomeTableFloatingBar({ table }: IncomeTableFloatingBarProps) {
         <Trash className="size-4" />
         <span className="sr-only">Delete</span>
       </DataTableActionBarAction>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete selected income?"
+        description="The selected income rows will be removed. This can't be undone."
+        onConfirm={handleDelete}
+      />
     </DataTableActionBar>
   );
 }

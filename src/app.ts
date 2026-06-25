@@ -10,6 +10,7 @@ import {
   postRecurringCharges,
 } from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
+import { logger } from "./utils/logger";
 
 const app: Application = express();
 app.set("trust proxy", 1);
@@ -31,7 +32,7 @@ app.use("/api/webhooks", webhookLimiter);
 app.use("/api/webhooks/telegram", telegramRoutes);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error("Global Error Handler:", err);
+  logger.error("Unhandled request error", { err });
   res.status(500).json({
     success: false,
     message: "Internal Server Error",
@@ -44,12 +45,19 @@ const port = env.PORT;
 if (process.env.NODE_ENV !== "test") {
   const server = app.listen(port, () => {
     process.stdout.write(`🚀 Blipko budget bot listening on port ${port}\n`);
+    if (!env.SARVAM_API_KEY.trim()) {
+      logger.warn(
+        "SARVAM_API_KEY not set — voice transcription disabled; users will be asked to type instead.",
+      );
+    }
     startScheduler(sendBudgetNudges, postRecurringCharges);
-    telegramWebhookController.registerBotCommands().catch(console.error);
+    telegramWebhookController
+      .registerBotCommands()
+      .catch((err) => logger.error("registerBotCommands failed", { err }));
   });
 
   function shutdown() {
-    console.log("Shutting down gracefully...");
+    logger.info("Shutting down gracefully");
     server.close(async () => {
       await prisma.$disconnect();
       process.exit(0);
@@ -60,7 +68,7 @@ if (process.env.NODE_ENV !== "test") {
   process.on("SIGTERM", shutdown);
   process.on("SIGINT", shutdown);
   process.on("unhandledRejection", (reason) => {
-    console.error("Unhandled rejection:", reason);
+    logger.error("Unhandled rejection", { reason });
   });
 }
 

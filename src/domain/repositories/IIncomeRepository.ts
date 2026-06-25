@@ -1,4 +1,5 @@
 import { Income } from "@prisma/client";
+import { TxClient } from "./UnitOfWork";
 
 export interface CreateIncomeDTO {
   userId: string;
@@ -10,7 +11,7 @@ export interface CreateIncomeDTO {
 }
 
 export interface IIncomeRepository {
-  create(data: CreateIncomeDTO): Promise<Income>;
+  create(data: CreateIncomeDTO, tx?: TxClient): Promise<Income>;
   // Sum of non-deleted income within [monthStart, monthEnd).
   sumForMonth(
     userId: string,

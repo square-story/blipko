@@ -1,4 +1,6 @@
 export interface IProcessedMessageRepository {
-    exists(messageId: string): Promise<boolean>;
-    create(messageId: string): Promise<void>;
+  // Atomically records the id. Returns true if this call claimed it (first
+  // delivery), false if it was already processed — lets the caller dedup
+  // without a separate exists() check that could race under concurrent retries.
+  claim(messageId: string): Promise<boolean>;
 }

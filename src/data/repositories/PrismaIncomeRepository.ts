@@ -3,12 +3,13 @@ import {
   CreateIncomeDTO,
   IIncomeRepository,
 } from "../../domain/repositories/IIncomeRepository";
+import { TxClient } from "../../domain/repositories/UnitOfWork";
 
 export class PrismaIncomeRepository implements IIncomeRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async create(data: CreateIncomeDTO): Promise<Income> {
-    return this.prisma.income.create({
+  async create(data: CreateIncomeDTO, tx?: TxClient): Promise<Income> {
+    return (tx ?? this.prisma).income.create({
       data: {
         userId: data.userId,
         amount: data.amount,

@@ -7,6 +7,7 @@ import { IRecurringRuleRepository } from "../../../domain/repositories/IRecurrin
 import { IExpenseRepository } from "../../../domain/repositories/IExpenseRepository";
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
+import { RunInTransaction } from "../../../domain/repositories/UnitOfWork";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { postRecurringRule } from "../postRecurringRule";
 
@@ -20,6 +21,7 @@ export class RecurringConfirmProcessor implements MessageProcessor {
     private readonly incomeRepository: IIncomeRepository,
     private readonly categoryRepository: ICategoryRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly runTransaction: RunInTransaction,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -50,6 +52,7 @@ export class RecurringConfirmProcessor implements MessageProcessor {
           expenseRepository: this.expenseRepository,
           incomeRepository: this.incomeRepository,
           categoryRepository: this.categoryRepository,
+          runTransaction: this.runTransaction,
         },
         rule,
         monthKey,

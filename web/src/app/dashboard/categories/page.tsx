@@ -37,6 +37,7 @@ import {
   type CategoryStat,
 } from "@/lib/actions/categories";
 import { BUCKETS, BUCKET_META, formatMoney } from "@/lib/budget";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const fmt = (n: number) => (n === 0 ? "—" : formatMoney(n));
 
@@ -164,7 +165,7 @@ export default function CategoriesPage() {
                   value={newBucket}
                   onValueChange={(v) => setNewBucket(v as Bucket)}
                 >
-                  <SelectTrigger className="w-[160px]">
+                  <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -246,14 +247,20 @@ export default function CategoriesPage() {
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7 text-destructive"
-                                  onClick={() => handleDelete(cat)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <ConfirmDialog
+                                  title={`Delete "${cat.name}"?`}
+                                  description="Existing expenses keep their data, but this category will be removed. This can't be undone."
+                                  onConfirm={() => handleDelete(cat)}
+                                  trigger={
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-destructive"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  }
+                                />
                               </>
                             )}
                           </div>

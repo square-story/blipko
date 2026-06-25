@@ -6,9 +6,14 @@ import {
 import { IFinancialQueryAgent } from "../../../domain/services/IFinancialQueryAgent";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { currentBudgetPeriod, periodDayInfo } from "../budgetMath";
+import { withTimeout } from "../../../utils/withTimeout";
+import { logger } from "../../../utils/logger";
 
 const FALLBACK =
   "I couldn't work that out right now — try /status, or rephrase your question.";
+
+// Upper bound on the tool-calling agent so a hung OpenAI call can't block the webhook.
+const QUERY_TIMEOUT_MS = 15_000;
 
 // Handles the QUERY intent: free-form questions about the user's spending,
 // income, or budget. Delegates to a read-only tool-calling agent that fetches
@@ -35,24 +40,33 @@ export class QueryProcessor implements MessageProcessor {
 
     let body: string;
     try {
-      body = await this.queryAgent.answer(textMessage, {
-        userId: user.id,
-        currency: user.currency,
-        locale: user.locale,
-        payday: user.payday,
-        monthlyIncome: Number(user.monthlyIncome ?? 0),
-        now,
-        period: {
-          start: start.toISOString(),
-          end: end.toISOString(),
-          day,
-          daysInPeriod,
-          remainingDays,
-        },
-        history: context.conversationHistory,
-      });
+      body = await withTimeout(
+        this.queryAgent.answer(textMessage, {
+          userId: user.id,
+          currency: user.currency,
+          locale: user.locale,
+          payday: user.payday,
+          monthlyIncome: Number(user.monthlyIncome ?? 0),
+          now,
+          period: {
+            start: start.toISOString(),
+            end: end.toISOString(),
+            day,
+            daysInPeriod,
+            remainingDays,
+          },
+          history: context.conversationHistory,
+        }),
+        QUERY_TIMEOUT_MS,
+        "query agent",
+      );
     } catch (error) {
-      console.error("QueryProcessor: agent failed.", error);
+      logger.error("Query agent failed", {
+        component: "query",
+        userId: user.id,
+        question: textMessage,
+        err: error,
+      });
       body = FALLBACK;
     }
 

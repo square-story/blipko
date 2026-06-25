@@ -1,4 +1,5 @@
 import { Bucket, Expense, ExpenseSource } from "@prisma/client";
+import { TxClient } from "./UnitOfWork";
 
 export interface CreateExpenseDTO {
   userId: string;
@@ -13,7 +14,7 @@ export interface CreateExpenseDTO {
 }
 
 export interface IExpenseRepository {
-  create(data: CreateExpenseDTO): Promise<Expense>;
+  create(data: CreateExpenseDTO, tx?: TxClient): Promise<Expense>;
   findById(id: string): Promise<Expense | null>;
   // Most recent non-deleted expense for the user (for word-based undo).
   findLastByUserId(userId: string): Promise<Expense | null>;

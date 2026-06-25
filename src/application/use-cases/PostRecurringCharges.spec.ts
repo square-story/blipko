@@ -43,6 +43,7 @@ describe("PostRecurringCharges", () => {
       userRepository,
       categoryRepository,
       messageService,
+      async (fn: any) => fn({}),
     );
   });
 
@@ -52,10 +53,12 @@ describe("PostRecurringCharges", () => {
     expect(posted).toBe(1);
     expect(expenseRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u1", amount: 8000, bucket: "NEEDS" }),
+      expect.anything(),
     );
     expect(recurringRuleRepository.markPosted).toHaveBeenCalledWith(
       "rr1",
       "2026-06",
+      expect.anything(),
     );
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Auto-logged",
@@ -91,6 +94,7 @@ describe("PostRecurringCharges", () => {
     expect(posted).toBe(1);
     expect(incomeRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u1", amount: 50000 }),
+      expect.anything(),
     );
     expect(expenseRepository.create).not.toHaveBeenCalled();
   });
