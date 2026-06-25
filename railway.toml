@@ -1,10 +1,14 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm prisma generate && pnpm build"
+# Compile the seed during build (devDeps/tsc available here) so predeploy can run
+# the plain JS with only the prod @prisma/client.
+buildCommand = "pnpm install --frozen-lockfile && pnpm prisma generate && pnpm build && pnpm db:seed:compile"
 
 [deploy]
 startCommand = "node dist/app.js"
-preDeployCommand = "./node_modules/.bin/prisma migrate deploy"
+# Apply migrations, then (idempotently) seed the system category taxonomy that
+# onboarding reads. Seeding via the precompiled JS — no devDeps needed at deploy.
+preDeployCommand = "./node_modules/.bin/prisma migrate deploy && node .seed-build/prisma/seed.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
