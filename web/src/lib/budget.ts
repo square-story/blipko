@@ -91,3 +91,56 @@ export function formatMoney(
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+export interface SelectedLeaf {
+  name: string;
+  bucket: Bucket;
+  weight: number;
+}
+
+// Suggest a monthly budget per selected leaf. Each bucket's budget is split
+// across its leaves in proportion to their weights, normalized over only the
+// selected leaves so the per-category suggestions sum to the bucket budget.
+// Port of `src/application/use-cases/budgetMath.ts` suggestCategoryBudgets.
+export function suggestCategoryBudgets(
+  income: number,
+  split: BudgetSplit,
+  leaves: SelectedLeaf[],
+): Map<string, number> {
+  const result = new Map<string, number>();
+  for (const bucket of BUCKETS) {
+    const inBucket = leaves.filter((l) => l.bucket === bucket);
+    const totalWeight = inBucket.reduce((s, l) => s + l.weight, 0);
+    if (totalWeight <= 0) continue;
+    const budget = bucketBudget(income, split, bucket);
+    for (const leaf of inBucket) {
+      result.set(leaf.name, Math.round((budget * leaf.weight) / totalWeight));
+    }
+  }
+  return result;
+}
+
+export type NotificationDosage = "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
+
+// Shared so the onboarding wizard and Account settings show identical labels.
+export const CURRENCIES = [
+  { value: "INR", label: "INR (₹)", locale: "en-IN" },
+  { value: "USD", label: "USD ($)", locale: "en-US" },
+  { value: "EUR", label: "EUR (€)", locale: "en-IE" },
+  { value: "GBP", label: "GBP (£)", locale: "en-GB" },
+];
+
+export const DOSAGES: {
+  value: NotificationDosage;
+  label: string;
+  hint: string;
+}[] = [
+  { value: "OFF", label: "Off", hint: "No reminders" },
+  { value: "GENTLE", label: "Gentle", hint: "1–2 a day" },
+  { value: "AGGRESSIVE", label: "Aggressive", hint: "+ daily check-in" },
+  { value: "RELENTLESS", label: "Relentless", hint: "Daily + repeats" },
+];
+
+export function localeForCurrency(currency: string): string {
+  return CURRENCIES.find((c) => c.value === currency)?.locale ?? "en-IN";
+}
