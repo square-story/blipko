@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -36,13 +35,16 @@ import {
   deleteCategory,
   type CategoryStat,
 } from "@/lib/actions/categories";
+import { getBudgetOverview } from "@/lib/actions/budget";
 import { BUCKETS, BUCKET_META, formatMoney } from "@/lib/budget";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
-const fmt = (n: number) => (n === 0 ? "—" : formatMoney(n));
+type Overview = Awaited<ReturnType<typeof getBudgetOverview>>;
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryStat[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Add form
@@ -59,12 +61,21 @@ export default function CategoriesPage() {
 
   const load = () =>
     startTransition(async () => {
-      setCategories(await getCategories());
+      const [cats, ov] = await Promise.all([
+        getCategories(),
+        getBudgetOverview(),
+      ]);
+      setCategories(cats);
+      setOverview(ov);
     });
 
   useEffect(() => {
     load();
   }, []);
+
+  const currency = overview?.currency ?? "INR";
+  const locale = overview?.locale ?? "en-IN";
+  const money = (n: number) => formatMoney(n, currency, locale);
 
   // Group rows are organizational only — used to label children, not listed.
   const groupNameById = useMemo(() => {
@@ -73,9 +84,14 @@ export default function CategoriesPage() {
     return m;
   }, [categories]);
 
-  const handleAdd = () =>
+  const leaves = useMemo(
+    () => categories.filter((c) => !c.isGroup),
+    [categories],
+  );
+
+  const handleAdd = (bucket: Bucket = newBucket) =>
     startTransition(async () => {
-      const res = await createCategory(newName, newBucket);
+      const res = await createCategory(newName, bucket);
       if (!res.success) {
         setAddError(res.message ?? "Failed to add");
         return;
@@ -98,26 +114,18 @@ export default function CategoriesPage() {
       if (!editing) return;
       if (editName.trim() !== editing.name) {
         const r = await renameCategory(editing.id, editName);
-        if (!r.success) {
-          setEditError(r.message ?? "Failed to rename");
-          return;
-        }
+        if (!r.success) return setEditError(r.message ?? "Failed to rename");
       }
       if (editBucket !== editing.bucket) {
         const r = await setCategoryBucket(editing.id, editBucket);
-        if (!r.success) {
-          setEditError(r.message ?? "Failed to change bucket");
-          return;
-        }
+        if (!r.success)
+          return setEditError(r.message ?? "Failed to change bucket");
       }
       const trimmed = editBudget.trim();
       const nextBudget = trimmed === "" ? null : Number(trimmed);
       if (nextBudget !== editing.monthlyBudget) {
         const r = await setCategoryBudget(editing.id, nextBudget);
-        if (!r.success) {
-          setEditError(r.message ?? "Failed to set budget");
-          return;
-        }
+        if (!r.success) return setEditError(r.message ?? "Failed to set budget");
       }
       setEditing(null);
       load();
@@ -132,10 +140,18 @@ export default function CategoriesPage() {
   return (
     <ContentLayout title="Categories">
       <div className="space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Your categories, grouped into 50/30/20 buckets. Set a monthly limit on
-          any of them — the bot warns you as you approach it.
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Your spending split into 50/30/20 buckets. Each bucket is your budget
+            for the month; a category limit is an optional cap the bot warns you
+            about.
+          </p>
+          {overview?.periodLabel && (
+            <p className="text-xs text-muted-foreground">
+              This cycle: {overview.periodLabel}
+            </p>
+          )}
+        </div>
 
         {/* Add a custom category */}
         <Card>
@@ -177,7 +193,10 @@ export default function CategoriesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleAdd} disabled={isPending || !newName.trim()}>
+              <Button
+                onClick={() => handleAdd()}
+                disabled={isPending || !newName.trim()}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add
               </Button>
@@ -188,91 +207,144 @@ export default function CategoriesPage() {
           </CardContent>
         </Card>
 
-        {/* Grouped by bucket (leaf categories only) */}
-        {BUCKETS.map((bucket) => {
-          const inBucket = categories.filter(
-            (c) => c.bucket === bucket && !c.isGroup,
-          );
-          return (
-            <Card key={bucket}>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  {BUCKET_META[bucket].emoji} {BUCKET_META[bucket].label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {inBucket.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No categories.</p>
-                ) : (
-                  <div className="divide-y">
-                    {inBucket.map((cat) => {
-                      const group = cat.parentId
-                        ? groupNameById.get(cat.parentId)
-                        : null;
-                      return (
-                        <div
-                          key={cat.id}
-                          className="flex items-center justify-between py-2"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{cat.name}</span>
-                            {group && (
-                              <span className="text-xs text-muted-foreground">
-                                {group}
-                              </span>
-                            )}
-                            {cat.isSystem && (
-                              <Badge variant="secondary" className="text-xs">
-                                System
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm tabular-nums text-muted-foreground">
-                              {fmt(cat.spend)}
-                              {cat.monthlyBudget != null && (
-                                <span className="text-muted-foreground/70">
-                                  {" "}
-                                  / {formatMoney(cat.monthlyBudget)}
-                                </span>
-                              )}
-                            </span>
-                            {!cat.isSystem && (
-                              <>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => openEdit(cat)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <ConfirmDialog
-                                  title={`Delete "${cat.name}"?`}
-                                  description="Existing expenses keep their data, but this category will be removed. This can't be undone."
-                                  onConfirm={() => handleDelete(cat)}
-                                  trigger={
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7 text-destructive"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  }
-                                />
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+        {/* Empty state */}
+        {leaves.length === 0 && !isPending && (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No categories yet. Add one above to start tracking — the bot will
+              also create them as you log spends.
+            </CardContent>
+          </Card>
+        )}
+
+        {/* One section per bucket: summary + its categories */}
+        {leaves.length > 0 &&
+          BUCKETS.map((bucket) => {
+            const meta = BUCKET_META[bucket];
+            const ov = overview?.buckets.find((b) => b.bucket === bucket);
+            const budget = ov?.budget ?? 0;
+            const spent = ov?.spent ?? 0;
+            const remaining = ov?.remaining ?? 0;
+            const pct = ov?.pct ?? 0;
+            const over = remaining < 0;
+            const inBucket = leaves.filter((c) => c.bucket === bucket);
+
+            return (
+              <Card key={bucket}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-baseline justify-between">
+                    <CardTitle className="text-base">
+                      {meta.emoji} {meta.label}
+                    </CardTitle>
+                    <span
+                      className={cn(
+                        "text-sm font-medium tabular-nums",
+                        over ? "text-red-600" : "text-muted-foreground",
+                      )}
+                    >
+                      {over
+                        ? `${money(Math.abs(remaining))} over`
+                        : `${money(remaining)} left`}
+                    </span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  <div className="mt-2 space-y-1">
+                    <div className="h-2 w-full rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          "h-2 rounded-full",
+                          over ? "bg-red-500" : "bg-primary",
+                        )}
+                        style={{ width: `${Math.min(100, pct)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {money(spent)} spent of {money(budget)}
+                    </p>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {inBucket.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No categories in this bucket yet.
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {inBucket.map((cat) => {
+                        const group = cat.parentId
+                          ? groupNameById.get(cat.parentId)
+                          : null;
+                        const hasLimit = cat.monthlyBudget != null;
+                        const left = hasLimit
+                          ? cat.monthlyBudget! - cat.spend
+                          : null;
+                        return (
+                          <div
+                            key={cat.id}
+                            className="flex items-center justify-between gap-2 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate font-medium">
+                                  {cat.name}
+                                </span>
+                                {group && (
+                                  <span className="shrink-0 text-xs text-muted-foreground">
+                                    {group}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs tabular-nums text-muted-foreground">
+                                {money(cat.spend)} spent
+                                {hasLimit && (
+                                  <>
+                                    {" "}
+                                    of {money(cat.monthlyBudget!)} ·{" "}
+                                    <span
+                                      className={cn(
+                                        left! < 0 && "text-red-600",
+                                      )}
+                                    >
+                                      {left! < 0
+                                        ? `${money(Math.abs(left!))} over`
+                                        : `${money(left!)} left`}
+                                    </span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => openEdit(cat)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <ConfirmDialog
+                                title={`Delete "${cat.name}"?`}
+                                description="Existing expenses keep their data, but this category will be removed. This can't be undone."
+                                onConfirm={() => handleDelete(cat)}
+                                trigger={
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-destructive"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                }
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
