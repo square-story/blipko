@@ -46,6 +46,94 @@ export function currentBudgetPeriod(
   return { start: new Date(y, m - 1, d), end: new Date(y, m, d) };
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export interface PeriodDayInfo {
+  day: number; // 1-based day within the cycle
+  daysInPeriod: number;
+  remainingDays: number; // days left including today (>= 1)
+}
+
+// Where we are in the current budget cycle. Mirrors the backend
+// `budgetMath.periodDayInfo`.
+export function periodDayInfo(
+  payday: number,
+  now: Date = new Date(),
+): PeriodDayInfo {
+  const { start, end } = currentBudgetPeriod(payday, now);
+  const daysInPeriod = Math.round(
+    (end.getTime() - start.getTime()) / MS_PER_DAY,
+  );
+  const day = Math.floor((now.getTime() - start.getTime()) / MS_PER_DAY) + 1;
+  return {
+    day,
+    daysInPeriod,
+    remainingDays: Math.max(1, daysInPeriod - day + 1),
+  };
+}
+
+export interface CategoryPacing {
+  dailyRate: number; // avg spend/day so far
+  weekly: number; // projected weekly run-rate
+  projectedMonth: number; // projected spend by cycle end at current rate
+  safeDaily: number; // ₹/day left to stay under the limit (0 if no limit)
+  overPace: boolean; // projected to exceed the limit
+  overSpent: boolean; // already over the limit
+}
+
+// Burn-rate guidance for one category from spend-so-far + where we are in the
+// cycle. Mirrors the bot's safe-daily-spend (remaining / remainingDays).
+export function categoryPacing(args: {
+  spent: number;
+  limit: number | null;
+  day: number;
+  daysInPeriod: number;
+  remainingDays: number;
+}): CategoryPacing {
+  const { spent, limit, day, daysInPeriod, remainingDays } = args;
+  const dailyRate = day > 0 ? spent / day : 0;
+  const hasLimit = limit != null && limit > 0;
+  return {
+    dailyRate,
+    weekly: dailyRate * 7,
+    projectedMonth: dailyRate * daysInPeriod,
+    safeDaily: hasLimit ? Math.max(0, limit - spent) / remainingDays : 0,
+    overPace: hasLimit ? dailyRate * daysInPeriod > limit : false,
+    overSpent: hasLimit ? spent > limit : false,
+  };
+}
+
+// Distribute `budget` across categories weighted by recent spend; fall back to
+// current limits, then an even split, when there's nothing to weight by. Integer
+// amounts that sum to `budget` exactly (rounding remainder to the largest share).
+export function weightedBudgets(
+  cats: { id: string; spend: number; monthlyBudget: number | null }[],
+  budget: number,
+): { id: string; monthlyBudget: number }[] {
+  const n = cats.length;
+  if (n === 0 || budget <= 0) return [];
+  const totalSpend = cats.reduce((s, c) => s + Math.max(0, c.spend), 0);
+  const totalLimit = cats.reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
+  const weightOf = (c: { spend: number; monthlyBudget: number | null }) =>
+    totalSpend > 0
+      ? Math.max(0, c.spend)
+      : totalLimit > 0
+        ? (c.monthlyBudget ?? 0)
+        : 1; // even
+  const totalWeight = cats.reduce((s, c) => s + weightOf(c), 0);
+  const raw = cats.map((c) => ({
+    id: c.id,
+    amount: Math.floor((budget * weightOf(c)) / totalWeight),
+    w: weightOf(c),
+  }));
+  let remainder = budget - raw.reduce((s, r) => s + r.amount, 0);
+  // Hand the rounding leftover to the largest-weight categories.
+  raw.sort((a, b) => b.w - a.w);
+  for (let i = 0; remainder > 0; i = (i + 1) % n, remainder--)
+    raw[i].amount += 1;
+  return raw.map((r) => ({ id: r.id, monthlyBudget: r.amount }));
+}
+
 export function bucketPct(split: BudgetSplit, bucket: Bucket): number {
   switch (bucket) {
     case "NEEDS":

@@ -11,6 +11,7 @@ import {
   DEFAULT_SPLIT,
   bucketBudget,
   currentBudgetPeriod,
+  periodDayInfo,
   effectiveMonthlyIncome,
   pctSpent,
   type BudgetSplit,
@@ -41,6 +42,7 @@ export async function getBudgetOverview() {
     },
   });
   const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
+  const { day, daysInPeriod, remainingDays } = periodDayInfo(user?.payday ?? 1);
 
   const [config, grouped, recent, categoryGroups, incomeAgg] =
     await Promise.all([
@@ -143,6 +145,9 @@ export async function getBudgetOverview() {
     expectedIncome,
     incomeThisMonth,
     periodLabel,
+    day,
+    daysInPeriod,
+    remainingDays,
     currency,
     locale,
     split,

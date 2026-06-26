@@ -37,7 +37,13 @@ import {
   type CategoryStat,
 } from "@/lib/actions/categories";
 import { getBudgetOverview } from "@/lib/actions/budget";
-import { BUCKETS, BUCKET_META, formatMoney } from "@/lib/budget";
+import {
+  BUCKETS,
+  BUCKET_META,
+  formatMoney,
+  categoryPacing,
+  weightedBudgets,
+} from "@/lib/budget";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
@@ -77,6 +83,9 @@ export default function CategoriesPage() {
   const currency = overview?.currency ?? "INR";
   const locale = overview?.locale ?? "en-IN";
   const money = (n: number) => formatMoney(n, currency, locale);
+  const day = overview?.day ?? 1;
+  const daysInPeriod = overview?.daysInPeriod ?? 30;
+  const remainingDays = overview?.remainingDays ?? 1;
 
   // Group rows are organizational only — used to label children, not listed.
   const groupNameById = useMemo(() => {
@@ -138,19 +147,13 @@ export default function CategoriesPage() {
       load();
     });
 
-  // Evenly split a bucket's budget across its categories so the limits sum to it
-  // exactly (rounding remainder to the first). Explicit, confirmed — overwrites
+  // Distribute a bucket's budget across its categories weighted by recent spend
+  // (falls back to current limits, then even). Explicit, confirmed — overwrites
   // current limits in that bucket.
   const autoBalance = (cats: CategoryStat[], budget: number) =>
     startTransition(async () => {
-      const n = cats.length;
-      if (n === 0 || budget <= 0) return;
-      const base = Math.floor(budget / n);
-      const remainder = budget - base * n;
-      const updates = cats.map((c, i) => ({
-        id: c.id,
-        monthlyBudget: base + (i === 0 ? remainder : 0),
-      }));
+      const updates = weightedBudgets(cats, budget);
+      if (updates.length === 0) return;
       await setCategoryBudgets(updates);
       load();
     });
@@ -283,6 +286,13 @@ export default function CategoriesPage() {
                     </div>
                     <p className="text-xs text-muted-foreground tabular-nums">
                       {money(spent)} spent of {money(budget)}
+                      {budget > 0 && !over && (
+                        <>
+                          {" "}
+                          · safe{" "}
+                          {money(Math.max(0, remaining) / remainingDays)}/day
+                        </>
+                      )}
                     </p>
                   </div>
                   {inBucket.length > 0 && budget > 0 && (
@@ -297,7 +307,7 @@ export default function CategoriesPage() {
                       </p>
                       <ConfirmDialog
                         title={`Auto-balance ${meta.label}?`}
-                        description={`Set each category in ${meta.label} to an equal share of ${money(budget)}. This replaces their current limits.`}
+                        description={`Distribute ${money(budget)} across ${meta.label} weighted by your recent spending. This replaces their current limits.`}
                         confirmLabel="Auto-balance"
                         onConfirm={() => autoBalance(inBucket, budget)}
                         trigger={
@@ -329,6 +339,13 @@ export default function CategoriesPage() {
                         const left = hasLimit
                           ? cat.monthlyBudget! - cat.spend
                           : null;
+                        const pace = categoryPacing({
+                          spent: cat.spend,
+                          limit: cat.monthlyBudget,
+                          day,
+                          daysInPeriod,
+                          remainingDays,
+                        });
                         return (
                           <div
                             key={cat.id}
@@ -363,6 +380,32 @@ export default function CategoriesPage() {
                                   </>
                                 )}
                               </p>
+                              {cat.spend > 0 && (
+                                <p className="text-xs tabular-nums text-muted-foreground">
+                                  ~{money(pace.dailyRate)}/day · ~
+                                  {money(pace.weekly)}/wk
+                                  {hasLimit && (
+                                    <>
+                                      {" · "}
+                                      {pace.overSpent ? (
+                                        <span className="text-red-600">
+                                          over limit
+                                        </span>
+                                      ) : pace.overPace ? (
+                                        <span className="text-amber-600">
+                                          on pace {money(pace.projectedMonth)} —
+                                          safe {money(pace.safeDaily)}/day
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-600">
+                                          on track — safe{" "}
+                                          {money(pace.safeDaily)}/day
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
+                                </p>
+                              )}
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
                               <Button
