@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { playSound } from "@/lib/sound";
 
 interface ConfirmDialogProps {
   onConfirm: () => void;
@@ -49,7 +50,10 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={() => {
+              playSound("confirm");
+              onConfirm();
+            }}
             className="bg-red-600 text-white hover:bg-red-700"
           >
             {confirmLabel}

@@ -8,7 +8,7 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Download } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { exportIncomeCsv, type IncomeFilters } from "@/lib/actions/income";
 
 interface IncomeTableToolbarProps<TData> {

@@ -9,7 +9,7 @@ import {
   DataTableActionBarAction,
   DataTableActionBarSelection,
 } from "@/components/data-table/data-table-action-bar";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { IncomeData, deleteIncome } from "@/lib/actions/income";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
