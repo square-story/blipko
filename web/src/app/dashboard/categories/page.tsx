@@ -32,6 +32,7 @@ import {
   renameCategory,
   setCategoryBucket,
   setCategoryBudget,
+  setCategoryBudgets,
   deleteCategory,
   type CategoryStat,
 } from "@/lib/actions/categories";
@@ -137,6 +138,23 @@ export default function CategoriesPage() {
       load();
     });
 
+  // Evenly split a bucket's budget across its categories so the limits sum to it
+  // exactly (rounding remainder to the first). Explicit, confirmed — overwrites
+  // current limits in that bucket.
+  const autoBalance = (cats: CategoryStat[], budget: number) =>
+    startTransition(async () => {
+      const n = cats.length;
+      if (n === 0 || budget <= 0) return;
+      const base = Math.floor(budget / n);
+      const remainder = budget - base * n;
+      const updates = cats.map((c, i) => ({
+        id: c.id,
+        monthlyBudget: base + (i === 0 ? remainder : 0),
+      }));
+      await setCategoryBudgets(updates);
+      load();
+    });
+
   return (
     <ContentLayout title="Categories">
       <div className="space-y-6">
@@ -228,11 +246,17 @@ export default function CategoriesPage() {
             const pct = ov?.pct ?? 0;
             const over = remaining < 0;
             const inBucket = leaves.filter((c) => c.bucket === bucket);
+            const allocated = inBucket.reduce(
+              (s, c) => s + (c.monthlyBudget ?? 0),
+              0,
+            );
+            const unallocated = budget - allocated;
+            const overAllocated = unallocated < 0;
 
             return (
               <Card key={bucket}>
                 <CardHeader className="pb-3">
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between gap-2">
                     <CardTitle className="text-base">
                       {meta.emoji} {meta.label}
                     </CardTitle>
@@ -261,6 +285,34 @@ export default function CategoriesPage() {
                       {money(spent)} spent of {money(budget)}
                     </p>
                   </div>
+                  {inBucket.length > 0 && budget > 0 && (
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2">
+                      <p className="text-xs tabular-nums text-muted-foreground">
+                        {money(allocated)} allocated ·{" "}
+                        <span className={cn(overAllocated && "text-red-600")}>
+                          {overAllocated
+                            ? `${money(-unallocated)} over-allocated`
+                            : `${money(unallocated)} unallocated`}
+                        </span>
+                      </p>
+                      <ConfirmDialog
+                        title={`Auto-balance ${meta.label}?`}
+                        description={`Set each category in ${meta.label} to an equal share of ${money(budget)}. This replaces their current limits.`}
+                        confirmLabel="Auto-balance"
+                        onConfirm={() => autoBalance(inBucket, budget)}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 shrink-0 text-xs"
+                            disabled={isPending}
+                          >
+                            Auto-balance
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {inBucket.length === 0 ? (
