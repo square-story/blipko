@@ -130,6 +130,43 @@ export async function setCategoryBudget(
   return { success: true };
 }
 
+// Sets monthly limits on several owned categories at once (used by Auto-balance).
+export async function setCategoryBudgets(
+  updates: { id: string; monthlyBudget: number }[],
+): Promise<{ success: boolean; message?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+  const userId = session.user.id;
+
+  if (
+    updates.some(
+      (u) => !Number.isFinite(u.monthlyBudget) || u.monthlyBudget < 0,
+    )
+  )
+    return { success: false, message: "Invalid amount" };
+
+  // All targets must belong to this user.
+  const owned = await prisma.category.findMany({
+    where: { userId, id: { in: updates.map((u) => u.id) } },
+    select: { id: true },
+  });
+  if (owned.length !== updates.length)
+    return { success: false, message: "Category not found or not editable" };
+
+  await prisma.$transaction(
+    updates.map((u) =>
+      prisma.category.update({
+        where: { id: u.id },
+        data: { monthlyBudget: u.monthlyBudget },
+      }),
+    ),
+  );
+
+  revalidatePath("/dashboard/categories");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
 // Loads a user-owned category and rejects system rows / other users' rows.
 async function ownedCategory(id: string, userId: string) {
   const cat = await prisma.category.findUnique({ where: { id } });
