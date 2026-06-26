@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSoundStore } from "@/hooks/use-sound-store";
-import { playSound } from "@/lib/sound";
 import {
     Select,
     SelectContent,
@@ -69,10 +68,7 @@ export function AppearanceCard() {
                     <Switch
                         id="sound"
                         checked={soundEnabled}
-                        onCheckedChange={(v) => {
-                            setSoundEnabled(v);
-                            if (v) playSound("tick");
-                        }}
+                        onCheckedChange={(v) => setSoundEnabled(v)}
                     />
                 </div>
             </CardContent>

@@ -135,10 +135,8 @@ export default function Onboarding({
 
   const handleNext = () => {
     if (step === 1 && !incomeValid) return;
-    if (step < 3) {
-      playSound("tick");
-      setStep(step + 1);
-    } else if (step === 3) void saveAndContinue();
+    if (step < 3) setStep(step + 1);
+    else if (step === 3) void saveAndContinue();
   };
 
   const handleOpenTelegram = async () => {
