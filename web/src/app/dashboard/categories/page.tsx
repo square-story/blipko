@@ -63,7 +63,7 @@ export default function CategoriesPage() {
   }, [categories]);
 
   const leaves = useMemo(
-    () => categories.filter((c) => !c.isGroup),
+    () => categories.filter((c) => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null),
     [categories],
   );
 

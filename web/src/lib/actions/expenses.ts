@@ -201,3 +201,66 @@ export async function exportExpensesCsv(
 
   return { success: true, csv: [header.join(","), ...rows].join("\n") };
 }
+
+export async function getNeedsReviewExpenses() {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const expenses = await prisma.expense.findMany({
+    where: {
+      userId: session.user.id,
+      isDeleted: false,
+      OR: [
+        { confidence: { lt: 0.8 } },
+        { categoryId: null },
+        {
+          category: {
+            name: { in: ["Miscellaneous", "Other", "Uncategorized"] },
+          },
+        },
+      ],
+    },
+    include: { category: { select: { name: true } } },
+    orderBy: { date: "desc" },
+    take: 10,
+  });
+
+  return expenses.map((e) => ({
+    id: e.id,
+    amount: Number(e.amount),
+    bucket: e.bucket,
+    categoryName: e.category?.name ?? null,
+    note: e.note,
+    source: e.source,
+    date: e.date,
+    confidence: e.confidence,
+  }));
+}
+
+export async function assignExpenseCategory(
+  expenseId: string,
+  categoryId: string,
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const expense = await prisma.expense.findUnique({
+    where: { id: expenseId, userId: session.user.id },
+  });
+  if (!expense) return { success: false, message: "Expense not found" };
+
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId, userId: session.user.id },
+  });
+  if (!category) return { success: false, message: "Category not found" };
+
+  await prisma.expense.update({
+    where: { id: expenseId },
+    data: { categoryId: category.id, bucket: category.bucket, confidence: 1.0 },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/categories");
+  revalidatePath("/dashboard/analytics");
+  return { success: true };
+}

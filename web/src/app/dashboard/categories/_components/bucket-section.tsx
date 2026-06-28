@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -53,6 +54,17 @@ export const BucketSection = ({
   );
   const unallocated = budget - allocated;
   const overAllocated = unallocated < 0;
+
+  const groupedCategories = useMemo(() => {
+    const map = new Map<string | null, CategoryStat[]>();
+    for (const cat of categories) {
+      const parentName = cat.parentId ? (groupNameById.get(cat.parentId) ?? "Unknown Group") : null;
+      const groupKey = cat.isGroup ? null : parentName;
+      if (!map.has(groupKey)) map.set(groupKey, []);
+      map.get(groupKey)!.push(cat);
+    }
+    return map;
+  }, [categories, groupNameById]);
 
   return (
     <div>
@@ -126,22 +138,27 @@ export const BucketSection = ({
           No categories in this bucket yet.
         </p>
       ) : (
-        <div className="divide-y">
-          {categories.map((cat) => (
-            <CategoryRow
-              key={cat.id}
-              cat={cat}
-              groupName={
-                cat.parentId ? groupNameById.get(cat.parentId) ?? null : null
-              }
-              money={money}
-              day={day}
-              daysInPeriod={daysInPeriod}
-              remainingDays={remainingDays}
-              isPending={isPending}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
+        <div className="flex flex-col gap-2">
+          {Array.from(groupedCategories.entries()).map(([groupName, cats]) => (
+            <div key={groupName || "standalone"} className={cn(groupName ? "pl-2 border-l-2 border-muted" : "")}>
+              {groupName && <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 mt-1 pl-1">{groupName}</div>}
+              <div className="divide-y">
+                {cats.map((cat) => (
+                  <CategoryRow
+                    key={cat.id}
+                    cat={cat}
+                    groupName={null} // We don't need the subtitle anymore since it's grouped
+                    money={money}
+                    day={day}
+                    daysInPeriod={daysInPeriod}
+                    remainingDays={remainingDays}
+                    isPending={isPending}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

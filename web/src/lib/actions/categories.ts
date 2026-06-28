@@ -31,6 +31,44 @@ export async function getCategories(): Promise<CategoryStat[]> {
   });
   const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
 
+  // Self-healing: If expenses were logged against system categories (userId = null),
+  // clone them to user-owned categories so they can be managed.
+  const systemLinkedExpenses = await prisma.expense.findMany({
+    where: {
+      userId,
+      isDeleted: false,
+      category: { userId: null },
+    },
+    select: { categoryId: true, category: true },
+    distinct: ["categoryId"],
+  });
+
+  if (systemLinkedExpenses.length > 0) {
+    for (const { category } of systemLinkedExpenses) {
+      if (!category) continue;
+
+      let userCat = await prisma.category.findFirst({
+        where: { userId, name: category.name },
+      });
+
+      if (!userCat) {
+        userCat = await prisma.category.create({
+          data: {
+            name: category.name,
+            bucket: category.bucket,
+            isGroup: category.isGroup,
+            userId,
+          },
+        });
+      }
+
+      await prisma.expense.updateMany({
+        where: { userId, categoryId: category.id },
+        data: { categoryId: userCat.id },
+      });
+    }
+  }
+
   const [categories, spendGroups] = await Promise.all([
     // Only the user's own categories. System rows (userId = null) are the bot's
     // fallback taxonomy and would otherwise duplicate the user's cloned copies.

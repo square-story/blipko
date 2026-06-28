@@ -2,6 +2,9 @@ import { Suspense } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getBudgetOverview } from "@/lib/actions/budget";
 import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
+import { getNeedsReviewExpenses } from "@/lib/actions/expenses";
+import { getCategories } from "@/lib/actions/categories";
+import { NeedsReviewInbox } from "./_components/needs-review-inbox";
 import {
     Stat,
     StatLabel,
@@ -43,6 +46,13 @@ async function OverviewSection({
     } = await overviewPromise;
 
     const taxonomy = hasOnboarded ? [] : await getOnboardingTaxonomy();
+    const needsReviewPromise = getNeedsReviewExpenses();
+    const categoriesPromise = getCategories();
+
+    const [needsReview, categories] = await Promise.all([
+        needsReviewPromise,
+        categoriesPromise
+    ]);
 
     const currencyFormat = {
         style: "currency" as const,
@@ -53,6 +63,12 @@ async function OverviewSection({
     return (
         <>
             {!hasOnboarded && <Onboarding taxonomy={taxonomy} />}
+            
+            <NeedsReviewInbox 
+                expenses={needsReview} 
+                categories={categories} 
+                currency={currency} 
+            />
 
             {/* Headline stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

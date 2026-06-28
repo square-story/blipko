@@ -20,6 +20,8 @@ import {
     DrawerTitle,
     DrawerTrigger,
 } from "@/components/ui/drawer"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
 const ResponsiveModalContext = React.createContext<{ isDesktop: boolean }>({
     isDesktop: false,
@@ -56,8 +58,12 @@ export const ResponsiveModalContent = ({ children, className, ...props }: React.
     }
 
     return (
-        <DrawerContent className={className} {...props}>
-            {children}
+        <DrawerContent className={cn("px-4 pb-6 pt-2 max-h-[90vh]", className)} {...props}>
+            <ScrollArea className="w-full h-full pr-4 overflow-y-auto">
+                <div className="py-2">
+                    {children}
+                </div>
+            </ScrollArea>
         </DrawerContent>
     )
 }

@@ -3,204 +3,213 @@
 import { useEffect, useState, useTransition } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Trash2, Plus, RefreshCw } from "lucide-react";
+import { Trash2, RefreshCw, Edit } from "lucide-react";
 import {
   getRecurringRules,
-  createRecurringRule,
   deleteRecurringRule,
   type RecurringRuleView,
 } from "@/lib/actions/recurring";
+import { getCategories, type CategoryStat } from "@/lib/actions/categories";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { RecurringFormModal } from "./_components/recurring-form-modal";
+import { toast } from "sonner";
+import { BUCKET_META } from "@/lib/budget";
 
 export default function RecurringPage() {
   const [rules, setRules] = useState<RecurringRuleView[]>([]);
+  const [categories, setCategories] = useState<CategoryStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // form state
-  const [kind, setKind] = useState<"INCOME" | "EXPENSE">("EXPENSE");
-  const [amount, setAmount] = useState("");
-  const [day, setDay] = useState("1");
-  const [bucket, setBucket] = useState<"NEEDS" | "WANTS" | "SAVINGS">("NEEDS");
-  const [category, setCategory] = useState("");
-  const [note, setNote] = useState("");
+  const load = async () => {
+    try {
+      const [fetchedRules, fetchedCats] = await Promise.all([
+        getRecurringRules(),
+        getCategories(),
+      ]);
+      setRules(fetchedRules);
+      setCategories(fetchedCats);
+    } catch (err) {
+      toast.error("Failed to load recurring data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const load = () => getRecurringRules().then(setRules).finally(() => setLoading(false));
   useEffect(() => {
     load();
   }, []);
 
-  const add = () => {
-    setError(null);
-    const amt = Number(amount);
-    const d = Number(day);
-    if (!(amt > 0)) return setError("Enter a valid amount.");
-    if (!(d >= 1 && d <= 28)) return setError("Day must be 1–28.");
+  const remove = (id: string) => {
     startTransition(async () => {
-      const res = await createRecurringRule({
-        kind,
-        amount: amt,
-        dayOfMonth: d,
-        bucket: kind === "EXPENSE" ? bucket : undefined,
-        category: kind === "EXPENSE" ? category.trim() || undefined : undefined,
-        note: note.trim() || undefined,
-      });
-      if (!res.success) return setError(res.error ?? "Failed to add.");
-      setAmount("");
-      setCategory("");
-      setNote("");
-      await load();
+      const res = await deleteRecurringRule(id);
+      if (res.success) {
+        toast.success("Recurring item deleted");
+        await load();
+      } else {
+        toast.error("Failed to delete item");
+      }
     });
   };
 
-  const remove = (id: string) => {
-    startTransition(async () => {
-      await deleteRecurringRule(id);
-      await load();
-    });
-  };
+  const incomeRules = rules.filter((r) => r.kind === "INCOME");
+  const expenseRules = rules.filter((r) => r.kind === "EXPENSE");
 
   return (
     <ContentLayout title="Recurring">
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Add a recurring item</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={kind} onValueChange={(v) => setKind(v as "INCOME" | "EXPENSE")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="EXPENSE">Expense</SelectItem>
-                    <SelectItem value="INCOME">Income</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="8000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="day">Day of month (1–28)</Label>
-                <Input
-                  id="day"
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={day}
-                  onChange={(e) => setDay(e.target.value)}
-                />
-              </div>
-              {kind === "EXPENSE" && (
-                <div className="space-y-2">
-                  <Label>Bucket</Label>
-                  <Select value={bucket} onValueChange={(v) => setBucket(v as typeof bucket)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NEEDS">Needs</SelectItem>
-                      <SelectItem value="WANTS">Wants</SelectItem>
-                      <SelectItem value="SAVINGS">Savings</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {kind === "EXPENSE" && (
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category (optional)</Label>
-                  <Input
-                    id="category"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Rent"
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="note">Note (optional)</Label>
-                <Input
-                  id="note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="rent"
-                />
-              </div>
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button onClick={add} disabled={pending}>
-              <Plus className="mr-2 size-4" /> Add recurring
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pt-4 sm:pt-0 pl-4 sm:pl-0 pr-4 sm:pr-0">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Recurring Items</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage your monthly fixed incomes and subscriptions.
+          </p>
+        </div>
+        {!loading && (
+          <RecurringFormModal categories={categories} onSaved={load} />
+        )}
+      </div>
 
+      <div className="grid gap-6 md:grid-cols-2 p-4 sm:p-0">
+        {/* Income Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Your recurring items</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span>💰</span> Incomes
+            </CardTitle>
+            <CardDescription>Auto-logged each month</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : rules.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                None yet. Add one above, or tell the bot &quot;rent 8000 on 1st every month&quot;.
-              </p>
+            ) : incomeRules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-lg border border-dashed">
+                <RefreshCw className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground max-w-[200px]">
+                  No recurring incomes yet. Add your salary!
+                </p>
+              </div>
             ) : (
-              <ul className="divide-y">
-                {rules.map((r) => (
-                  <li key={r.id} className="flex items-center justify-between py-3">
+              <ul className="divide-y border rounded-lg">
+                {incomeRules.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
-                      <RefreshCw className="size-4 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">
-                          {r.kind === "INCOME" ? "Income" : r.categoryName ?? r.note ?? "Expense"}
-                          {" · "}₹{r.amount.toLocaleString("en-IN")}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {r.note || "Income"}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
                           Day {r.dayOfMonth}
-                          {r.bucket ? ` · ${r.bucket[0]}${r.bucket.slice(1).toLowerCase()}` : ""}
-                        </div>
+                        </span>
                       </div>
-                      <Badge variant="outline">{r.kind.toLowerCase()}</Badge>
                     </div>
-                    <ConfirmDialog
-                      title="Delete this recurring item?"
-                      description="It will stop auto-posting each month. This can't be undone."
-                      onConfirm={() => remove(r.id)}
-                      trigger={
-                        <Button variant="ghost" size="icon" disabled={pending}>
-                          <Trash2 className="size-4" />
-                        </Button>
-                      }
-                    />
+                    <div className="flex items-center gap-4">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-500">
+                        +₹{r.amount.toLocaleString("en-IN")}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <RecurringFormModal
+                          rule={r}
+                          categories={categories}
+                          onSaved={load}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          }
+                        />
+                        <ConfirmDialog
+                          title="Delete this recurring income?"
+                          description="It will stop auto-posting each month. Past logs remain. This can't be undone."
+                          onConfirm={() => remove(r.id)}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Expenses Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span>💳</span> Expenses
+            </CardTitle>
+            <CardDescription>Auto-logged each month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : expenseRules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-lg border border-dashed">
+                <RefreshCw className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground max-w-[200px]">
+                  No recurring expenses yet. Add your rent or subscriptions!
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y border rounded-lg">
+                {expenseRules.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {r.categoryName || r.note || "Expense"}
+                          </span>
+                          {r.bucket && BUCKET_META[r.bucket] && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
+                              {BUCKET_META[r.bucket].emoji} {BUCKET_META[r.bucket].label}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          Day {r.dayOfMonth} {r.note && r.categoryName ? `· ${r.note}` : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span className="font-medium text-foreground">
+                        ₹{r.amount.toLocaleString("en-IN")}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <RecurringFormModal
+                          rule={r}
+                          categories={categories}
+                          onSaved={load}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          }
+                        />
+                        <ConfirmDialog
+                          title="Delete this recurring expense?"
+                          description="It will stop auto-posting each month. Past logs remain. This can't be undone."
+                          onConfirm={() => remove(r.id)}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
