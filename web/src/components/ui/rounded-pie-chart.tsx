@@ -1,6 +1,6 @@
 "use client";
 
-import { LabelList, Pie, PieChart } from "recharts";
+import { Pie, PieChart } from "recharts";
 
 import {
   Card,
@@ -84,13 +84,6 @@ export function RoundedPieChart({
                 cornerRadius={8}
                 paddingAngle={4}
               >
-                <LabelList
-                  dataKey="browser"
-                  className="fill-background"
-                  stroke="none"
-                  fontSize={12}
-                  formatter={(value: string | number) => config[value as string]?.label}
-                />
               </Pie>
             </PieChart>
           </ChartContainer>

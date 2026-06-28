@@ -15,6 +15,7 @@ export type RecurringRuleView = {
   amount: number;
   dayOfMonth: number;
   bucket: Bucket | null;
+  categoryId: string | null;
   categoryName: string | null;
   note: string | null;
 };
@@ -35,6 +36,7 @@ export async function getRecurringRules(): Promise<RecurringRuleView[]> {
     amount: Number(r.amount),
     dayOfMonth: r.dayOfMonth,
     bucket: r.bucket,
+    categoryId: r.categoryId,
     categoryName: r.category?.name ?? null,
     note: r.note,
   }));
@@ -61,22 +63,13 @@ export async function createRecurringRule(
 
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
-    if (data.category) {
-      // Find-or-create the category (system categories have userId null).
-      const existing = await prisma.category.findFirst({
-        where: {
-          name: { equals: data.category, mode: "insensitive" },
-          OR: [{ userId: null }, { userId }],
-        },
+    if (data.categoryId) {
+      const existing = await prisma.category.findUnique({
+        where: { id: data.categoryId },
       });
       if (existing) {
         categoryId = existing.id;
         bucket = existing.bucket;
-      } else {
-        const created = await prisma.category.create({
-          data: { userId, name: data.category, bucket },
-        });
-        categoryId = created.id;
       }
     }
   }
@@ -108,5 +101,55 @@ export async function deleteRecurringRule(
     where: { id, userId: session.user.id },
   });
   revalidatePath("/dashboard/recurring");
+  return { success: true };
+}
+
+export async function updateRecurringRule(
+  id: string,
+  input: RecurringRuleInput,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const userId = session.user.id;
+
+  const parsed = recurringRuleSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
+  }
+  const data = parsed.data;
+
+  let bucket: Bucket | null = null;
+  let categoryId: string | null = null;
+
+  if (data.kind === "EXPENSE") {
+    bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
+    if (data.categoryId) {
+      const existing = await prisma.category.findUnique({
+        where: { id: data.categoryId },
+      });
+      if (existing) {
+        categoryId = existing.id;
+        bucket = existing.bucket;
+      }
+    }
+  }
+
+  await prisma.recurringRule.updateMany({
+    where: { id, userId },
+    data: {
+      kind: data.kind,
+      amount: data.amount,
+      dayOfMonth: data.dayOfMonth,
+      bucket,
+      categoryId,
+      note: data.note ?? null,
+    },
+  });
+
+  revalidatePath("/dashboard/recurring");
+  revalidatePath("/dashboard");
   return { success: true };
 }
