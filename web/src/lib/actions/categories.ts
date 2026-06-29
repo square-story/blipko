@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Bucket } from "@prisma/client";
-import { currentBudgetPeriod } from "@/lib/budget";
+import { currentBudgetPeriod, previousCycles, median } from "@/lib/budget";
 
 export type CategoryStat = {
   id: string;
@@ -100,6 +100,94 @@ export async function getCategories(): Promise<CategoryStat[]> {
     budgetLocked: c.budgetLocked,
     spend: spendById.get(c.id) ?? 0,
   }));
+}
+
+export type CategorySuggestion = {
+  categoryId: string;
+  amount: number | null;
+  basis: "recurring" | "history" | "new";
+};
+
+const roundTo50 = (n: number) => Math.round(n / 50) * 50;
+
+// Data-driven per-category budget suggestions:
+// - "recurring": exact sum of the category's active recurring expenses (fixed).
+// - "history": median spend over the last 3 complete cycles, rounded (robust to
+//   lumpy months); only when > 0.
+// - "new": no signal → no suggestion.
+export async function getCategorySuggestions(): Promise<CategorySuggestion[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+  const userId = session.user.id;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { payday: true },
+  });
+  const payday = user?.payday ?? 1;
+
+  const [cats, rules] = await Promise.all([
+    prisma.category.findMany({
+      where: { userId, isGroup: false },
+      select: { id: true },
+    }),
+    prisma.recurringRule.findMany({
+      where: {
+        userId,
+        isActive: true,
+        kind: "EXPENSE",
+        categoryId: { not: null },
+      },
+      select: { categoryId: true, amount: true },
+    }),
+  ]);
+
+  // Fixed: sum of active recurring expenses per category.
+  const fixedById = new Map<string, number>();
+  for (const r of rules) {
+    if (!r.categoryId) continue;
+    fixedById.set(
+      r.categoryId,
+      (fixedById.get(r.categoryId) ?? 0) + Number(r.amount),
+    );
+  }
+
+  // History: per-category totals across the last 3 complete cycles.
+  const cycles = previousCycles(payday, 3); // newest first
+  const oldest = cycles[cycles.length - 1]?.start;
+  const newestEnd = cycles[0]?.end; // == start of the current (partial) cycle
+  const perCatPerCycle = new Map<string, number[]>();
+  if (oldest && newestEnd) {
+    const expenses = await prisma.expense.findMany({
+      where: {
+        userId,
+        isDeleted: false,
+        categoryId: { not: null },
+        date: { gte: oldest, lt: newestEnd },
+      },
+      select: { categoryId: true, amount: true, date: true },
+    });
+    for (const e of expenses) {
+      if (!e.categoryId) continue;
+      const idx = cycles.findIndex((c) => e.date >= c.start && e.date < c.end);
+      if (idx === -1) continue;
+      const arr =
+        perCatPerCycle.get(e.categoryId) ?? new Array(cycles.length).fill(0);
+      arr[idx] += Number(e.amount);
+      perCatPerCycle.set(e.categoryId, arr);
+    }
+  }
+
+  return cats.map((c): CategorySuggestion => {
+    const fixed = fixedById.get(c.id);
+    if (fixed && fixed > 0)
+      return { categoryId: c.id, amount: fixed, basis: "recurring" };
+    const m = median(
+      perCatPerCycle.get(c.id) ?? new Array(cycles.length).fill(0),
+    );
+    if (m > 0)
+      return { categoryId: c.id, amount: roundTo50(m), basis: "history" };
+    return { categoryId: c.id, amount: null, basis: "new" };
+  });
 }
 
 export async function createCategory(

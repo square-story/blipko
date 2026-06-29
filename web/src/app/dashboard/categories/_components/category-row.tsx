@@ -11,11 +11,15 @@ import { Pencil, Trash2, Lock } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { categoryPacing } from "@/lib/budget";
-import type { CategoryStat } from "@/lib/actions/categories";
+import type {
+  CategoryStat,
+  CategorySuggestion,
+} from "@/lib/actions/categories";
 
 interface CategoryRowProps {
   cat: CategoryStat;
   groupName: string | null;
+  suggestion: CategorySuggestion | null;
   money: (n: number) => string;
   day: number;
   daysInPeriod: number;
@@ -23,11 +27,19 @@ interface CategoryRowProps {
   isPending: boolean;
   onEdit: (cat: CategoryStat) => void;
   onDelete: (cat: CategoryStat) => void;
+  onApplyBudget: (id: string, amount: number, locked: boolean) => void;
 }
+
+const BASIS_LABEL: Record<CategorySuggestion["basis"], string> = {
+  recurring: "fixed",
+  history: "3-mo median",
+  new: "",
+};
 
 export const CategoryRow = ({
   cat,
   groupName,
+  suggestion,
   money,
   day,
   daysInPeriod,
@@ -35,8 +47,16 @@ export const CategoryRow = ({
   isPending,
   onEdit,
   onDelete,
+  onApplyBudget,
 }: CategoryRowProps) => {
   const hasLimit = cat.monthlyBudget != null;
+  // Show a suggestion only when it differs from the current limit and isn't pinned.
+  const suggest =
+    !cat.budgetLocked &&
+    suggestion?.amount != null &&
+    suggestion.amount !== cat.monthlyBudget
+      ? suggestion
+      : null;
   const left = hasLimit ? cat.monthlyBudget! - cat.spend : null;
   const pace = categoryPacing({
     spent: cat.spend,
@@ -158,6 +178,26 @@ export const CategoryRow = ({
             </>
           )}
         </p>
+        {suggest && (
+          <p className="text-xs tabular-nums text-muted-foreground">
+            Suggested {money(suggest.amount!)}
+            {BASIS_LABEL[suggest.basis] && ` · ${BASIS_LABEL[suggest.basis]}`} ·{" "}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                onApplyBudget(
+                  cat.id,
+                  suggest.amount!,
+                  suggest.basis === "recurring",
+                )
+              }
+              className="font-medium text-primary hover:underline disabled:opacity-50"
+            >
+              Apply
+            </button>
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <Button

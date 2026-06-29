@@ -48,6 +48,35 @@ export function currentBudgetPeriod(
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// The `n` most recent COMPLETE budget cycles (excludes the current partial one),
+// newest first. Used to estimate a category's typical monthly spend.
+export function previousCycles(
+  payday: number,
+  n: number,
+  now: Date = new Date(),
+): { start: Date; end: Date }[] {
+  const out: { start: Date; end: Date }[] = [];
+  let ref = currentBudgetPeriod(payday, now).start; // start of the current cycle
+  for (let i = 0; i < n; i++) {
+    const prev = currentBudgetPeriod(
+      payday,
+      new Date(ref.getTime() - MS_PER_DAY),
+    );
+    out.push(prev);
+    ref = prev.start;
+  }
+  return out;
+}
+
+// Median of a list (0 for empty). Robust central estimate — unlike the mean it
+// isn't dragged up by one lumpy month.
+export function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
 export interface PeriodDayInfo {
   day: number; // 1-based day within the cycle
   daysInPeriod: number;
@@ -105,53 +134,6 @@ export function categoryPacing(args: {
     // the projection yet.
     reliable: day >= 3,
   };
-}
-
-// Distribute `budget` across categories weighted by recent spend; fall back to
-// current limits, then an even split, when there's nothing to weight by.
-// Pinned (budgetLocked) categories keep their amount and are excluded — only the
-// remainder (budget − Σ pinned) is spread across the un-pinned ones, and only
-// they are returned. Integer amounts that sum to the remainder exactly.
-export function weightedBudgets(
-  cats: {
-    id: string;
-    spend: number;
-    monthlyBudget: number | null;
-    budgetLocked?: boolean;
-  }[],
-  budget: number,
-): { id: string; monthlyBudget: number }[] {
-  const unlocked = cats.filter((c) => !c.budgetLocked);
-  const n = unlocked.length;
-  if (n === 0 || budget <= 0) return [];
-  const lockedTotal = cats
-    .filter((c) => c.budgetLocked)
-    .reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
-  const target = Math.max(0, budget - lockedTotal); // spread over un-pinned
-  if (target <= 0) return unlocked.map((c) => ({ id: c.id, monthlyBudget: 0 }));
-  // Floor so a never-used category never lands at ₹0; the rest is by weight.
-  const minShare = Math.floor((target / n) * 0.1);
-  const pool = target - minShare * n;
-  const totalSpend = unlocked.reduce((s, c) => s + Math.max(0, c.spend), 0);
-  const totalLimit = unlocked.reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
-  const weightOf = (c: { spend: number; monthlyBudget: number | null }) =>
-    totalSpend > 0
-      ? Math.max(0, c.spend)
-      : totalLimit > 0
-        ? (c.monthlyBudget ?? 0)
-        : 1; // even
-  const totalWeight = unlocked.reduce((s, c) => s + weightOf(c), 0);
-  const raw = unlocked.map((c) => ({
-    id: c.id,
-    amount: minShare + Math.floor((pool * weightOf(c)) / totalWeight),
-    w: weightOf(c),
-  }));
-  let remainder = target - raw.reduce((s, r) => s + r.amount, 0);
-  // Hand the rounding leftover to the largest-weight categories.
-  raw.sort((a, b) => b.w - a.w);
-  for (let i = 0; remainder > 0; i = (i + 1) % n, remainder--)
-    raw[i].amount += 1;
-  return raw.map((r) => ({ id: r.id, monthlyBudget: r.amount }));
 }
 
 export function bucketPct(split: BudgetSplit, bucket: Bucket): number {
