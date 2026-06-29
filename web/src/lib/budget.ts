@@ -116,6 +116,10 @@ export function weightedBudgets(
 ): { id: string; monthlyBudget: number }[] {
   const n = cats.length;
   if (n === 0 || budget <= 0) return [];
+  // Floor so a never-used category never lands at ₹0 (which would instantly read
+  // "over limit"); the rest of the budget is distributed by weight on top.
+  const minShare = Math.floor((budget / n) * 0.1);
+  const pool = budget - minShare * n;
   const totalSpend = cats.reduce((s, c) => s + Math.max(0, c.spend), 0);
   const totalLimit = cats.reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
   const weightOf = (c: { spend: number; monthlyBudget: number | null }) =>
@@ -127,7 +131,7 @@ export function weightedBudgets(
   const totalWeight = cats.reduce((s, c) => s + weightOf(c), 0);
   const raw = cats.map((c) => ({
     id: c.id,
-    amount: Math.floor((budget * weightOf(c)) / totalWeight),
+    amount: minShare + Math.floor((pool * weightOf(c)) / totalWeight),
     w: weightOf(c),
   }));
   let remainder = budget - raw.reduce((s, r) => s + r.amount, 0);

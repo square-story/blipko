@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 import { playSound } from "@/lib/sound";
 
 interface ConfirmDialogProps {
@@ -19,6 +20,8 @@ interface ConfirmDialogProps {
   title?: string;
   description?: string;
   confirmLabel?: string;
+  // Red confirm button (deletes etc.); pass false for a neutral action.
+  destructive?: boolean;
   // Uncontrolled: render this element as the trigger.
   trigger?: React.ReactNode;
   // Controlled: drive open state from the parent (e.g. a toolbar button).
@@ -26,13 +29,14 @@ interface ConfirmDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-// Confirmation gate for destructive actions. Pass either a `trigger` element or
-// controlled `open`/`onOpenChange`. The confirm button is styled destructive.
+// Confirmation gate. Pass either a `trigger` element or controlled
+// `open`/`onOpenChange`. Destructive by default (red confirm button).
 export function ConfirmDialog({
   onConfirm,
   title = "Are you sure?",
   description = "This action cannot be undone.",
   confirmLabel = "Delete",
+  destructive = true,
   trigger,
   open,
   onOpenChange,
@@ -54,7 +58,9 @@ export function ConfirmDialog({
               playSound("confirm");
               onConfirm();
             }}
-            className="bg-red-600 text-white hover:bg-red-700"
+            className={cn(
+              destructive && "bg-red-600 text-white hover:bg-red-700",
+            )}
           >
             {confirmLabel}
           </AlertDialogAction>

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
-import { BUCKET_META, type CategoryPacing } from "@/lib/budget";
+import { BUCKET_META } from "@/lib/budget";
 import { CategoryRow } from "./category-row";
 import type { CategoryStat } from "@/lib/actions/categories";
 import type { Bucket } from "@prisma/client";
@@ -135,6 +135,7 @@ export const BucketSection = ({
             title={`Auto-balance ${meta.label}?`}
             description={`Distribute ${money(budget)} across ${meta.label} weighted by your recent spending. This replaces their current limits.`}
             confirmLabel="Auto-balance"
+            destructive={false}
             onConfirm={() => onAutoBalance(categories, budget)}
             trigger={
               <Button
