@@ -11,17 +11,15 @@ import {
 } from "@/components/ui/accordion";
 import {
   getCategories,
+  getCategorySuggestions,
   deleteCategory,
+  setCategoryBudget,
+  setCategoryBudgets,
   type CategoryStat,
+  type CategorySuggestion,
 } from "@/lib/actions/categories";
 import { getBudgetOverview } from "@/lib/actions/budget";
-import {
-  BUCKETS,
-  BUCKET_META,
-  formatMoney,
-  weightedBudgets,
-} from "@/lib/budget";
-import { setCategoryBudgets } from "@/lib/actions/categories";
+import { BUCKETS, BUCKET_META, formatMoney } from "@/lib/budget";
 import { toast } from "@/lib/toast";
 import { AddCategoryForm } from "./_components/add-category-form";
 import { BucketSection } from "./_components/bucket-section";
@@ -32,17 +30,20 @@ type Overview = Awaited<ReturnType<typeof getBudgetOverview>>;
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<CategoryStat[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState<CategoryStat | null>(null);
 
   const load = () =>
     startTransition(async () => {
-      const [cats, ov] = await Promise.all([
+      const [cats, ov, sugg] = await Promise.all([
         getCategories(),
         getBudgetOverview(),
+        getCategorySuggestions(),
       ]);
       setCategories(cats);
       setOverview(ov);
+      setSuggestions(sugg);
     });
 
   useEffect(() => {
@@ -69,6 +70,11 @@ export default function CategoriesPage() {
     [categories],
   );
 
+  const suggestionById = useMemo(
+    () => new Map(suggestions.map((s) => [s.categoryId, s])),
+    [suggestions],
+  );
+
   const handleDelete = (cat: CategoryStat) =>
     startTransition(async () => {
       const res = await deleteCategory(cat.id);
@@ -80,16 +86,40 @@ export default function CategoriesPage() {
       load();
     });
 
-  const autoBalance = (cats: CategoryStat[], budget: number) =>
+  // Apply one category's suggested budget. Fixed (recurring) suggestions are
+  // pinned; history suggestions are a soft accepted estimate.
+  const applyBudget = (id: string, amount: number, locked: boolean) =>
     startTransition(async () => {
-      const updates = weightedBudgets(cats, budget);
-      if (updates.length === 0) return;
-      const res = await setCategoryBudgets(updates);
+      const res = await setCategoryBudget(id, amount, locked);
       if (!res.success) {
-        toast.error(res.message ?? "Failed to auto-balance");
+        toast.error(res.message ?? "Failed to apply");
         return;
       }
-      toast.success("Budgets auto-balanced");
+      toast.success("Budget applied");
+      load();
+    });
+
+  // Apply every non-pinned suggestion in a bucket at once (no forced bucket sum).
+  const applyAll = (cats: CategoryStat[]) =>
+    startTransition(async () => {
+      const updates = cats
+        .filter((c) => !c.budgetLocked)
+        .map((c) => ({ c, amount: suggestionById.get(c.id)?.amount }))
+        .filter(
+          (x): x is { c: CategoryStat; amount: number } =>
+            x.amount != null && x.amount !== x.c.monthlyBudget,
+        )
+        .map((x) => ({ id: x.c.id, monthlyBudget: x.amount }));
+      if (updates.length === 0) {
+        toast("No new suggestions to apply");
+        return;
+      }
+      const res = await setCategoryBudgets(updates);
+      if (!res.success) {
+        toast.error(res.message ?? "Failed to apply suggestions");
+        return;
+      }
+      toast.success("Suggested budgets applied");
       load();
     });
 
@@ -153,6 +183,7 @@ export default function CategoriesPage() {
                       }}
                       categories={inBucket}
                       groupNameById={groupNameById}
+                      suggestionById={suggestionById}
                       money={money}
                       day={day}
                       daysInPeriod={daysInPeriod}
@@ -160,7 +191,8 @@ export default function CategoriesPage() {
                       isPending={isPending}
                       onEdit={setEditing}
                       onDelete={handleDelete}
-                      onAutoBalance={autoBalance}
+                      onApplyBudget={applyBudget}
+                      onApplyAll={applyAll}
                     />
                   </AccordionContent>
                 </AccordionItem>

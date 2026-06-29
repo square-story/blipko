@@ -136,53 +136,6 @@ export function categoryPacing(args: {
   };
 }
 
-// Distribute `budget` across categories weighted by recent spend; fall back to
-// current limits, then an even split, when there's nothing to weight by.
-// Pinned (budgetLocked) categories keep their amount and are excluded — only the
-// remainder (budget − Σ pinned) is spread across the un-pinned ones, and only
-// they are returned. Integer amounts that sum to the remainder exactly.
-export function weightedBudgets(
-  cats: {
-    id: string;
-    spend: number;
-    monthlyBudget: number | null;
-    budgetLocked?: boolean;
-  }[],
-  budget: number,
-): { id: string; monthlyBudget: number }[] {
-  const unlocked = cats.filter((c) => !c.budgetLocked);
-  const n = unlocked.length;
-  if (n === 0 || budget <= 0) return [];
-  const lockedTotal = cats
-    .filter((c) => c.budgetLocked)
-    .reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
-  const target = Math.max(0, budget - lockedTotal); // spread over un-pinned
-  if (target <= 0) return unlocked.map((c) => ({ id: c.id, monthlyBudget: 0 }));
-  // Floor so a never-used category never lands at ₹0; the rest is by weight.
-  const minShare = Math.floor((target / n) * 0.1);
-  const pool = target - minShare * n;
-  const totalSpend = unlocked.reduce((s, c) => s + Math.max(0, c.spend), 0);
-  const totalLimit = unlocked.reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
-  const weightOf = (c: { spend: number; monthlyBudget: number | null }) =>
-    totalSpend > 0
-      ? Math.max(0, c.spend)
-      : totalLimit > 0
-        ? (c.monthlyBudget ?? 0)
-        : 1; // even
-  const totalWeight = unlocked.reduce((s, c) => s + weightOf(c), 0);
-  const raw = unlocked.map((c) => ({
-    id: c.id,
-    amount: minShare + Math.floor((pool * weightOf(c)) / totalWeight),
-    w: weightOf(c),
-  }));
-  let remainder = target - raw.reduce((s, r) => s + r.amount, 0);
-  // Hand the rounding leftover to the largest-weight categories.
-  raw.sort((a, b) => b.w - a.w);
-  for (let i = 0; remainder > 0; i = (i + 1) % n, remainder--)
-    raw[i].amount += 1;
-  return raw.map((r) => ({ id: r.id, monthlyBudget: r.amount }));
-}
-
 export function bucketPct(split: BudgetSplit, bucket: Bucket): number {
   switch (bucket) {
     case "NEEDS":

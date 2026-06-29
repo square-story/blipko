@@ -5,7 +5,10 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { BUCKET_META } from "@/lib/budget";
 import { CategoryRow } from "./category-row";
-import type { CategoryStat } from "@/lib/actions/categories";
+import type {
+  CategoryStat,
+  CategorySuggestion,
+} from "@/lib/actions/categories";
 import type { Bucket } from "@prisma/client";
 
 interface BucketOverview {
@@ -20,6 +23,7 @@ interface BucketSectionProps {
   overview: BucketOverview;
   categories: CategoryStat[];
   groupNameById: Map<string, string>;
+  suggestionById: Map<string, CategorySuggestion>;
   money: (n: number) => string;
   day: number;
   daysInPeriod: number;
@@ -27,7 +31,8 @@ interface BucketSectionProps {
   isPending: boolean;
   onEdit: (cat: CategoryStat) => void;
   onDelete: (cat: CategoryStat) => void;
-  onAutoBalance: (cats: CategoryStat[], budget: number) => void;
+  onApplyBudget: (id: string, amount: number, locked: boolean) => void;
+  onApplyAll: (cats: CategoryStat[]) => void;
 }
 
 export const BucketSection = ({
@@ -35,6 +40,7 @@ export const BucketSection = ({
   overview,
   categories,
   groupNameById,
+  suggestionById,
   money,
   day,
   daysInPeriod,
@@ -42,7 +48,8 @@ export const BucketSection = ({
   isPending,
   onEdit,
   onDelete,
-  onAutoBalance,
+  onApplyBudget,
+  onApplyAll,
 }: BucketSectionProps) => {
   const meta = BUCKET_META[bucket];
   const { budget, spent, remaining, pct } = overview;
@@ -59,6 +66,13 @@ export const BucketSection = ({
   // system-category spend) — surfaced so the rows reconcile with the bucket total.
   const shownSpend = categories.reduce((s, c) => s + c.spend, 0);
   const uncategorized = Math.max(0, spent - shownSpend);
+  // Un-pinned categories whose data-driven suggestion differs from the current
+  // limit — these are what "Apply suggested" would set.
+  const applicable = categories.filter((c) => {
+    if (c.budgetLocked) return false;
+    const s = suggestionById.get(c.id);
+    return s?.amount != null && s.amount !== c.monthlyBudget;
+  });
 
   return (
     <div>
@@ -108,7 +122,7 @@ export const BucketSection = ({
         </p>
       </div>
 
-      {/* Allocation bar + auto-balance */}
+      {/* Allocation (informational) + apply data-driven suggestions */}
       {categories.length > 0 && budget > 0 && (
         <div className="flex items-center justify-between gap-2 border-t pt-2 pb-3">
           <p className="text-xs tabular-nums text-muted-foreground">
@@ -119,23 +133,25 @@ export const BucketSection = ({
                 : `${money(unallocated)} unallocated`}
             </span>
           </p>
-          <ConfirmDialog
-            title={`Auto-balance ${meta.label}?`}
-            description={`Distribute ${money(budget)} across ${meta.label} weighted by your recent spending. This replaces their current limits.`}
-            confirmLabel="Auto-balance"
-            destructive={false}
-            onConfirm={() => onAutoBalance(categories, budget)}
-            trigger={
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 shrink-0 text-xs"
-                disabled={isPending}
-              >
-                Auto-balance
-              </Button>
-            }
-          />
+          {applicable.length > 0 && (
+            <ConfirmDialog
+              title={`Apply suggested budgets to ${meta.label}?`}
+              description={`Set ${applicable.length} categor${applicable.length === 1 ? "y" : "ies"} to budgets suggested from your recurring expenses and recent history. Pinned categories are left untouched.`}
+              confirmLabel="Apply suggested"
+              destructive={false}
+              onConfirm={() => onApplyAll(categories)}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 text-xs"
+                  disabled={isPending}
+                >
+                  Apply suggested
+                </Button>
+              }
+            />
+          )}
         </div>
       )}
 
@@ -156,6 +172,7 @@ export const BucketSection = ({
                   ? (groupNameById.get(cat.parentId) ?? null)
                   : null
               }
+              suggestion={suggestionById.get(cat.id) ?? null}
               money={money}
               day={day}
               daysInPeriod={daysInPeriod}
@@ -163,6 +180,7 @@ export const BucketSection = ({
               isPending={isPending}
               onEdit={onEdit}
               onDelete={onDelete}
+              onApplyBudget={onApplyBudget}
             />
           ))}
         </div>
