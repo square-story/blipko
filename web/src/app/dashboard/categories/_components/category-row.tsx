@@ -50,6 +50,8 @@ export const CategoryRow = ({
   // never shows the over-limit/over-pace warnings used for Needs/Wants.
   const isSavings = cat.bucket === "SAVINGS";
   const savedAll = hasLimit && cat.spend >= cat.monthlyBudget!;
+  // Only trust the "over pace" projection once a few days into the cycle.
+  const overPace = pace.overPace && pace.reliable;
 
   const pacingLabel = hasLimit
     ? isSavings
@@ -58,7 +60,7 @@ export const CategoryRow = ({
         : "saving"
       : pace.overSpent
         ? "over limit"
-        : pace.overPace
+        : overPace
           ? "over pace"
           : "on track"
     : null;
@@ -68,7 +70,7 @@ export const CategoryRow = ({
       ? "outline"
       : pace.overSpent
         ? "destructive"
-        : pace.overPace
+        : overPace
           ? "secondary"
           : "outline"
     : null;
@@ -80,7 +82,7 @@ export const CategoryRow = ({
         : "text-muted-foreground"
       : pace.overSpent
         ? "text-red-600"
-        : pace.overPace
+        : overPace
           ? "text-amber-600"
           : "text-emerald-600"
     : null;
@@ -117,7 +119,7 @@ export const CategoryRow = ({
                         : `Save ${money(pace.safeDaily)}/day to reach ${money(cat.monthlyBudget!)}`
                       : pace.overSpent
                         ? "Already over limit"
-                        : pace.overPace
+                        : overPace
                           ? `Projected ${money(pace.projectedMonth)} — safe ${money(pace.safeDaily)}/day`
                           : `On track — safe ${money(pace.safeDaily)}/day`}
                   </p>

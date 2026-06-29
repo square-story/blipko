@@ -79,6 +79,7 @@ export interface CategoryPacing {
   safeDaily: number; // ₹/day left to stay under the limit (0 if no limit)
   overPace: boolean; // projected to exceed the limit
   overSpent: boolean; // already over the limit
+  reliable: boolean; // enough of the cycle elapsed for the projection to mean anything
 }
 
 // Burn-rate guidance for one category from spend-so-far + where we are in the
@@ -100,6 +101,9 @@ export function categoryPacing(args: {
     safeDaily: hasLimit ? Math.max(0, limit - spent) / remainingDays : 0,
     overPace: hasLimit ? dailyRate * daysInPeriod > limit : false,
     overSpent: hasLimit ? spent > limit : false,
+    // First couple of days, one expense skews the run-rate wildly — don't trust
+    // the projection yet.
+    reliable: day >= 3,
   };
 }
 
