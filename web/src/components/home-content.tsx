@@ -8,8 +8,6 @@ import { SignInButton } from "./sign-in-button"
 import { LineShadowText } from "./ui/line-shadow-text";
 import { WatchDemoButton } from "./watch-demo-button";
 import Features from "./features-4";
-import { SplitVisual } from "./split-visual";
-import { ChatCaptureDemo } from "./chat-capture-demo";
 import Link from "next/link";
 import { Send } from "lucide-react";
 import type { Session } from "next-auth";
@@ -46,16 +44,6 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 >
                     <EyeTrackingCharacter size={200} />
                 </motion.div>
-
-                {/* Malayalam accent line */}
-                <motion.p
-                    variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
-                    transition={{ duration: 0.8 }}
-                    className="text-lg md:text-xl text-muted-foreground font-medium"
-                    lang="ml"
-                >
-                    ശമ്പളം എവിടെ പോകുന്നു?
-                </motion.p>
 
                 <motion.div
                     variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
@@ -127,11 +115,6 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 </motion.div>
             </motion.div>
 
-            {/* 50/30/20 split visual */}
-            <SplitVisual />
-
-            {/* Chat capture demo */}
-            <ChatCaptureDemo />
 
             {/* Features Grid */}
             <Features />
