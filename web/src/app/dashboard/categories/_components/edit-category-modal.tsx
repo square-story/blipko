@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,21 +41,25 @@ export const EditCategoryModal = ({
   onSaved,
 }: EditCategoryModalProps) => {
   const [isPending, startTransition] = useTransition();
+  const [trackedId, setTrackedId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editBucket, setEditBucket] = useState<Bucket>("NEEDS");
   const [editBudget, setEditBudget] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (category) {
-      setEditName(category.name);
-      setEditBucket(category.bucket);
-      setEditBudget(
-        category.monthlyBudget == null ? "" : String(category.monthlyBudget),
-      );
-      setError("");
-    }
-  }, [category]);
+  // Sync the form when a different category is opened (and reset the tracker on
+  // close). This adjusts state during render on a prop change — the recommended
+  // pattern that avoids a setState-in-effect cascade.
+  if (!category && trackedId !== null) setTrackedId(null);
+  if (category && category.id !== trackedId) {
+    setTrackedId(category.id);
+    setEditName(category.name);
+    setEditBucket(category.bucket);
+    setEditBudget(
+      category.monthlyBudget == null ? "" : String(category.monthlyBudget),
+    );
+    setError("");
+  }
 
   const handleOpenChange = (open: boolean) => {
     if (!open) onClose();
