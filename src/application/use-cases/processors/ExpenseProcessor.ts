@@ -53,13 +53,16 @@ export class ExpenseProcessor implements MessageProcessor {
       return { response, parsed };
     }
 
-    // Resolve category; a known category's bucket is authoritative.
+    // Resolve category; a known category's bucket is authoritative. A group
+    // match still sets the bucket, but the expense never attaches to a group
+    // (only leaf categories hold spend) — expenseFlow leaves it uncategorized.
     const matched = parsed.category
       ? await this.categoryRepository.findByNameForUser(
           user.id,
           parsed.category,
         )
       : null;
+    const leaf = matched && !matched.isGroup ? matched : null;
     const bucket = matched?.bucket ?? parsed.bucket;
 
     const needsConfirm = parsed.confidence < CONFIDENCE_THRESHOLD || !bucket;
@@ -83,8 +86,8 @@ export class ExpenseProcessor implements MessageProcessor {
         rawText: textMessage,
         confidence: parsed.confidence,
         note: parsed.note,
-        categoryId: matched?.id,
-        categoryName: matched?.name ?? parsed.category,
+        categoryId: leaf?.id,
+        categoryName: leaf?.name ?? parsed.category,
       },
     );
     return { response, parsed };
