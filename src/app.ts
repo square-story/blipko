@@ -8,6 +8,7 @@ import {
   telegramWebhookController,
   sendBudgetNudges,
   postRecurringCharges,
+  sendCycleReport,
 } from "./presentation/controllers/TelegramWebhookController";
 import { startScheduler } from "./infrastructure/scheduler";
 import { logger } from "./utils/logger";
@@ -50,7 +51,7 @@ if (process.env.NODE_ENV !== "test") {
         "SARVAM_API_KEY not set — voice transcription disabled; users will be asked to type instead.",
       );
     }
-    startScheduler(sendBudgetNudges, postRecurringCharges);
+    startScheduler(sendBudgetNudges, postRecurringCharges, sendCycleReport);
     telegramWebhookController
       .registerBotCommands()
       .catch((err) => logger.error("registerBotCommands failed", { err }));

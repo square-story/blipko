@@ -22,6 +22,7 @@ import { PrismaConversationRepository } from "../../data/repositories/PrismaConv
 import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeRepository";
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
 import { PostRecurringChargesUseCase } from "../../application/use-cases/PostRecurringCharges";
+import { SendCycleReportUseCase } from "../../application/use-cases/SendCycleReport";
 import { prisma } from "../../data/prisma/client";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { logger } from "../../utils/logger";
@@ -308,4 +309,13 @@ export const postRecurringCharges = new PostRecurringChargesUseCase(
   categoryRepository,
   messageService,
   runInTransaction,
+);
+
+export const sendCycleReport = new SendCycleReportUseCase(
+  userRepository,
+  expenseRepository,
+  budgetConfigRepository,
+  nudgeRepository,
+  incomeRepository,
+  messageService,
 );
