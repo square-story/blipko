@@ -42,6 +42,27 @@ export function currentBudgetPeriod(
   return { start: new Date(y, m - 1, d), end: new Date(y, m, d) };
 }
 
+// The `n` most recent COMPLETE cycles (excludes the current partial one), newest
+// first. Steps back one cycle at a time via currentBudgetPeriod so 28–31-day
+// months are handled correctly. Used for cycle-vs-cycle comparison.
+export function previousCycles(
+  payday: number,
+  n: number,
+  now: Date = new Date(),
+): { start: Date; end: Date }[] {
+  const out: { start: Date; end: Date }[] = [];
+  let ref = currentBudgetPeriod(payday, now).start; // start of the current cycle
+  for (let i = 0; i < n; i++) {
+    const prev = currentBudgetPeriod(
+      payday,
+      new Date(ref.getTime() - 86400000),
+    );
+    out.push(prev);
+    ref = prev.start;
+  }
+  return out;
+}
+
 export function bucketPct(split: BudgetSplit, bucket: Bucket): number {
   switch (bucket) {
     case "NEEDS":
