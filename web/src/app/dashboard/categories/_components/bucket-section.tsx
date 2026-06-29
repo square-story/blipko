@@ -56,6 +56,10 @@ export const BucketSection = ({
   );
   const unallocated = budget - allocated;
   const overAllocated = unallocated < 0;
+  // Spend not attributed to any listed category (uncategorized or hidden
+  // system-category spend) — surfaced so the rows reconcile with the bucket total.
+  const shownSpend = categories.reduce((s, c) => s + c.spend, 0);
+  const uncategorized = Math.max(0, spent - shownSpend);
 
   const groupedCategories = useMemo(() => {
     const map = new Map<string | null, CategoryStat[]>();
@@ -175,6 +179,12 @@ export const BucketSection = ({
             </div>
           ))}
         </div>
+      )}
+
+      {uncategorized > 0 && (
+        <p className="pt-2 text-xs text-muted-foreground tabular-nums">
+          Uncategorized · {money(uncategorized)} {isSavings ? "saved" : "spent"}
+        </p>
       )}
     </div>
   );
