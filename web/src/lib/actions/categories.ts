@@ -105,7 +105,11 @@ export async function getCategories(): Promise<CategoryStat[]> {
 export async function createCategory(
   name: string,
   bucket: Bucket,
-  opts?: { parentId?: string | null; monthlyBudget?: number | null },
+  opts?: {
+    parentId?: string | null;
+    monthlyBudget?: number | null;
+    locked?: boolean;
+  },
 ): Promise<{ success: boolean; message?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
@@ -137,6 +141,7 @@ export async function createCategory(
       userId: session.user.id,
       parentId,
       monthlyBudget: opts?.monthlyBudget ?? null,
+      budgetLocked: opts?.locked ?? false,
     },
   });
 
@@ -147,6 +152,7 @@ export async function createCategory(
 export async function setCategoryBudget(
   id: string,
   monthlyBudget: number | null,
+  locked?: boolean,
 ): Promise<{ success: boolean; message?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
@@ -165,7 +171,10 @@ export async function setCategoryBudget(
 
   await prisma.category.update({
     where: { id },
-    data: { monthlyBudget },
+    data: {
+      monthlyBudget,
+      ...(locked !== undefined ? { budgetLocked: locked } : {}),
+    },
   });
 
   revalidatePath("/dashboard/categories");
