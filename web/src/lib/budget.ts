@@ -48,6 +48,35 @@ export function currentBudgetPeriod(
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// The `n` most recent COMPLETE budget cycles (excludes the current partial one),
+// newest first. Used to estimate a category's typical monthly spend.
+export function previousCycles(
+  payday: number,
+  n: number,
+  now: Date = new Date(),
+): { start: Date; end: Date }[] {
+  const out: { start: Date; end: Date }[] = [];
+  let ref = currentBudgetPeriod(payday, now).start; // start of the current cycle
+  for (let i = 0; i < n; i++) {
+    const prev = currentBudgetPeriod(
+      payday,
+      new Date(ref.getTime() - MS_PER_DAY),
+    );
+    out.push(prev);
+    ref = prev.start;
+  }
+  return out;
+}
+
+// Median of a list (0 for empty). Robust central estimate — unlike the mean it
+// isn't dragged up by one lumpy month.
+export function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
 export interface PeriodDayInfo {
   day: number; // 1-based day within the cycle
   daysInPeriod: number;
