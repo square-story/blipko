@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -35,17 +36,30 @@ export const AddCategoryForm = ({ onAdded }: AddCategoryFormProps) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [bucket, setBucket] = useState<Bucket>("NEEDS");
+  const [fixed, setFixed] = useState(false);
+  const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
 
   const reset = () => {
     setName("");
     setBucket("NEEDS");
+    setFixed(false);
+    setAmount("");
     setError("");
   };
 
   const handleAdd = () =>
     startTransition(async () => {
-      const res = await createCategory(name, bucket);
+      const amt = Number(amount);
+      if (fixed && (!amount.trim() || !Number.isFinite(amt) || amt < 0)) {
+        setError("Enter a valid monthly amount");
+        return;
+      }
+      const res = await createCategory(
+        name,
+        bucket,
+        fixed ? { monthlyBudget: amt, locked: true } : undefined,
+      );
       if (!res.success) {
         toast.error(res.message ?? "Failed to add category");
         setError(res.message ?? "Failed to add");
@@ -112,6 +126,39 @@ export const AddCategoryForm = ({ onAdded }: AddCategoryFormProps) => {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="fixed-toggle">Set a fixed monthly limit</Label>
+              <p className="text-xs text-muted-foreground">
+                Pin an amount Auto-balance won&apos;t change.
+              </p>
+            </div>
+            <Switch
+              id="fixed-toggle"
+              checked={fixed}
+              onCheckedChange={(v) => {
+                setFixed(v);
+                setError("");
+              }}
+            />
+          </div>
+          {fixed && (
+            <div className="space-y-1">
+              <Label htmlFor="fixed-amount">Monthly limit</Label>
+              <Input
+                id="fixed-amount"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="2000"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setError("");
+                }}
+              />
+            </div>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <ResponsiveModalFooter>
