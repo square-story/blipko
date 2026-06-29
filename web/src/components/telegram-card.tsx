@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateTelegramLinkToken, getTelegramConnectionStatus } from "@/lib/actions/user";
+import { generateTelegramLinkToken, getTelegramConnectionStatus, unlinkTelegram } from "@/lib/actions/user";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 
 export function TelegramCard() {
     const [connected, setConnected] = useState<boolean | null>(null);
@@ -36,6 +38,16 @@ export function TelegramCard() {
         }
     };
 
+    const handleUnlink = async () => {
+        const res = await unlinkTelegram();
+        if (res.success) {
+            setConnected(false);
+            toast.success("Telegram account unlinked");
+        } else {
+            toast.error("Failed to unlink Telegram account");
+        }
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -46,13 +58,25 @@ export function TelegramCard() {
             </CardHeader>
             <CardContent>
                 {connected === null ? null : connected ? (
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-green-600 border-green-600">
-                            ● Connected
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                            Your Telegram is linked to this account.
-                        </span>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="text-green-600 border-green-600 w-fit">
+                                ● Connected
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                                Your Telegram is linked to this account.
+                            </span>
+                        </div>
+                        <ConfirmDialog
+                            title="Unlink Telegram?"
+                            description="You will no longer be able to log expenses via the Telegram bot until you reconnect."
+                            onConfirm={handleUnlink}
+                            trigger={
+                                <Button variant="destructive" size="sm">
+                                    Unlink
+                                </Button>
+                            }
+                        />
                     </div>
                 ) : (
                     <Button onClick={handleConnect} disabled={loading} variant="outline">
