@@ -46,28 +46,43 @@ export const CategoryRow = ({
     remainingDays,
   });
 
+  // Savings is a goal, not a cap: reaching/exceeding the target is good, so it
+  // never shows the over-limit/over-pace warnings used for Needs/Wants.
+  const isSavings = cat.bucket === "SAVINGS";
+  const savedAll = hasLimit && cat.spend >= cat.monthlyBudget!;
+
   const pacingLabel = hasLimit
-    ? pace.overSpent
-      ? "over limit"
-      : pace.overPace
-        ? "over pace"
-        : "on track"
+    ? isSavings
+      ? savedAll
+        ? "saved"
+        : "saving"
+      : pace.overSpent
+        ? "over limit"
+        : pace.overPace
+          ? "over pace"
+          : "on track"
     : null;
 
   const pacingVariant = hasLimit
-    ? pace.overSpent
-      ? "destructive"
-      : pace.overPace
-        ? "secondary"
-        : "outline"
+    ? isSavings
+      ? "outline"
+      : pace.overSpent
+        ? "destructive"
+        : pace.overPace
+          ? "secondary"
+          : "outline"
     : null;
 
   const pacingColor = hasLimit
-    ? pace.overSpent
-      ? "text-red-600"
-      : pace.overPace
-        ? "text-amber-600"
-        : "text-emerald-600"
+    ? isSavings
+      ? savedAll
+        ? "text-emerald-600"
+        : "text-muted-foreground"
+      : pace.overSpent
+        ? "text-red-600"
+        : pace.overPace
+          ? "text-amber-600"
+          : "text-emerald-600"
     : null;
 
   return (
@@ -96,11 +111,15 @@ export const CategoryRow = ({
                 </p>
                 {hasLimit && (
                   <p>
-                    {pace.overSpent
-                      ? "Already over limit"
-                      : pace.overPace
-                        ? `Projected ${money(pace.projectedMonth)} — safe ${money(pace.safeDaily)}/day`
-                        : `On track — safe ${money(pace.safeDaily)}/day`}
+                    {isSavings
+                      ? savedAll
+                        ? `Target reached — ${money(cat.spend)} saved`
+                        : `Save ${money(pace.safeDaily)}/day to reach ${money(cat.monthlyBudget!)}`
+                      : pace.overSpent
+                        ? "Already over limit"
+                        : pace.overPace
+                          ? `Projected ${money(pace.projectedMonth)} — safe ${money(pace.safeDaily)}/day`
+                          : `On track — safe ${money(pace.safeDaily)}/day`}
                   </p>
                 )}
               </TooltipContent>
@@ -108,16 +127,24 @@ export const CategoryRow = ({
           )}
         </div>
         <p className="text-xs tabular-nums text-muted-foreground">
-          {money(cat.spend)} spent
+          {money(cat.spend)} {isSavings ? "saved" : "spent"}
           {hasLimit && (
             <>
               {" "}
               of {money(cat.monthlyBudget!)} ·{" "}
-              <span className={cn(left! < 0 && "text-red-600")}>
-                {left! < 0
-                  ? `${money(Math.abs(left!))} over`
-                  : `${money(left!)} left`}
-              </span>
+              {isSavings ? (
+                <span className={cn(left! <= 0 && "text-emerald-600")}>
+                  {left! <= 0
+                    ? `${money(Math.abs(left!))} beyond target`
+                    : `${money(left!)} to go`}
+                </span>
+              ) : (
+                <span className={cn(left! < 0 && "text-red-600")}>
+                  {left! < 0
+                    ? `${money(Math.abs(left!))} over`
+                    : `${money(left!)} left`}
+                </span>
+              )}
             </>
           )}
         </p>

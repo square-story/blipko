@@ -47,7 +47,9 @@ export const BucketSection = ({
 }: BucketSectionProps) => {
   const meta = BUCKET_META[bucket];
   const { budget, spent, remaining, pct } = overview;
-  const over = remaining < 0;
+  // Savings is a goal: spending past the target is good, so it's never "over".
+  const isSavings = bucket === "SAVINGS";
+  const over = !isSavings && remaining < 0;
   const allocated = categories.reduce(
     (s, c) => s + (c.monthlyBudget ?? 0),
     0,
@@ -74,12 +76,20 @@ export const BucketSection = ({
           <span
             className={cn(
               "text-sm font-medium tabular-nums",
-              over ? "text-red-600" : "text-muted-foreground",
+              over
+                ? "text-red-600"
+                : isSavings && remaining <= 0
+                  ? "text-emerald-600"
+                  : "text-muted-foreground",
             )}
           >
-            {over
-              ? `${money(Math.abs(remaining))} over`
-              : `${money(remaining)} left`}
+            {isSavings
+              ? remaining > 0
+                ? `${money(remaining)} to save`
+                : `${money(Math.abs(remaining))} beyond target`
+              : over
+                ? `${money(Math.abs(remaining))} over`
+                : `${money(remaining)} left`}
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-muted">
@@ -92,13 +102,17 @@ export const BucketSection = ({
           />
         </div>
         <p className="text-xs text-muted-foreground tabular-nums">
-          {money(spent)} spent of {money(budget)}
-          {budget > 0 && !over && (
-            <>
-              {" "}
-              · safe {money(Math.max(0, remaining) / remainingDays)}/day
-            </>
-          )}
+          {money(spent)} {isSavings ? "saved" : "spent"} of {money(budget)}
+          {budget > 0 &&
+            (isSavings ? (
+              remaining > 0 && (
+                <> · save {money(remaining / remainingDays)}/day to target</>
+              )
+            ) : (
+              !over && (
+                <> · safe {money(Math.max(0, remaining) / remainingDays)}/day</>
+              )
+            ))}
         </p>
       </div>
 
