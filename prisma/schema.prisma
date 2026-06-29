@@ -28,6 +28,7 @@ enum NudgeKind {
   WARN_80
   OVER
   CHECKIN
+  CYCLE_REPORT
 }
 
 enum RecurringKind {

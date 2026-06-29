@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { prisma } from "../data/prisma/client";
 import { SendBudgetNudgesUseCase } from "../application/use-cases/SendBudgetNudges";
 import { PostRecurringChargesUseCase } from "../application/use-cases/PostRecurringCharges";
+import { SendCycleReportUseCase } from "../application/use-cases/SendCycleReport";
 import { logger } from "../utils/logger";
 
 const log = logger.child({ component: "scheduler" });
@@ -9,6 +10,7 @@ const log = logger.child({ component: "scheduler" });
 export function startScheduler(
   sendBudgetNudges: SendBudgetNudgesUseCase,
   postRecurringCharges: PostRecurringChargesUseCase,
+  sendCycleReport: SendCycleReportUseCase,
 ): void {
   // Daily recurring auto-post at 6 AM IST (00:30 UTC).
   cron.schedule("30 0 * * *", async () => {
@@ -27,6 +29,17 @@ export function startScheduler(
       log.info("SendBudgetNudges complete", { job: "nudges", sent });
     } catch (err) {
       log.error("SendBudgetNudges failed", { job: "nudges", err });
+    }
+  });
+
+  // End-of-cycle report at ~7 AM IST (01:30 UTC), after recurring auto-posts.
+  // Fires only for users whose cycle rolled over today (day 1); idempotent.
+  cron.schedule("30 1 * * *", async () => {
+    try {
+      const { sent } = await sendCycleReport.execute();
+      log.info("SendCycleReport complete", { job: "cycle-report", sent });
+    } catch (err) {
+      log.error("SendCycleReport failed", { job: "cycle-report", err });
     }
   });
 
@@ -56,6 +69,7 @@ export function startScheduler(
   log.info("Scheduler started", {
     recurring: "00:30 UTC",
     nudges: "13:30 UTC",
+    cycleReport: "01:30 UTC",
     prune: "Sun 00:00 UTC",
   });
 }

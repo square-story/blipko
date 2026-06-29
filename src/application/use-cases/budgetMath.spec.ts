@@ -3,6 +3,7 @@ import {
   bucketBudget,
   currentMonthRange,
   currentBudgetPeriod,
+  previousCycles,
   periodDayInfo,
   periodKey,
   effectiveMonthlyIncome,
@@ -54,6 +55,23 @@ describe("budgetMath", () => {
     expect(progressBar(50)).toBe("█████░░░░░");
     expect(progressBar(100)).toBe("██████████");
     expect(progressBar(150)).toBe("██████████"); // clamped
+  });
+
+  it("previousCycles returns the n most recent complete cycles, newest first", () => {
+    // payday=1 → cycles are calendar months. On Jun 10, current cycle is June;
+    // the prior complete cycles are May, then April.
+    const cycles = previousCycles(1, 2, new Date(2026, 5, 10));
+    expect(cycles[0].start).toEqual(new Date(2026, 4, 1)); // May
+    expect(cycles[0].end).toEqual(new Date(2026, 5, 1));
+    expect(cycles[1].start).toEqual(new Date(2026, 3, 1)); // April
+    expect(cycles[1].end).toEqual(new Date(2026, 4, 1));
+  });
+
+  it("previousCycles handles a mid-month payday across month lengths", () => {
+    // payday=25: on Jun 26 current cycle is Jun 25–Jul 25; just-ended is May 25–Jun 25.
+    const [ended] = previousCycles(25, 1, new Date(2026, 5, 26));
+    expect(ended.start).toEqual(new Date(2026, 4, 25));
+    expect(ended.end).toEqual(new Date(2026, 5, 25));
   });
 
   it("payday=1 budget period equals the calendar month", () => {

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "NudgeKind" ADD VALUE 'CYCLE_REPORT';
