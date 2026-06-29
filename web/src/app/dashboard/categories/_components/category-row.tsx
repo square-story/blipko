@@ -110,6 +110,7 @@ export const CategoryRow = ({
               <TooltipContent side="top" className="max-w-xs text-left">
                 <p>
                   ~{money(pace.dailyRate)}/day · ~{money(pace.weekly)}/wk
+                  projected
                 </p>
                 {hasLimit && (
                   <p>

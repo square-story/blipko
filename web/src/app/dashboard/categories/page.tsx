@@ -97,8 +97,8 @@ export default function CategoriesPage() {
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
             Your spending split into 50/30/20 buckets. Each bucket is your
-            budget for the month; a category limit is an optional cap the bot
-            warns you about.
+            budget this cycle; a category limit is an optional cap the bot warns
+            you about.
           </p>
           {overview?.periodLabel && (
             <p className="text-xs text-muted-foreground">
