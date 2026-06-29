@@ -133,6 +133,9 @@ model Category {
   // Per-leaf monthly budget suggestion (editable; null = uncapped).
   monthlyBudget Decimal? @db.Decimal(12, 2)
 
+  // User pinned a fixed monthlyBudget — Auto-balance must not overwrite it.
+  budgetLocked Boolean @default(false)
+
   // Relative share of its bucket, used to suggest budgets during onboarding.
   // Only meaningful on system leaf rows; 0 on groups and user-created rows.
   weight Int @default(0)

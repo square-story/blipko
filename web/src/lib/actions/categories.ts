@@ -15,6 +15,7 @@ export type CategoryStat = {
   isGroup: boolean;
   parentId: string | null;
   monthlyBudget: number | null;
+  budgetLocked: boolean;
   spend: number;
 };
 
@@ -96,6 +97,7 @@ export async function getCategories(): Promise<CategoryStat[]> {
     isGroup: c.isGroup,
     parentId: c.parentId,
     monthlyBudget: c.monthlyBudget === null ? null : Number(c.monthlyBudget),
+    budgetLocked: c.budgetLocked,
     spend: spendById.get(c.id) ?? 0,
   }));
 }
