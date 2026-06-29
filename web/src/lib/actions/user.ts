@@ -56,3 +56,16 @@ export async function getTelegramConnectionStatus(): Promise<boolean> {
 
   return !!user?.telegramId;
 }
+
+export async function unlinkTelegram(): Promise<{ success: boolean }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { telegramId: null },
+  });
+
+  revalidatePath("/dashboard/account");
+  return { success: true };
+}
