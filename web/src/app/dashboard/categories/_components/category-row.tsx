@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Lock } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { categoryPacing } from "@/lib/budget";
@@ -134,7 +134,14 @@ export const CategoryRow = ({
           {hasLimit && (
             <>
               {" "}
-              of {money(cat.monthlyBudget!)} ·{" "}
+              of {money(cat.monthlyBudget!)}
+              {cat.budgetLocked && (
+                <Lock
+                  className="ml-1 inline size-3 align-[-1px]"
+                  aria-label="Fixed — Auto-balance won't change this"
+                />
+              )}{" "}
+              ·{" "}
               {isSavings ? (
                 <span className={cn(left! <= 0 && "text-emerald-600")}>
                   {left! <= 0

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ export const EditCategoryModal = ({
   const [editName, setEditName] = useState("");
   const [editBucket, setEditBucket] = useState<Bucket>("NEEDS");
   const [editBudget, setEditBudget] = useState("");
+  const [editLocked, setEditLocked] = useState(false);
   const [error, setError] = useState("");
 
   // Sync the form when a different category is opened (and reset the tracker on
@@ -58,6 +60,7 @@ export const EditCategoryModal = ({
     setEditBudget(
       category.monthlyBudget == null ? "" : String(category.monthlyBudget),
     );
+    setEditLocked(category.budgetLocked);
     setError("");
   }
 
@@ -84,8 +87,17 @@ export const EditCategoryModal = ({
       }
       const trimmed = editBudget.trim();
       const nextBudget = trimmed === "" ? null : Number(trimmed);
-      if (nextBudget !== category.monthlyBudget) {
-        const r = await setCategoryBudget(category.id, nextBudget);
+      if (
+        editLocked &&
+        (nextBudget == null || !Number.isFinite(nextBudget) || nextBudget < 0)
+      ) {
+        return setError("Enter a valid amount to pin");
+      }
+      if (
+        nextBudget !== category.monthlyBudget ||
+        editLocked !== category.budgetLocked
+      ) {
+        const r = await setCategoryBudget(category.id, nextBudget, editLocked);
         if (!r.success) {
           toast.error(r.message ?? "Failed to set budget");
           return setError(r.message ?? "Failed to set budget");
@@ -143,6 +155,22 @@ export const EditCategoryModal = ({
               placeholder="No limit"
               onChange={(e) => {
                 setEditBudget(e.target.value);
+                setError("");
+              }}
+            />
+          </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="edit-lock">Pin this amount (fixed)</Label>
+              <p className="text-xs text-muted-foreground">
+                Auto-balance won&apos;t change a pinned limit.
+              </p>
+            </div>
+            <Switch
+              id="edit-lock"
+              checked={editLocked}
+              onCheckedChange={(v) => {
+                setEditLocked(v);
                 setError("");
               }}
             />
