@@ -62,8 +62,10 @@ export default function CategoriesPage() {
     return m;
   }, [categories]);
 
+  // Only leaf categories are spendable/budgetable; group rows are organization
+  // only and never render as categories.
   const leaves = useMemo(
-    () => categories.filter((c) => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null),
+    () => categories.filter((c) => !c.isGroup),
     [categories],
   );
 
