@@ -54,7 +54,7 @@ export function NeedsReviewInbox({ expenses, categories, currency }: NeedsReview
           Needs Review ({items.length})
         </CardTitle>
         <CardDescription>
-          The bot wasn't totally sure about these transactions, or they fell into a generic bucket. Please assign them to a specific category.
+          The bot wasn&apos;t totally sure about these transactions, or they fell into a generic bucket. Please assign them to a specific category.
         </CardDescription>
       </CardHeader>
       <CardContent>

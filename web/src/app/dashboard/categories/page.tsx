@@ -62,8 +62,10 @@ export default function CategoriesPage() {
     return m;
   }, [categories]);
 
+  // Only leaf categories are spendable/budgetable; group rows are organization
+  // only and never render as categories.
   const leaves = useMemo(
-    () => categories.filter((c) => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null),
+    () => categories.filter((c) => !c.isGroup),
     [categories],
   );
 
@@ -97,8 +99,8 @@ export default function CategoriesPage() {
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
             Your spending split into 50/30/20 buckets. Each bucket is your
-            budget for the month; a category limit is an optional cap the bot
-            warns you about.
+            budget this cycle; a category limit is an optional cap the bot warns
+            you about.
           </p>
           {overview?.periodLabel && (
             <p className="text-xs text-muted-foreground">

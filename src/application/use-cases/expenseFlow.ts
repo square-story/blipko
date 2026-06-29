@@ -47,6 +47,10 @@ export async function recordExpenseAndReply(
   const { user, amount, bucket } = args;
 
   // Resolve the category: use a known id, else find-or-create by name + bucket.
+  // Expenses only ever attach to leaf categories — never a group row. If the
+  // name resolves to a group, the expense stays uncategorized (it still lands in
+  // the right bucket and shows up in Needs Review). We can't create a same-name
+  // leaf either: (userId, name) is unique.
   let categoryId = args.categoryId;
   let categoryLabel = args.categoryName ?? "General";
   if (!categoryId && args.categoryName) {
@@ -54,10 +58,10 @@ export async function recordExpenseAndReply(
       user.id,
       args.categoryName,
     );
-    if (existing) {
+    if (existing && !existing.isGroup) {
       categoryId = existing.id;
       categoryLabel = existing.name;
-    } else {
+    } else if (!existing) {
       const created = await deps.categoryRepository.create({
         userId: user.id,
         name: args.categoryName,
@@ -66,6 +70,7 @@ export async function recordExpenseAndReply(
       categoryId = created.id;
       categoryLabel = created.name;
     }
+    // else: name matches a group → leave uncategorized.
   }
 
   const expense = await deps.expenseRepository.create({

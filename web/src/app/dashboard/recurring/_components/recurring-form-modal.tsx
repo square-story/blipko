@@ -204,7 +204,7 @@ export function RecurringFormModal({
                           // Auto-set the bucket if they pick a category
                           const cat = leaves.find((c) => c.id === val);
                           if (cat) {
-                            form.setValue("bucket", cat.bucket as any);
+                            form.setValue("bucket", cat.bucket as Bucket);
                           }
                         }}
                         defaultValue={field.value || undefined}
