@@ -14,8 +14,10 @@ import {
   currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
+  previousCycles,
   sanitizeMd,
 } from "../budgetMath";
+import { vsLastSuffix } from "../cycleReport";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
@@ -47,6 +49,7 @@ export class ReportProcessor implements MessageProcessor {
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
+    const prior = previousCycles(user.payday, 1)[0]!;
     const loggedIncome = await this.incomeRepository.sumForMonth(
       user.id,
       start,
@@ -61,18 +64,28 @@ export class ReportProcessor implements MessageProcessor {
     }).format(start);
 
     const lines: string[] = [];
+    let totalSpent = 0;
+    let totalPrev = 0;
     for (const bucket of ORDER) {
       const budget = bucketBudget(monthlyIncome, config, bucket);
-      const spent = await this.expenseRepository.sumByBucketForMonth(
-        user.id,
-        bucket,
-        start,
-        end,
-      );
-      lines.push(this.bucketLine(bucket, spent, budget));
+      const [spent, prevSpent] = await Promise.all([
+        this.expenseRepository.sumByBucketForMonth(user.id, bucket, start, end),
+        this.expenseRepository.sumByBucketForMonth(
+          user.id,
+          bucket,
+          prior.start,
+          prior.end,
+        ),
+      ]);
+      totalSpent += spent;
+      totalPrev += prevSpent;
+      lines.push(this.bucketLine(bucket, spent, budget, prevSpent));
     }
 
     let body = `📅 ${monthName} summary\n\nIncome logged ${formatMoney(loggedIncome)} (budget on ${formatMoney(monthlyIncome)})\n${lines.join("\n")}`;
+
+    const vs = vsLastSuffix(totalSpent, totalPrev);
+    if (vs) body += `\n\nTotal spend ${formatMoney(totalSpent)}${vs}`;
 
     const leaks = await this.expenseRepository.topCategoriesForMonth(
       user.id,
@@ -93,7 +106,12 @@ export class ReportProcessor implements MessageProcessor {
     return { response: body, parsed: { intent: "UNKNOWN", confidence: 1 } };
   }
 
-  private bucketLine(bucket: Bucket, spent: number, budget: number): string {
+  private bucketLine(
+    bucket: Bucket,
+    spent: number,
+    budget: number,
+    prevSpent: number,
+  ): string {
     const meta = BUCKET_META[bucket];
     const amounts = `${formatMoney(spent)} / ${formatMoney(budget)}`;
     let status: string;
@@ -109,6 +127,6 @@ export class ReportProcessor implements MessageProcessor {
           ? `✅ under by ${formatMoney(delta)}`
           : `❌ over by ${formatMoney(-delta)}`;
     }
-    return `${meta.emoji} ${meta.label}  ${amounts}  ${status}`;
+    return `${meta.emoji} ${meta.label}  ${amounts}  ${status}${vsLastSuffix(spent, prevSpent)}`;
   }
 }

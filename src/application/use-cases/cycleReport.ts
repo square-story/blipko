@@ -54,9 +54,18 @@ function cycleLabel(start: Date, end: Date, payday: number): string {
 }
 
 // Signed percent change vs the prior cycle (null when there's no prior baseline).
-function pctChange(now: number, prev: number): number | null {
+export function pctChange(now: number, prev: number): number | null {
   if (prev <= 0) return null;
   return Math.round(((now - prev) / prev) * 100);
+}
+
+// " · ↓20% vs last" / " · ↑12% vs last" / " · same as last cycle" — the spend
+// delta suffix shared by the cycle report and the on-demand /report.
+export function vsLastSuffix(now: number, prev: number): string {
+  const pct = pctChange(now, prev);
+  if (pct == null) return "";
+  if (pct === 0) return " · same as last cycle";
+  return ` · ${pct > 0 ? "↑" : "↓"}${Math.abs(pct)}% vs last`;
 }
 
 // One bucket's line: spent / budget, then Δ vs last cycle (or goal status for
@@ -69,13 +78,7 @@ function bucketLine(
 ): string {
   const meta = BUCKET_META[bucket];
   const amounts = `${formatMoney(spent)} / ${formatMoney(budget)}`;
-  const pct = pctChange(spent, prevSpent);
-  const vs =
-    pct == null
-      ? ""
-      : pct === 0
-        ? " · same as last cycle"
-        : ` · ${pct > 0 ? "↑" : "↓"}${Math.abs(pct)}% vs last`;
+  const vs = vsLastSuffix(spent, prevSpent);
 
   let status: string;
   if (bucket === "SAVINGS") {
