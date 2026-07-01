@@ -210,6 +210,36 @@ export function suggestCategoryBudgets(
   return result;
 }
 
+// Split `total` across N slots proportional to `weights`, rounded to the nearest
+// `step`, with the largest slot absorbing the rounding drift so the result sums
+// to exactly `total`. Zero total weight → equal split. Used by category
+// auto-balance to distribute a bucket's remaining budget across its categories.
+export function allocateByWeight(
+  total: number,
+  weights: number[],
+  step = 50,
+): number[] {
+  const n = weights.length;
+  if (n === 0) return [];
+  if (total <= 0) return weights.map(() => 0);
+
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const shares =
+    sum > 0
+      ? weights.map((w) => (total * w) / sum)
+      : weights.map(() => total / n);
+
+  const rounded = shares.map((s) => Math.round(s / step) * step);
+  const drift = total - rounded.reduce((a, b) => a + b, 0);
+  if (drift !== 0) {
+    // Give the drift to the slot with the largest raw share.
+    let maxIdx = 0;
+    for (let i = 1; i < n; i++) if (shares[i]! > shares[maxIdx]!) maxIdx = i;
+    rounded[maxIdx] = Math.max(0, rounded[maxIdx]! + drift);
+  }
+  return rounded;
+}
+
 export type NotificationDosage = "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
 
 // Shared so the onboarding wizard and Account settings show identical labels.

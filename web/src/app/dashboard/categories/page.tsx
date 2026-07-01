@@ -14,10 +14,11 @@ import {
   getCategorySuggestions,
   deleteCategory,
   setCategoryBudget,
-  setCategoryBudgets,
+  rebalanceBucket,
   type CategoryStat,
   type CategorySuggestion,
 } from "@/lib/actions/categories";
+import type { Bucket } from "@prisma/client";
 import { getBudgetOverview } from "@/lib/actions/budget";
 import { BUCKETS, BUCKET_META, formatMoney } from "@/lib/budget";
 import { toast } from "@/lib/toast";
@@ -99,27 +100,16 @@ export default function CategoriesPage() {
       load();
     });
 
-  // Apply every non-pinned suggestion in a bucket at once (no forced bucket sum).
-  const applyAll = (cats: CategoryStat[]) =>
+  // Auto-balance a bucket: distribute its budget across unpinned categories so
+  // the allocations sum to the bucket total (pinned categories left untouched).
+  const rebalance = (bucket: Bucket) =>
     startTransition(async () => {
-      const updates = cats
-        .filter((c) => !c.budgetLocked)
-        .map((c) => ({ c, amount: suggestionById.get(c.id)?.amount }))
-        .filter(
-          (x): x is { c: CategoryStat; amount: number } =>
-            x.amount != null && x.amount !== x.c.monthlyBudget,
-        )
-        .map((x) => ({ id: x.c.id, monthlyBudget: x.amount }));
-      if (updates.length === 0) {
-        toast("No new suggestions to apply");
-        return;
-      }
-      const res = await setCategoryBudgets(updates);
+      const res = await rebalanceBucket(bucket);
       if (!res.success) {
-        toast.error(res.message ?? "Failed to apply suggestions");
+        toast.error(res.message ?? "Failed to auto-balance");
         return;
       }
-      toast.success("Suggested budgets applied");
+      toast.success(res.message ?? "Bucket balanced");
       load();
     });
 
@@ -192,7 +182,7 @@ export default function CategoriesPage() {
                       onEdit={setEditing}
                       onDelete={handleDelete}
                       onApplyBudget={applyBudget}
-                      onApplyAll={applyAll}
+                      onRebalance={rebalance}
                     />
                   </AccordionContent>
                 </AccordionItem>
