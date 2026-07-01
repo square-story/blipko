@@ -144,12 +144,16 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       bucket: "WANTS",
     });
     aiParser.parseText.mockResolvedValue({
-      intent: "EXPENSE",
-      amount: 220,
-      category: "Food",
-      bucket: "WANTS",
-      note: "lunch",
-      confidence: 0.9,
+      transactions: [
+        {
+          intent: "EXPENSE",
+          amount: 220,
+          category: "Food",
+          bucket: "WANTS",
+          note: "lunch",
+          confidence: 0.9,
+        },
+      ],
     });
 
     await useCase.execute({ platformUserId: "123", textMessage: "lunch 220" });
@@ -175,9 +179,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
 
   it("asks for a bucket on a low-confidence parse instead of saving", async () => {
     aiParser.parseText.mockResolvedValue({
-      intent: "EXPENSE",
-      amount: 1500,
-      confidence: 0.4,
+      transactions: [{ intent: "EXPENSE", amount: 1500, confidence: 0.4 }],
     });
 
     await useCase.execute({ platformUserId: "123", textMessage: "paid 1500" });
@@ -288,10 +290,9 @@ describe("ProcessIncomingMessage (budget flow)", () => {
   it("records income and replies with the refreshed budget", async () => {
     incomeRepository.sumForMonth.mockResolvedValue(55000);
     aiParser.parseText.mockResolvedValue({
-      intent: "INCOME",
-      amount: 5000,
-      note: "freelance",
-      confidence: 0.9,
+      transactions: [
+        { intent: "INCOME", amount: 5000, note: "freelance", confidence: 0.9 },
+      ],
     });
 
     await useCase.execute({
@@ -307,11 +308,37 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     );
   });
 
+  it("routes a multi-transaction message to the batch path", async () => {
+    aiParser.parseText.mockResolvedValue({
+      transactions: [
+        { intent: "EXPENSE", amount: 30, bucket: "WANTS", confidence: 0.9 },
+        { intent: "EXPENSE", amount: 80, bucket: "NEEDS", confidence: 0.9 },
+      ],
+    });
+
+    await useCase.execute({
+      platformUserId: "123",
+      textMessage: "chai 30, auto 80",
+    });
+
+    // Both recorded under one message; one summary sent.
+    expect(expenseRepository.create).toHaveBeenCalledTimes(2);
+    const batchIds = expenseRepository.create.mock.calls.map(
+      (c: any[]) => c[0].batchId,
+    );
+    expect(batchIds[0]).toBeTruthy();
+    expect(batchIds[0]).toBe(batchIds[1]);
+  });
+
   it("falls back to a friendly reply for non-financial messages", async () => {
     aiParser.parseText.mockResolvedValue({
-      intent: "UNKNOWN",
-      confidence: 0.9,
-      conversational_response: 'Hi! Text me a spend like "chai 30".',
+      transactions: [
+        {
+          intent: "UNKNOWN",
+          confidence: 0.9,
+          conversational_response: 'Hi! Text me a spend like "chai 30".',
+        },
+      ],
     });
 
     await useCase.execute({ platformUserId: "123", textMessage: "hello" });

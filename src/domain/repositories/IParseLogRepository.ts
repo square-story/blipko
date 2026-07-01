@@ -6,6 +6,7 @@ export interface CreateParseLogDTO {
   parsed: ParsedData;
   confidence: number;
   userId?: string | undefined;
+  batchId?: string | undefined;
 }
 
 export interface IParseLogRepository {

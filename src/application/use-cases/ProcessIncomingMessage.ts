@@ -28,6 +28,7 @@ import { HelpProcessor } from "./processors/HelpProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
 import { ReportProcessor } from "./processors/ReportProcessor";
 import { UndoProcessor } from "./processors/UndoProcessor";
+import { BatchProcessor } from "./processors/BatchProcessor";
 import { ExpenseProcessor } from "./processors/ExpenseProcessor";
 import { IncomeProcessor } from "./processors/IncomeProcessor";
 import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
@@ -128,6 +129,14 @@ export class ProcessIncomingMessageUseCase {
         incomeRepository,
         messageService,
       ),
+      new BatchProcessor(
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        parseLogRepository,
+        incomeRepository,
+        messageService,
+      ),
       new ExpenseProcessor(
         expenseRepository,
         categoryRepository,
@@ -192,11 +201,21 @@ export class ProcessIncomingMessageUseCase {
 
     // AI parse with the user's category list as context.
     const categories = await this.loadCategoryHints(user.id);
-    const parsed = await this.aiParser.parseText(payload.textMessage, {
+    const batch = await this.aiParser.parseText(payload.textMessage, {
       categories,
       history,
     });
-    context.parsed = parsed;
+
+    if (batch.transactions.length >= 2) {
+      // Multiple transactions in one message → BatchProcessor.
+      context.parsedBatch = batch;
+    } else {
+      // Single transaction → today's behavior, byte-for-byte.
+      context.parsed = batch.transactions[0] ?? {
+        intent: "UNKNOWN",
+        confidence: 0,
+      };
+    }
 
     for (const processor of this.postParseProcessors) {
       if (processor.canHandle(context)) {
@@ -213,7 +232,9 @@ export class ProcessIncomingMessageUseCase {
     }
 
     // FallbackProcessor.canHandle always returns true, so this is unreachable.
-    throw new Error(`No processor handled intent: ${parsed.intent}`);
+    throw new Error(
+      `No processor handled intent: ${context.parsed?.intent ?? "BATCH"}`,
+    );
   }
 
   private async loadCategoryHints(userId: string): Promise<CategoryHint[]> {

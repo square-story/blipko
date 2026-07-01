@@ -20,7 +20,12 @@ export type ParsedIntent = (typeof PARSED_INTENTS)[number];
 // fallback parser (see FallbackAiParser).
 export const ParsedDataSchema = z.object({
   intent: z.enum(PARSED_INTENTS),
-  amount: z.number().optional(),
+  // Amounts are always positive magnitudes — direction comes from intent
+  // (EXPENSE vs INCOME), never the sign. Normalize any minus a user typed.
+  amount: z
+    .number()
+    .transform((v) => Math.abs(v))
+    .optional(),
   currency: z.string().optional(),
   category: z.string().optional(),
   bucket: z.enum(BUCKETS).optional(),
@@ -33,3 +38,13 @@ export const ParsedDataSchema = z.object({
 });
 
 export type ParsedData = z.infer<typeof ParsedDataSchema>;
+
+// A single message can carry multiple transactions (a "journal dump"). The
+// parser always returns this envelope; a normal single spend is a batch of one.
+// An object envelope (not a bare array) keeps it portable across Gemini
+// responseSchema and OpenAI json_object, which can't return a top-level array.
+export const ParsedBatchSchema = z.object({
+  transactions: z.array(ParsedDataSchema).min(1),
+});
+
+export type ParsedBatch = z.infer<typeof ParsedBatchSchema>;

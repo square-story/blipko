@@ -1,4 +1,4 @@
-import { ParsedData, ParsedBucket } from "../entities/ParsedData";
+import { ParsedBatch, ParsedBucket } from "../entities/ParsedData";
 
 export interface ConversationTurn {
   role: "user" | "model";
@@ -18,5 +18,5 @@ export interface ParseContext {
 }
 
 export interface IAiParser {
-  parseText(text: string, ctx: ParseContext): Promise<ParsedData>;
+  parseText(text: string, ctx: ParseContext): Promise<ParsedBatch>;
 }

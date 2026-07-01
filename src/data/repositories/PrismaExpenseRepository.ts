@@ -22,6 +22,7 @@ export class PrismaExpenseRepository implements IExpenseRepository {
         source: data.source ?? "TEXT",
         categoryId: data.categoryId ?? null,
         parseLogId: data.parseLogId ?? null,
+        batchId: data.batchId ?? null,
       },
     });
   }
@@ -53,6 +54,19 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     await this.prisma.expense.update({
       where: { id: expenseId },
       data: { confirmationMessageId: messageId },
+    });
+  }
+
+  async findByBatchId(batchId: string, userId: string): Promise<Expense[]> {
+    return this.prisma.expense.findMany({
+      where: { batchId, userId, isDeleted: false },
+    });
+  }
+
+  async softDeleteByBatchId(batchId: string, userId: string): Promise<void> {
+    await this.prisma.expense.updateMany({
+      where: { batchId, userId, isDeleted: false },
+      data: { isDeleted: true, deletedAt: new Date() },
     });
   }
 

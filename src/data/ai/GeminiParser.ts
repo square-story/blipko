@@ -1,11 +1,14 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { IAiParser, ParseContext } from "../../domain/services/IAiParser";
-import { ParsedData, ParsedDataSchema } from "../../domain/entities/ParsedData";
+import {
+  ParsedBatch,
+  ParsedBatchSchema,
+} from "../../domain/entities/ParsedData";
 import { buildBudgetSystemPrompt } from "./budgetParserPrompt";
 import { env } from "../../config/env";
 
-// Structured-output schema enforced by Gemini (responseSchema).
-const budgetSchema: Schema = {
+// Per-transaction structured-output schema enforced by Gemini.
+const transactionSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     intent: {
@@ -63,6 +66,20 @@ const budgetSchema: Schema = {
   required: ["intent", "confidence"],
 };
 
+// The envelope: one message → one or more transactions.
+const budgetSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    transactions: {
+      type: Type.ARRAY,
+      items: transactionSchema,
+      description:
+        "One entry per transaction. A single spend is an array of one; only genuine multi-transaction dumps have more.",
+    },
+  },
+  required: ["transactions"],
+};
+
 export class GeminiParser implements IAiParser {
   private client: GoogleGenAI;
 
@@ -76,7 +93,7 @@ export class GeminiParser implements IAiParser {
     this.client = new GoogleGenAI({ apiKey: this.apiKey });
   }
 
-  async parseText(text: string, ctx: ParseContext): Promise<ParsedData> {
+  async parseText(text: string, ctx: ParseContext): Promise<ParsedBatch> {
     const today = new Date().toISOString().split("T")[0];
     const promptText = `[Today: ${today}]\n${text}`;
 
@@ -106,6 +123,6 @@ export class GeminiParser implements IAiParser {
     }
 
     // Validate with Zod — a throw here cascades to the fallback chain.
-    return ParsedDataSchema.parse(JSON.parse(responseText));
+    return ParsedBatchSchema.parse(JSON.parse(responseText));
   }
 }
