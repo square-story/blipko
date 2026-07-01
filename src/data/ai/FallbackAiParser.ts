@@ -1,5 +1,5 @@
 import { IAiParser, ParseContext } from "../../domain/services/IAiParser";
-import { ParsedData } from "../../domain/entities/ParsedData";
+import { ParsedBatch } from "../../domain/entities/ParsedData";
 import { withTimeout } from "../../utils/withTimeout";
 
 // A slow/hung provider call must not block the webhook indefinitely.
@@ -14,7 +14,7 @@ export class FallbackAiParser implements IAiParser {
     private readonly secondary: IAiParser,
   ) {}
 
-  async parseText(text: string, ctx: ParseContext): Promise<ParsedData> {
+  async parseText(text: string, ctx: ParseContext): Promise<ParsedBatch> {
     try {
       return await withTimeout(
         this.primary.parseText(text, ctx),
@@ -39,7 +39,9 @@ export class FallbackAiParser implements IAiParser {
         );
         // Both failed — return a safe, low-confidence UNKNOWN so the bot can
         // ask the user to try again rather than crashing.
-        return { intent: "UNKNOWN", confidence: 0, currency: "INR" };
+        return {
+          transactions: [{ intent: "UNKNOWN", confidence: 0, currency: "INR" }],
+        };
       }
     }
   }

@@ -3,7 +3,9 @@ import { FallbackAiParser } from "./FallbackAiParser";
 import { IAiParser } from "../../domain/services/IAiParser";
 
 const ctx = { categories: [] };
-const ok = { intent: "EXPENSE" as const, amount: 30, confidence: 0.9 };
+const ok = {
+  transactions: [{ intent: "EXPENSE" as const, amount: 30, confidence: 0.9 }],
+};
 
 function parser(impl: IAiParser["parseText"]): IAiParser {
   return { parseText: vi.fn(impl) };
@@ -42,7 +44,7 @@ describe("FallbackAiParser", () => {
     const fallback = new FallbackAiParser(primary, secondary);
 
     const result = await fallback.parseText("chai 30", ctx);
-    expect(result.intent).toBe("UNKNOWN");
-    expect(result.confidence).toBe(0);
+    expect(result.transactions[0].intent).toBe("UNKNOWN");
+    expect(result.transactions[0].confidence).toBe(0);
   });
 });

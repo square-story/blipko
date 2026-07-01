@@ -79,6 +79,25 @@ describe("ConfirmBucketProcessor", () => {
     );
   });
 
+  it("threads the batchId from the staged parse into the expense", async () => {
+    parseLogRepository.findById.mockResolvedValue({
+      id: "log1",
+      rawText: "chai 30",
+      batchId: "b1",
+      parsed: { amount: 30, category: "chai", confidence: 0.4 },
+    });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "bkt:log1:WANTS",
+    } as any);
+
+    expect(expenseRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ batchId: "b1" }),
+    );
+  });
+
   it("fails gracefully when the staged parse is gone", async () => {
     parseLogRepository.findById.mockResolvedValue(null);
 

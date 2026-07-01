@@ -11,6 +11,7 @@ export interface CreateExpenseDTO {
   source?: ExpenseSource | undefined;
   categoryId?: string | undefined;
   parseLogId?: string | undefined;
+  batchId?: string | undefined;
 }
 
 export interface IExpenseRepository {
@@ -27,6 +28,10 @@ export interface IExpenseRepository {
     expenseId: string,
     messageId: string,
   ): Promise<void>;
+  // All non-deleted expenses sharing a batchId (transactions from one message).
+  findByBatchId(batchId: string, userId: string): Promise<Expense[]>;
+  // Soft-delete every expense in a batch.
+  softDeleteByBatchId(batchId: string, userId: string): Promise<void>;
   // Sum of non-deleted expense amounts for a bucket within [monthStart, monthEnd).
   sumByBucketForMonth(
     userId: string,

@@ -14,6 +14,7 @@ export class PrismaParseLogRepository implements IParseLogRepository {
         parsed: data.parsed as unknown as Prisma.InputJsonValue,
         confidence: data.confidence,
         userId: data.userId ?? null,
+        batchId: data.batchId ?? null,
       },
     });
   }

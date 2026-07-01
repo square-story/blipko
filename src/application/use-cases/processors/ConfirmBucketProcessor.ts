@@ -70,6 +70,8 @@ export class ConfirmBucketProcessor implements MessageProcessor {
         note: parsed.note,
         categoryName: parsed.category,
         parseLogId: log.id,
+        // Rejoin the batch (if any) so a later undo removes this item too.
+        batchId: log.batchId ?? undefined,
       },
     );
     return { response, parsed };

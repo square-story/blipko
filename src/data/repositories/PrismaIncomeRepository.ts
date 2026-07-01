@@ -17,6 +17,7 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         confidence: data.confidence,
         source: data.source ?? null,
         note: data.note ?? null,
+        batchId: data.batchId ?? null,
       },
     });
   }
@@ -41,6 +42,19 @@ export class PrismaIncomeRepository implements IIncomeRepository {
     return this.prisma.income.findFirst({
       where: { userId, isDeleted: false },
       orderBy: { date: "desc" },
+    });
+  }
+
+  async findByBatchId(batchId: string, userId: string): Promise<Income[]> {
+    return this.prisma.income.findMany({
+      where: { batchId, userId, isDeleted: false },
+    });
+  }
+
+  async softDeleteByBatchId(batchId: string, userId: string): Promise<void> {
+    await this.prisma.income.updateMany({
+      where: { batchId, userId, isDeleted: false },
+      data: { isDeleted: true, deletedAt: new Date() },
     });
   }
 

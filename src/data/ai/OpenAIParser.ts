@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import { IAiParser, ParseContext } from "../../domain/services/IAiParser";
-import { ParsedData, ParsedDataSchema } from "../../domain/entities/ParsedData";
+import {
+  ParsedBatch,
+  ParsedBatchSchema,
+} from "../../domain/entities/ParsedData";
 import { buildBudgetSystemPrompt } from "./budgetParserPrompt";
 import { env } from "../../config/env";
 
@@ -14,14 +17,12 @@ export class OpenAIParser implements IAiParser {
     this.client = new OpenAI({ apiKey: this.apiKey });
   }
 
-  async parseText(text: string, ctx: ParseContext): Promise<ParsedData> {
+  async parseText(text: string, ctx: ParseContext): Promise<ParsedBatch> {
     const today = new Date().toISOString().split("T")[0];
     const promptText = `[Today: ${today}]\n${text}`;
 
     const historyMessages = (ctx.history ?? []).map((h) => ({
-      role: (h.role === "model" ? "assistant" : h.role) as
-        | "user"
-        | "assistant",
+      role: (h.role === "model" ? "assistant" : h.role) as "user" | "assistant",
       content: h.content,
     }));
 
@@ -43,6 +44,6 @@ export class OpenAIParser implements IAiParser {
     }
 
     // Validate with Zod — a throw here lets the fallback parser take over.
-    return ParsedDataSchema.parse(JSON.parse(responseText));
+    return ParsedBatchSchema.parse(JSON.parse(responseText));
   }
 }

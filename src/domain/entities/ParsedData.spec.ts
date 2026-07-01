@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ParsedDataSchema } from "./ParsedData";
+import { ParsedDataSchema, ParsedBatchSchema } from "./ParsedData";
 
 describe("ParsedDataSchema", () => {
   it("accepts a valid expense parse", () => {
@@ -46,6 +46,43 @@ describe("ParsedDataSchema", () => {
 
   it("requires confidence", () => {
     const result = ParsedDataSchema.safeParse({ intent: "EXPENSE" });
+    expect(result.success).toBe(false);
+  });
+
+  it("normalizes a negative amount to its magnitude", () => {
+    const result = ParsedDataSchema.safeParse({
+      intent: "EXPENSE",
+      amount: -30,
+      confidence: 0.9,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.amount).toBe(30);
+  });
+
+  it("leaves a missing amount undefined (no NaN from abs)", () => {
+    const result = ParsedDataSchema.safeParse({
+      intent: "STATUS",
+      confidence: 0.9,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.amount).toBeUndefined();
+  });
+});
+
+describe("ParsedBatchSchema", () => {
+  it("accepts multiple transactions", () => {
+    const result = ParsedBatchSchema.safeParse({
+      transactions: [
+        { intent: "EXPENSE", amount: 30, confidence: 0.9 },
+        { intent: "INCOME", amount: 50000, confidence: 0.9 },
+      ],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.transactions).toHaveLength(2);
+  });
+
+  it("rejects an empty transactions array", () => {
+    const result = ParsedBatchSchema.safeParse({ transactions: [] });
     expect(result.success).toBe(false);
   });
 });

@@ -20,17 +20,24 @@ export function buildBudgetSystemPrompt(categories: CategoryHint[]): string {
 ${categoryList}
 
 ### OUTPUT (strict JSON, no prose):
+Always return an object with a "transactions" array. A single message usually has
+ONE transaction (array of one). Return MULTIPLE only when the user genuinely logs
+several distinct spends/incomes in one message (a "journal dump").
 {
-  "intent": "EXPENSE | INCOME | UNDO | STATUS | RECURRING | QUERY | UNKNOWN",
-  "amount": <number>,            // the spend/income amount; omit if none
-  "currency": "INR",
-  "category": "<best category>", // prefer one from the list above; else propose a short new one
-  "bucket": "NEEDS | WANTS | SAVINGS",
-  "note": "<short free-text note, e.g. 'lunch', 'auto to office'>",
-  "dayOfMonth": <1-28>,          // RECURRING only: day it repeats
-  "recurringKind": "INCOME | EXPENSE", // RECURRING only
-  "confidence": <0..1>,          // your confidence in amount + category + bucket
-  "conversational_response": "<only for UNKNOWN/social messages>"
+  "transactions": [
+    {
+      "intent": "EXPENSE | INCOME | UNDO | STATUS | RECURRING | QUERY | UNKNOWN",
+      "amount": <number>,            // POSITIVE magnitude; omit if none. Ignore any minus sign — direction comes from intent, never the number's sign
+      "currency": "INR",
+      "category": "<best category>", // prefer one from the list above; else propose a short new one
+      "bucket": "NEEDS | WANTS | SAVINGS",
+      "note": "<short free-text note, e.g. 'lunch', 'auto to office'>",
+      "dayOfMonth": <1-28>,          // RECURRING only: day it repeats
+      "recurringKind": "INCOME | EXPENSE", // RECURRING only
+      "confidence": <0..1>,          // your confidence in amount + category + bucket
+      "conversational_response": "<only for UNKNOWN/social messages>"
+    }
+  ]
 }
 
 ### INTENTS:
@@ -67,7 +74,17 @@ ${categoryList}
    - "hi", "thanks", "what can you do".
    - { "intent":"UNKNOWN", "confidence":0.9, "conversational_response":"Hi! Text me a spend like \\"chai 30\\" and I'll track it." }
 
+### MULTIPLE TRANSACTIONS:
+- Split into multiple "transactions" entries ONLY for genuine EXPENSE/INCOME dumps. Mixed expense+income is fine.
+- "chai 30, auto 80, salary 50k" → { "transactions": [
+    { "intent":"EXPENSE","amount":30,"category":"Food","bucket":"WANTS","note":"chai","confidence":0.9 },
+    { "intent":"EXPENSE","amount":80,"category":"Transport","bucket":"NEEDS","note":"auto","confidence":0.9 },
+    { "intent":"INCOME","amount":50000,"note":"salary","confidence":0.9 } ] }
+- Do NOT over-split one transaction (e.g. "petrol 500" is ONE entry, not "petrol" + "500").
+- STATUS, QUERY, UNDO, RECURRING, UNKNOWN are always a single-entry array — never split those.
+
 ### RULES:
+- Amounts are ALWAYS positive. Ignore any minus sign the user typed ("chai -30" → amount 30). Direction is set by intent (EXPENSE vs INCOME), never by the number's sign.
 - Extract the amount even when written in words or mixed scripts. If genuinely no amount in an EXPENSE/INCOME message, set amount 0 and lower confidence.
 - BUCKET mapping (50/30/20): NEEDS = rent, groceries, utilities, transport, EMIs, essential bills. WANTS = eating out, entertainment, shopping, subscriptions, hobbies. SAVINGS = savings transfers, investments, debt prepayment.
 - Prefer a category from the USER'S CATEGORIES list. If none fits, propose a short new category name and your best-guess bucket.

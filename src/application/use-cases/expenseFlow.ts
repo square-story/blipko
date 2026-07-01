@@ -1,4 +1,4 @@
-import { Bucket, ExpenseSource, User } from "@prisma/client";
+import { Bucket, Expense, ExpenseSource, User } from "@prisma/client";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
@@ -33,17 +33,28 @@ export interface RecordExpenseArgs {
   categoryId?: string | undefined;
   source?: ExpenseSource | undefined;
   parseLogId?: string | undefined;
+  batchId?: string | undefined;
 }
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 
-// Creates the expense, sends the confirmation + remaining-budget line, and links
-// the confirmation message for later reply/undo. Shared by ExpenseProcessor
-// (high-confidence path) and ConfirmBucketProcessor (post-button path).
-export async function recordExpenseAndReply(
+// The confirmation line for a recorded expense (no budget context).
+// Shared by the single-expense reply and each batch summary line.
+export function buildExpenseLine(
+  bucket: Bucket,
+  categoryLabel: string,
+  amount: number,
+): string {
+  const meta = BUCKET_META[bucket];
+  return `✅ ${formatMoney(amount)} → ${meta.label} · ${sanitizeMd(categoryLabel)}`;
+}
+
+// Creates the expense and returns it plus the resolved category label. No
+// messaging — callers decide how to reply (single confirmation vs batch summary).
+export async function recordExpense(
   deps: ExpenseFlowDeps,
   args: RecordExpenseArgs,
-): Promise<string> {
+): Promise<{ expense: Expense; categoryLabel: string }> {
   const { user, amount, bucket } = args;
 
   // Resolve the category: use a known id, else find-or-create by name + bucket.
@@ -83,7 +94,22 @@ export async function recordExpenseAndReply(
     source: args.source,
     categoryId,
     parseLogId: args.parseLogId,
+    batchId: args.batchId,
   });
+
+  return { expense, categoryLabel };
+}
+
+// Creates the expense, sends the confirmation + remaining-budget line, and links
+// the confirmation message for later reply/undo. Shared by ExpenseProcessor
+// (high-confidence path) and ConfirmBucketProcessor (post-button path).
+export async function recordExpenseAndReply(
+  deps: ExpenseFlowDeps,
+  args: RecordExpenseArgs,
+): Promise<string> {
+  const { user, amount, bucket } = args;
+
+  const { expense, categoryLabel } = await recordExpense(deps, args);
 
   // Remaining budget for this bucket this month (sum already includes the new expense).
   const { start, end } = currentBudgetPeriod(user.payday);
@@ -108,7 +134,7 @@ export async function recordExpenseAndReply(
   const remaining = budget - spent;
 
   const meta = BUCKET_META[bucket];
-  const response = `✅ ${formatMoney(amount)} → ${meta.label} · ${sanitizeMd(categoryLabel)}
+  const response = `${buildExpenseLine(bucket, categoryLabel, amount)}
 ${meta.emoji} ${meta.label} left this month: ${formatMoney(remaining)} / ${formatMoney(budget)}`;
 
   const messageId = await deps.messageService.sendMessage({

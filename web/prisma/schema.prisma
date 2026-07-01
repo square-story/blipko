@@ -28,6 +28,7 @@ enum NudgeKind {
   WARN_80
   OVER
   CHECKIN
+  CYCLE_REPORT
 }
 
 enum RecurringKind {
@@ -204,6 +205,9 @@ model Expense {
   // Link to the confirmation message (for reply/undo handling)
   confirmationMessageId String? @unique
 
+  // Groups transactions parsed from one message, for batch undo.
+  batchId String?
+
   // Soft delete
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
@@ -211,6 +215,7 @@ model Expense {
   @@index([userId, date])
   @@index([userId, bucket, date])
   @@index([userId, isDeleted, date])
+  @@index([userId, batchId])
 }
 
 // Income events (salary, freelance, bonus). The month's effective budget is
@@ -224,6 +229,9 @@ model Income {
   rawText    String
   confidence Float
 
+  // Groups transactions parsed from one message, for batch undo.
+  batchId String?
+
   date DateTime @default(now())
 
   userId String
@@ -234,6 +242,7 @@ model Income {
 
   @@index([userId, date])
   @@index([userId, isDeleted, date])
+  @@index([userId, batchId])
 }
 
 // ─── Infra ────────────────────────────────────────────────────────────────────
@@ -245,6 +254,10 @@ model ParseLog {
   rawText    String
   parsed     Json
   confidence Float?
+
+  // When staged as part of a multi-transaction message, links the eventual
+  // confirmed expense back into the batch for group undo.
+  batchId String?
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
