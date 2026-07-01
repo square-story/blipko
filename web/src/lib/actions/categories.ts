@@ -5,7 +5,13 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Bucket } from "@prisma/client";
-import { currentBudgetPeriod, previousCycles, median } from "@/lib/budget";
+import {
+  currentBudgetPeriod,
+  previousCycles,
+  median,
+  allocateByWeight,
+} from "@/lib/budget";
+import { getBudgetOverview } from "@/lib/actions/budget";
 
 export type CategoryStat = {
   id: string;
@@ -305,6 +311,67 @@ export async function setCategoryBudgets(
   revalidatePath("/dashboard/categories");
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+// Auto-balance: rebalances a bucket so its categories' budgets sum to the bucket
+// total. Pinned (locked) categories keep their budget; the remainder is split
+// across the unpinned ones weighted by their data-driven suggestion (recurring
+// sum or 3-cycle history median). Manual — triggered by the Auto-balance button.
+export async function rebalanceBucket(
+  bucket: Bucket,
+): Promise<{ success: boolean; message?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const parsedBucket = bucketSchema.safeParse(bucket);
+  if (!parsedBucket.success)
+    return { success: false, message: "Invalid bucket" };
+
+  const [overview, cats, suggestions] = await Promise.all([
+    getBudgetOverview(),
+    getCategories(),
+    getCategorySuggestions(),
+  ]);
+
+  const bucketBudget =
+    overview.buckets.find((b) => b.bucket === bucket)?.budget ?? 0;
+  const leaves = cats.filter((c) => !c.isGroup && c.bucket === bucket);
+  const unpinned = leaves.filter((c) => !c.budgetLocked);
+
+  if (unpinned.length === 0)
+    return {
+      success: false,
+      message: "No unpinned categories to balance in this bucket.",
+    };
+  if (bucketBudget <= 0)
+    return {
+      success: false,
+      message: "Set your income first — this bucket has no budget yet.",
+    };
+
+  const pinnedSum = leaves
+    .filter((c) => c.budgetLocked)
+    .reduce((s, c) => s + (c.monthlyBudget ?? 0), 0);
+  const remaining = Math.max(0, bucketBudget - pinnedSum);
+
+  const weightById = new Map(
+    suggestions.map((s) => [s.categoryId, s.amount ?? 0]),
+  );
+  const weights = unpinned.map((c) => Math.max(0, weightById.get(c.id) ?? 0));
+  const allocations = allocateByWeight(remaining, weights);
+
+  const updates: { id: string; monthlyBudget: number }[] = [];
+  unpinned.forEach((c, i) => {
+    const amount = allocations[i];
+    if (amount !== undefined) updates.push({ id: c.id, monthlyBudget: amount });
+  });
+
+  const res = await setCategoryBudgets(updates);
+  if (!res.success) return res;
+  return {
+    success: true,
+    message: `Balanced ${updates.length} categor${updates.length === 1 ? "y" : "ies"} to the bucket budget.`,
+  };
 }
 
 // Loads a user-owned category and rejects system rows / other users' rows.

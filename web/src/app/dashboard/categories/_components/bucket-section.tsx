@@ -32,7 +32,7 @@ interface BucketSectionProps {
   onEdit: (cat: CategoryStat) => void;
   onDelete: (cat: CategoryStat) => void;
   onApplyBudget: (id: string, amount: number, locked: boolean) => void;
-  onApplyAll: (cats: CategoryStat[]) => void;
+  onRebalance: (bucket: Bucket) => void;
 }
 
 export const BucketSection = ({
@@ -49,7 +49,7 @@ export const BucketSection = ({
   onEdit,
   onDelete,
   onApplyBudget,
-  onApplyAll,
+  onRebalance,
 }: BucketSectionProps) => {
   const meta = BUCKET_META[bucket];
   const { budget, spent, remaining, pct } = overview;
@@ -66,13 +66,9 @@ export const BucketSection = ({
   // system-category spend) — surfaced so the rows reconcile with the bucket total.
   const shownSpend = categories.reduce((s, c) => s + c.spend, 0);
   const uncategorized = Math.max(0, spent - shownSpend);
-  // Un-pinned categories whose data-driven suggestion differs from the current
-  // limit — these are what "Apply suggested" would set.
-  const applicable = categories.filter((c) => {
-    if (c.budgetLocked) return false;
-    const s = suggestionById.get(c.id);
-    return s?.amount != null && s.amount !== c.monthlyBudget;
-  });
+  // Unpinned categories are the ones Auto-balance redistributes the bucket
+  // budget across (pinned ones keep their limit).
+  const unpinnedCount = categories.filter((c) => !c.budgetLocked).length;
 
   return (
     <div>
@@ -133,13 +129,13 @@ export const BucketSection = ({
                 : `${money(unallocated)} unallocated`}
             </span>
           </p>
-          {applicable.length > 0 && (
+          {unpinnedCount > 0 && (
             <ConfirmDialog
-              title={`Apply suggested budgets to ${meta.label}?`}
-              description={`Set ${applicable.length} categor${applicable.length === 1 ? "y" : "ies"} to budgets suggested from your recurring expenses and recent history. Pinned categories are left untouched.`}
-              confirmLabel="Apply suggested"
+              title={`Auto-balance ${meta.label}?`}
+              description={`Split this bucket's ${money(budget)} budget across its ${unpinnedCount} unpinned categor${unpinnedCount === 1 ? "y" : "ies"}, weighted by your recurring expenses and recent history, so the limits add up to the bucket total. Pinned categories are left untouched.`}
+              confirmLabel="Auto-balance"
               destructive={false}
-              onConfirm={() => onApplyAll(categories)}
+              onConfirm={() => onRebalance(bucket)}
               trigger={
                 <Button
                   variant="ghost"
@@ -147,7 +143,7 @@ export const BucketSection = ({
                   className="h-7 shrink-0 text-xs"
                   disabled={isPending}
                 >
-                  Apply suggested
+                  Auto-balance
                 </Button>
               }
             />
