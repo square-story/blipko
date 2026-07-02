@@ -41,12 +41,13 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       linkTelegramByToken: vi.fn().mockResolvedValue(null),
     };
     expenseRepository = {
-      create: vi.fn().mockResolvedValue({ id: "e1" }),
+      create: vi.fn().mockResolvedValue({ id: "e1", categoryId: "c1" }),
       findById: vi.fn(),
       findLastByUserId: vi.fn().mockResolvedValue(null),
       findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
       sumByBucketForMonth: vi.fn().mockResolvedValue(220),
+      sumByCategoryForMonth: vi.fn().mockResolvedValue(220),
       topCategoriesForMonth: vi.fn().mockResolvedValue([]),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
@@ -168,7 +169,9 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     );
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("Wants · Food");
-    expect(body).toContain("Wants left this month");
+    expect(body).toContain("Food:"); // per-category line
+    expect(body).toContain("Wants:"); // per-bucket line
+    expect(body).toContain("left of");
     expect(body).toContain("14,780"); // 15000 - 220
     expect(body).toContain("15,000");
     expect(expenseRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
@@ -223,7 +226,8 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       }),
     );
     const body = messageService.sendMessage.mock.calls[0][0].body;
-    expect(body).toContain("Wants left this month");
+    expect(body).toContain("Wants:");
+    expect(body).toContain("left of");
     expect(body).toContain("13,500"); // 15000 - 1500
   });
 

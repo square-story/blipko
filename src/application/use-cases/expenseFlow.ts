@@ -10,6 +10,7 @@ import {
   currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
+  periodDayInfo,
   sanitizeMd,
 } from "./budgetMath";
 
@@ -47,6 +48,50 @@ export function buildExpenseLine(
 ): string {
   const meta = BUCKET_META[bucket];
   return `✅ ${formatMoney(amount)} → ${meta.label} · ${sanitizeMd(categoryLabel)}`;
+}
+
+// Per-category budget line for a confirmation. Shows the cap remaining when the
+// category has a monthlyBudget, an over-budget warning when it's exceeded, or
+// just the cycle spend when the category is uncapped.
+export function buildCategoryBudgetLine(
+  label: string,
+  monthlyBudget: number | null,
+  spent: number,
+): string {
+  const name = sanitizeMd(label);
+  if (monthlyBudget != null && monthlyBudget > 0) {
+    const remaining = monthlyBudget - spent;
+    if (remaining < 0) {
+      return `⚠️ ${name}: ${formatMoney(-remaining)} over its ${formatMoney(monthlyBudget)} budget`;
+    }
+    return `📂 ${name}: ${formatMoney(remaining)} left of ${formatMoney(monthlyBudget)}`;
+  }
+  return `📂 ${name}: ${formatMoney(spent)} spent this cycle`;
+}
+
+// Per-bucket budget line. Full form adds safe-daily pace; over-budget (NEEDS/
+// WANTS only — overshooting SAVINGS is good) shows a warning instead. The
+// compact form is a terse sub-line used under each item in a batch summary.
+export function buildBucketBudgetLine(
+  bucket: Bucket,
+  remaining: number,
+  budget: number,
+  remainingDays: number,
+  opts?: { compact?: boolean },
+): string {
+  const meta = BUCKET_META[bucket];
+  if (opts?.compact) {
+    return `   · ${meta.label}: ${formatMoney(remaining)} left`;
+  }
+  if (remaining < 0) {
+    // Overshooting a savings target is good — not an over-budget warning.
+    if (bucket === "SAVINGS") {
+      return `${meta.emoji} ${meta.label}: ${formatMoney(-remaining)} beyond target`;
+    }
+    return `⚠️ ${meta.label}: ${formatMoney(-remaining)} over budget`;
+  }
+  const safeDaily = Math.max(0, remaining) / Math.max(1, remainingDays);
+  return `${meta.emoji} ${meta.label}: ${formatMoney(remaining)} left of ${formatMoney(budget)} · ${formatMoney(safeDaily)}/day safe`;
 }
 
 // Creates the expense and returns it plus the resolved category label. No
@@ -111,8 +156,28 @@ export async function recordExpenseAndReply(
 
   const { expense, categoryLabel } = await recordExpense(deps, args);
 
-  // Remaining budget for this bucket this month (sum already includes the new expense).
   const { start, end } = currentBudgetPeriod(user.payday);
+
+  // Per-category budget line (only when the expense landed on a leaf category).
+  let categoryLine: string | null = null;
+  if (expense.categoryId) {
+    const cat = await deps.categoryRepository.findById(expense.categoryId);
+    const catSpent = await deps.expenseRepository.sumByCategoryForMonth(
+      user.id,
+      expense.categoryId,
+      start,
+      end,
+    );
+    const monthlyBudget =
+      cat?.monthlyBudget != null ? Number(cat.monthlyBudget) : null;
+    categoryLine = buildCategoryBudgetLine(
+      categoryLabel,
+      monthlyBudget,
+      catSpent,
+    );
+  }
+
+  // Remaining budget for this bucket this month (sum already includes the new expense).
   const spent = await deps.expenseRepository.sumByBucketForMonth(
     user.id,
     bucket,
@@ -132,10 +197,15 @@ export async function recordExpenseAndReply(
   );
   const budget = bucketBudget(income, config, bucket);
   const remaining = budget - spent;
+  const { remainingDays } = periodDayInfo(user.payday);
 
-  const meta = BUCKET_META[bucket];
-  const response = `${buildExpenseLine(bucket, categoryLabel, amount)}
-${meta.emoji} ${meta.label} left this month: ${formatMoney(remaining)} / ${formatMoney(budget)}`;
+  const response = [
+    buildExpenseLine(bucket, categoryLabel, amount),
+    categoryLine,
+    buildBucketBudgetLine(bucket, remaining, budget, remainingDays),
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const messageId = await deps.messageService.sendMessage({
     to: args.platformUserId,
