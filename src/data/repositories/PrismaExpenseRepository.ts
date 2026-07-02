@@ -88,6 +88,24 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     return Number(result._sum.amount ?? 0);
   }
 
+  async sumByCategoryForMonth(
+    userId: string,
+    categoryId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number> {
+    const result = await this.prisma.expense.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        categoryId,
+        isDeleted: false,
+        date: { gte: monthStart, lt: monthEnd },
+      },
+    });
+    return Number(result._sum.amount ?? 0);
+  }
+
   async topCategoriesForMonth(
     userId: string,
     bucket: Bucket,

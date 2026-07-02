@@ -118,6 +118,12 @@ describe("BatchProcessor", () => {
     expect(messageService.sendMessage).toHaveBeenCalledTimes(1);
     expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
 
+    // Each recorded expense item carries a compact bucket sub-line.
+    const summary = messageService.sendMessage.mock.calls[0][0].body;
+    expect(summary).toContain("· Wants:");
+    expect(summary).toContain("· Needs:");
+    expect(summary).toContain("left");
+
     // Representative row linked to the summary message.
     expect(expenseRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
       "e1",

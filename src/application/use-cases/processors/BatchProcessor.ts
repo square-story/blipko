@@ -13,13 +13,18 @@ import {
   IMessagingPlatform,
   InlineButtonRows,
 } from "../../interfaces/IMessagingPlatform";
-import { recordExpense, buildExpenseLine } from "../expenseFlow";
+import {
+  recordExpense,
+  buildExpenseLine,
+  buildBucketBudgetLine,
+} from "../expenseFlow";
 import {
   BUCKET_META,
   bucketBudget,
   currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
+  periodDayInfo,
   sanitizeMd,
 } from "../budgetMath";
 
@@ -85,6 +90,20 @@ export class BatchProcessor implements MessageProcessor {
       messageService: this.messageService,
     };
 
+    // Budget context for the per-item bucket sub-line (computed once; income
+    // logged mid-batch isn't reflected in later items' budget — acceptable).
+    const { start: periodStart, end: periodEnd } = currentBudgetPeriod(
+      user.payday,
+    );
+    const { remainingDays } = periodDayInfo(user.payday);
+    const splitConfig =
+      (await this.budgetConfigRepository.findByUserId(user.id)) ??
+      DEFAULT_SPLIT;
+    const batchIncome = effectiveMonthlyIncome(
+      Number(user.monthlyIncome ?? 0),
+      await this.incomeRepository.sumForMonth(user.id, periodStart, periodEnd),
+    );
+
     for (const item of items) {
       // Batch mode only logs money; skip stray non-EXPENSE/INCOME items.
       if (item.intent === "INCOME") {
@@ -144,7 +163,24 @@ export class BatchProcessor implements MessageProcessor {
         batchId,
       });
       firstExpenseId ??= expense.id;
-      logged.push(buildExpenseLine(bucket, categoryLabel, item.amount));
+      const bucketSpent = await this.expenseRepository.sumByBucketForMonth(
+        user.id,
+        bucket,
+        periodStart,
+        periodEnd,
+      );
+      const bucketBudgetAmt = bucketBudget(batchIncome, splitConfig, bucket);
+      logged.push(
+        buildExpenseLine(bucket, categoryLabel, item.amount) +
+          "\n" +
+          buildBucketBudgetLine(
+            bucket,
+            bucketBudgetAmt - bucketSpent,
+            bucketBudgetAmt,
+            remainingDays,
+            { compact: true },
+          ),
+      );
     }
 
     // Recompute the effective budget once if any income landed in this batch.

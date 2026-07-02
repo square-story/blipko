@@ -39,6 +39,13 @@ export interface IExpenseRepository {
     monthStart: Date,
     monthEnd: Date,
   ): Promise<number>;
+  // Sum of non-deleted expense amounts for a single category within the range.
+  sumByCategoryForMonth(
+    userId: string,
+    categoryId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number>;
   // Top spending categories in a bucket within [monthStart, monthEnd), desc by total.
   topCategoriesForMonth(
     userId: string,

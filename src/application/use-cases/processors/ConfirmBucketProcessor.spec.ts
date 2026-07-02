@@ -29,12 +29,16 @@ describe("ConfirmBucketProcessor", () => {
       }),
     };
     expenseRepository = {
-      create: vi.fn().mockResolvedValue({ id: "e1" }),
+      create: vi.fn().mockResolvedValue({ id: "e1", categoryId: "c1" }),
       sumByBucketForMonth: vi.fn().mockResolvedValue(30),
+      sumByCategoryForMonth: vi.fn().mockResolvedValue(30),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
       findByNameForUser: vi.fn().mockResolvedValue(null),
+      findById: vi
+        .fn()
+        .mockResolvedValue({ id: "c1", name: "chai", monthlyBudget: 1000 }),
       create: vi.fn().mockResolvedValue({ id: "c1", name: "chai" }),
     };
     budgetConfigRepository = {
@@ -77,6 +81,10 @@ describe("ConfirmBucketProcessor", () => {
         parseLogId: "log1",
       }),
     );
+    // Per-category budget line is included (chai has a ₹1,000 cap, ₹30 spent).
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("chai:");
+    expect(body).toContain("left of");
   });
 
   it("threads the batchId from the staged parse into the expense", async () => {
