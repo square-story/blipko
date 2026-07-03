@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getBudgetOverview } from "@/lib/actions/budget";
 import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
@@ -72,7 +72,7 @@ async function OverviewSection({
 
             {/* Headline stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Stat>
+                <Stat className="reveal-rise">
                     <StatLabel>Income This Cycle</StatLabel>
                     <StatValue>
                         <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
@@ -88,7 +88,7 @@ async function OverviewSection({
                     </StatIndicator>
                 </Stat>
 
-                <Stat>
+                <Stat className="reveal-rise" style={{ animationDelay: "40ms" }}>
                     <StatLabel>Spent This Cycle</StatLabel>
                     <StatValue>
                         <AnimatedNumber value={totalSpent} format={currencyFormat} />
@@ -99,7 +99,7 @@ async function OverviewSection({
                     </StatIndicator>
                 </Stat>
 
-                <Stat>
+                <Stat className="reveal-rise" style={{ animationDelay: "80ms" }}>
                     <StatLabel>Savings This Month</StatLabel>
                     <StatValue>
                         <AnimatedNumber value={savingsProgress.saved} format={currencyFormat} />
@@ -115,12 +115,16 @@ async function OverviewSection({
 
             {/* Bucket cards */}
             <div className="grid gap-4 md:grid-cols-3">
-                {buckets.map((b) => {
+                {buckets.map((b, i) => {
                     const meta = BUCKET_META[b.bucket];
                     const over = b.pct > 100;
                     const barWidth = Math.min(100, b.pct);
                     return (
-                        <Card key={b.bucket}>
+                        <Card
+                            key={b.bucket}
+                            className="reveal-rise"
+                            style={{ animationDelay: `${i * 40}ms` }}
+                        >
                             <CardHeader className="pb-2">
                                 <CardTitle className="flex items-center justify-between text-base">
                                     <span>
@@ -144,8 +148,8 @@ async function OverviewSection({
                                 </div>
                                 <div className="h-2 w-full rounded-full bg-muted">
                                     <div
-                                        className={`h-2 rounded-full ${over ? "bg-destructive" : "bg-primary"}`}
-                                        style={{ width: `${barWidth}%` }}
+                                        className={`bar-fill h-2 w-full rounded-full ${over ? "bg-destructive" : "bg-primary"}`}
+                                        style={{ "--pct": barWidth / 100 } as CSSProperties}
                                     />
                                 </div>
                                 <p className="text-xs text-muted-foreground">
@@ -161,7 +165,7 @@ async function OverviewSection({
 
             {/* Recent expenses + category breakdown */}
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-                <Card>
+                <Card className="reveal-rise">
                     <CardHeader>
                         <CardTitle>Recent Expenses</CardTitle>
                         <CardDescription>Latest spends this month</CardDescription>
@@ -197,7 +201,7 @@ async function OverviewSection({
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="reveal-rise" style={{ animationDelay: "40ms" }}>
                     <CardHeader>
                         <CardTitle>Top Categories</CardTitle>
                         <CardDescription>Where your money went this month</CardDescription>
@@ -222,8 +226,8 @@ async function OverviewSection({
                                             </div>
                                             <div className="h-2 w-full rounded-full bg-muted">
                                                 <div
-                                                    className="h-2 rounded-full bg-primary"
-                                                    style={{ width: `${pct}%` }}
+                                                    className="bar-fill h-2 w-full rounded-full bg-primary"
+                                                    style={{ "--pct": pct / 100 } as CSSProperties}
                                                 />
                                             </div>
                                         </div>

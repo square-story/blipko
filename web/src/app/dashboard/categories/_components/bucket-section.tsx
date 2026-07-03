@@ -97,10 +97,10 @@ export const BucketSection = ({
         <div className="h-2 w-full rounded-full bg-muted">
           <div
             className={cn(
-              "h-2 rounded-full transition-all",
+              "h-2 w-full origin-left rounded-full transition-transform duration-300 ease-[var(--ease-out)]",
               over ? "bg-red-500" : "bg-primary",
             )}
-            style={{ width: `${Math.min(100, pct)}%` }}
+            style={{ transform: `scaleX(${Math.min(100, pct) / 100})` }}
           />
         </div>
         <p className="text-xs text-muted-foreground tabular-nums">

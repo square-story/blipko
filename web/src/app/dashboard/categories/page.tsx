@@ -109,7 +109,7 @@ export default function CategoriesPage() {
         toast.error(res.message ?? "Failed to auto-balance");
         return;
       }
-      toast.success(res.message ?? "Bucket balanced");
+      toast.signature(res.message ?? "Bucket balanced");
       load();
     });
 

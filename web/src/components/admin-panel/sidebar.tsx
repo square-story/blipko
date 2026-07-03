@@ -16,7 +16,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300",
+        "fixed top-0 left-0 z-20 h-screen -translate-x-full lg:translate-x-0 transition-[width] duration-300 ease-[var(--ease-drawer)]",
         !getOpenState() ? "w-[90px]" : "w-72",
         settings.disabled && "hidden"
       )}
@@ -29,7 +29,7 @@ export function Sidebar() {
       >
         <Button
           className={cn(
-            "transition-transform ease-in-out duration-300 mb-1",
+            "transition-transform duration-300 ease-[var(--ease-drawer)] mb-1",
             !getOpenState() ? "translate-x-1" : "translate-x-0"
           )}
           variant="link"
@@ -39,7 +39,7 @@ export function Sidebar() {
             <Image src="/icons/icon-512.png" alt="Logo" width={24} height={24} />
             <h1
               className={cn(
-                "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] italic tracking-tighter ease-in-out duration-300",
+                "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] italic tracking-tighter duration-300 ease-[var(--ease-drawer)]",
                 !getOpenState()
                   ? "-translate-x-96 opacity-0 hidden"
                   : "translate-x-0 opacity-100"

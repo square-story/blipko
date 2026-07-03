@@ -129,7 +129,9 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                 notificationDosage: dosage,
             });
             if (res.success) {
-                toast.success("Budget settings saved");
+                toast.signature("Budget saved", {
+                    description: "Your 50/30/20 split is updated",
+                });
             } else {
                 toast.error(res.message ?? "Failed to save");
             }

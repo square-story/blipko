@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { generateTelegramLinkToken, getTelegramConnectionStatus, unlinkTelegram } from "@/lib/actions/user";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export function TelegramCard() {
     const [connected, setConnected] = useState<boolean | null>(null);

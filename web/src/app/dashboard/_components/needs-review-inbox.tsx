@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { BUCKET_META, formatMoney } from "@/lib/budget";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { assignExpenseCategory } from "@/lib/actions/expenses";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Check, CheckCircle2, AlertCircle } from "lucide-react";
 import type { CategoryStat } from "@/lib/actions/categories";
 

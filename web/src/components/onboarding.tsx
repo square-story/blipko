@@ -127,6 +127,10 @@ export default function Onboarding({
     setSaving(false);
     if (res.success) {
       playSound("celebrate");
+      toast.signature("You're all set", {
+        description: "Link Telegram to start logging spends",
+        silent: true,
+      });
       setStep(4);
     } else {
       toast.error(res.message ?? "Couldn't save your setup — please try again.");

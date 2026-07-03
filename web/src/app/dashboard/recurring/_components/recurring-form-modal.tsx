@@ -41,7 +41,7 @@ import {
   type RecurringRuleInput,
 } from "@/lib/validations/recurring";
 import { BUCKETS, BUCKET_META } from "@/lib/budget";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { CategoryStat } from "@/lib/actions/categories";
 
 interface RecurringFormModalProps {
@@ -99,7 +99,13 @@ export function RecurringFormModal({
         return;
       }
 
-      toast.success(isEditing ? "Updated recurring item" : "Added recurring item");
+      if (isEditing) {
+        toast.success("Updated recurring item");
+      } else {
+        toast.signature("Recurring set up", {
+          description: "It'll post automatically each cycle",
+        });
+      }
       setOpen(false);
       onSaved();
     });

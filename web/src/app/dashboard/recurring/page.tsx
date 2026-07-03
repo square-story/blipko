@@ -20,7 +20,7 @@ import {
 import { getCategories, type CategoryStat } from "@/lib/actions/categories";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RecurringFormModal } from "./_components/recurring-form-modal";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { BUCKET_META } from "@/lib/budget";
 
 export default function RecurringPage() {

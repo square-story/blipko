@@ -60,10 +60,14 @@ function DataTableActionBar<TData>({
         <motion.div
           role="toolbar"
           aria-orientation="horizontal"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
+          initial={{ opacity: 0, transform: "translateY(20px)" }}
+          animate={{ opacity: 1, transform: "translateY(0px)" }}
+          exit={{
+            opacity: 0,
+            transform: "translateY(20px)",
+            transition: { duration: 0.15, ease: [0.23, 1, 0.32, 1] },
+          }}
+          transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
           className={cn(
             "fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit flex-wrap items-center justify-center gap-2 rounded-md border bg-background p-2 text-foreground shadow-sm",
             className,

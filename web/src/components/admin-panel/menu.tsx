@@ -73,7 +73,7 @@ export function Menu({ isOpen }: MenuProps) {
                                 <span
                                   className={cn(isOpen === false ? "" : "mr-4")}
                                 >
-                                  <Icon size={18} className="transition-transform ease-in-out duration-300 group-hover:scale-110" />
+                                  <Icon size={18} className="transition-transform duration-200 ease-[var(--ease-out)] [@media(hover:hover)]:group-hover:scale-110" />
                                 </span>
                                 <p
                                   className={cn(
@@ -124,7 +124,7 @@ export function Menu({ isOpen }: MenuProps) {
                     className="w-full justify-center h-10 mt-5 group"
                   >
                     <span className={cn(isOpen === false ? "" : "mr-4")}>
-                      <LogOut size={18} className="transition-transform ease-in-out duration-300 group-hover:scale-110" />
+                      <LogOut size={18} className="transition-transform duration-200 ease-[var(--ease-out)] [@media(hover:hover)]:group-hover:scale-110" />
                     </span>
                     <p
                       className={cn(
