@@ -5,6 +5,7 @@ export function SignInButton() {
     return (
         <form action={signInWithGoogle}>
             <button
+                data-sound-hover
                 className="group relative flex h-12 w-[200px] items-center justify-between rounded-full border-2 border-[#394481] bg-primary font-medium text-accent"
             >
                 <span className="pl-4">Get Early Access</span>

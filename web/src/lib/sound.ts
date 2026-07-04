@@ -1,49 +1,175 @@
-// Synthesized "Crisp" interaction-sound engine — no audio assets.
-// Inspired by velvet-ui (24h.studio): sounds are synthesized live (slightly
-// different every time), quiet by design, warm-but-crisp (a shared lowpass
-// keeps them from being harsh), and always mutable. Each sound is a short blip
-// (or small layered set) built from oscillator + gain envelopes.
+// Interaction-sound engine — synthesized (no audio assets), powered by
+// @web-kits/audio's declarative `defineSound`. Sounds are quiet by design, warm
+// (a baked lowpass keeps them from being harsh), a touch of reverb gives notable
+// moments space, and a small random detune per play means no two plays are
+// identical. Always mutable via useSoundStore + prefers-reduced-motion.
 
+import {
+  defineSound,
+  ensureReady,
+  setMasterVolume,
+  type BiquadFilter,
+  type Effect,
+  type Layer,
+} from "@web-kits/audio";
 import { useSoundStore } from "@/hooks/use-sound-store";
 
 export type SoundName =
   | "tick" // a button / nav press
   | "toggleOn" // switch/checkbox → on
   | "toggleOff" // switch/checkbox → off
-  | "select" // a select/dropdown/menu item chosen
-  | "open" // a trigger opens a menu/dialog/popover
+  | "select" // a select/dropdown/menu/tab/radio item chosen
+  | "open" // a trigger opens a menu/dialog/popover/accordion
   | "confirm" // destructive confirm
   | "success" // positive result
   | "error" // failure
   | "arrival" // a toast/notification appears
   | "celebrate" // onboarding finished
-  | "nav"; // route / page navigation
+  | "nav" // route / page navigation
+  | "slide" // slider grabbed
+  | "hover"; // opt-in hover on a primary CTA
 
-let ctx: AudioContext | null = null;
-let entry: AudioNode | null = null; // shared lowpass; all blips connect here
+// Shared warmth (no global filter node in the lib — bake per layer) and a subtle
+// room reserved for the "moment" sounds (dry on rapid micro-clicks to stay crisp).
+const WARMTH: BiquadFilter = {
+  type: "lowpass",
+  frequency: 3600,
+  resonance: 0.7,
+};
+const SPACE: Effect = { type: "reverb", decay: 0.35, mix: 0.06 };
 
-function audio(): { c: AudioContext; out: AudioNode } | null {
-  if (typeof window === "undefined") return null;
-  const Ctor =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext;
-  if (!Ctor) return null;
-  if (!ctx) {
-    ctx = new Ctor();
-    // Shared warmth + headroom: gentle lowpass → quiet master gain → out.
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 3600;
-    lp.Q.value = 0.4;
-    const masterGain = ctx.createGain();
-    masterGain.gain.value = 0.5; // quiet by design
-    lp.connect(masterGain);
-    masterGain.connect(ctx.destination);
-    entry = lp;
-  }
-  return entry ? { c: ctx, out: entry } : null;
+// Build an arpeggio as parallel layers with staggered `delay`.
+function arp(
+  freqs: number[],
+  step: number,
+  decay: number,
+  gain: number,
+): Layer[] {
+  return freqs.map(
+    (f, i): Layer => ({
+      source: { type: "triangle", frequency: { start: f, end: f * 1.01 } },
+      envelope: { attack: 0, decay, release: 0.03 },
+      gain,
+      filter: WARMTH,
+      delay: i * step,
+    }),
+  );
 }
+
+const PLAYERS: Record<SoundName, (opts?: { detune?: number }) => unknown> = {
+  // Soft filtered click: body + faint high transient.
+  tick: defineSound({
+    layers: [
+      {
+        source: { type: "triangle", frequency: { start: 920, end: 720 } },
+        envelope: { attack: 0, decay: 0.05 },
+        gain: 0.5,
+        filter: WARMTH,
+      },
+      {
+        source: { type: "sine", frequency: 2200 },
+        envelope: { attack: 0, decay: 0.018 },
+        gain: 0.18,
+        filter: WARMTH,
+      },
+    ],
+  }),
+  toggleOn: defineSound({
+    source: { type: "triangle", frequency: { start: 660, end: 990 } },
+    envelope: { attack: 0, decay: 0.09 },
+    gain: 0.5,
+    filter: WARMTH,
+  }),
+  toggleOff: defineSound({
+    source: { type: "triangle", frequency: { start: 880, end: 560 } },
+    envelope: { attack: 0, decay: 0.09 },
+    gain: 0.5,
+    filter: WARMTH,
+  }),
+  select: defineSound({
+    source: { type: "triangle", frequency: { start: 880, end: 940 } },
+    envelope: { attack: 0, decay: 0.05 },
+    gain: 0.45,
+    filter: WARMTH,
+  }),
+  open: defineSound({
+    source: { type: "sine", frequency: { start: 520, end: 780 } },
+    envelope: { attack: 0, decay: 0.08 },
+    gain: 0.45,
+    filter: WARMTH,
+  }),
+  confirm: defineSound({
+    layers: [
+      {
+        source: { type: "triangle", frequency: { start: 700, end: 1020 } },
+        envelope: { attack: 0, decay: 0.08 },
+        gain: 0.5,
+        filter: WARMTH,
+      },
+    ],
+    effects: [SPACE],
+  }),
+  // Major arpeggio C6–E6–G6.
+  success: defineSound({
+    layers: arp([1047, 1319, 1568], 0.06, 0.13, 0.5),
+    effects: [SPACE],
+  }),
+  // Soft minor-second fall.
+  error: defineSound({
+    layers: [
+      {
+        source: { type: "sawtooth", frequency: { start: 360, end: 300 } },
+        envelope: { attack: 0, decay: 0.14 },
+        gain: 0.42,
+        filter: WARMTH,
+      },
+      {
+        source: { type: "sine", frequency: { start: 340, end: 280 } },
+        envelope: { attack: 0, decay: 0.16 },
+        gain: 0.32,
+        filter: WARMTH,
+        delay: 0.04,
+      },
+    ],
+    effects: [SPACE],
+  }),
+  arrival: defineSound({
+    layers: [
+      {
+        source: { type: "sine", frequency: { start: 1320, end: 1500 } },
+        envelope: { attack: 0, decay: 0.07 },
+        gain: 0.4,
+        filter: WARMTH,
+      },
+    ],
+    effects: [SPACE],
+  }),
+  nav: defineSound({
+    source: { type: "sine", frequency: { start: 600, end: 820 } },
+    envelope: { attack: 0, decay: 0.06 },
+    gain: 0.4,
+    filter: WARMTH,
+  }),
+  // G5–B5–D6–G6.
+  celebrate: defineSound({
+    layers: arp([784, 988, 1175, 1568], 0.07, 0.16, 0.5),
+    effects: [SPACE],
+  }),
+  // Tiny, quiet blip — fires once per slider grab.
+  slide: defineSound({
+    source: { type: "sine", frequency: 1200 },
+    envelope: { attack: 0, decay: 0.02 },
+    gain: 0.22,
+    filter: WARMTH,
+  }),
+  // Ultra-subtle — opt-in on primary CTAs only.
+  hover: defineSound({
+    source: { type: "sine", frequency: 2000 },
+    envelope: { attack: 0, decay: 0.02 },
+    gain: 0.14,
+    filter: WARMTH,
+  }),
+};
 
 function prefersReducedMotion(): boolean {
   return (
@@ -52,90 +178,22 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-// One short note. `type` waveform, `from`→`to` Hz glide over `dur`s, `peak`
-// gain, optional `startAt` offset. Tiny detune so no two plays are identical.
-function note(
-  c: AudioContext,
-  out: AudioNode,
-  type: OscillatorType,
-  from: number,
-  to: number,
-  dur: number,
-  peak: number,
-  startAt = 0,
-): void {
-  const t0 = c.currentTime + startAt;
-  const osc = c.createOscillator();
-  const g = c.createGain();
-  const jitter = 1 + (Math.random() - 0.5) * 0.03;
-  osc.type = type;
-  osc.frequency.setValueAtTime(from * jitter, t0);
-  if (to !== from)
-    osc.frequency.exponentialRampToValueAtTime(
-      Math.max(1, to * jitter),
-      t0 + dur,
-    );
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(peak, t0 + 0.005); // crisp attack
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g);
-  g.connect(out);
-  osc.start(t0);
-  osc.stop(t0 + dur + 0.03);
-}
-
-function render(c: AudioContext, out: AudioNode, name: SoundName): void {
-  switch (name) {
-    case "tick":
-      // Soft filtered click: body + faint high transient.
-      note(c, out, "triangle", 1000, 760, 0.045, 0.05);
-      note(c, out, "sine", 2200, 2000, 0.02, 0.025);
-      break;
-    case "toggleOn":
-      note(c, out, "triangle", 660, 990, 0.09, 0.06); // rising ~fifth
-      break;
-    case "toggleOff":
-      note(c, out, "triangle", 880, 560, 0.09, 0.06); // falling
-      break;
-    case "select":
-      note(c, out, "triangle", 880, 920, 0.05, 0.05);
-      break;
-    case "open":
-      note(c, out, "sine", 520, 760, 0.08, 0.05);
-      break;
-    case "confirm":
-      note(c, out, "triangle", 700, 1000, 0.08, 0.07);
-      break;
-    case "success":
-      // Major arpeggio C6–E6–G6.
-      [1047, 1319, 1568].forEach((f, i) =>
-        note(c, out, "triangle", f, f * 1.01, 0.12, 0.06, i * 0.06),
-      );
-      break;
-    case "error":
-      // Soft minor-second fall.
-      note(c, out, "sawtooth", 360, 300, 0.14, 0.05);
-      note(c, out, "sine", 340, 280, 0.16, 0.04, 0.04);
-      break;
-    case "arrival":
-      note(c, out, "sine", 1320, 1500, 0.07, 0.045);
-      break;
-    case "nav":
-      note(c, out, "sine", 600, 820, 0.06, 0.04);
-      break;
-    case "celebrate":
-      // G5–B5–D6–G6.
-      [784, 988, 1175, 1568].forEach((f, i) =>
-        note(c, out, "triangle", f, f * 1.01, 0.16, 0.06, i * 0.07),
-      );
-      break;
+let initialized = false;
+function init(): void {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+  try {
+    setMasterVolume(0.4); // quiet by design
+  } catch {
+    /* no-op */
   }
 }
 
-// Resume a suspended context (call from a user gesture for autoplay policy).
+// Resume/unlock the shared AudioContext (call from a user gesture for autoplay policy).
 export function resumeAudio(): void {
-  const a = audio();
-  if (a && a.c.state === "suspended") void a.c.resume();
+  if (typeof window === "undefined") return;
+  init();
+  void ensureReady().catch(() => {});
 }
 
 // Collapse duplicate plays of the same sound within this window (ms) — keeps the
@@ -151,10 +209,9 @@ export function playSound(name: SoundName): void {
       typeof performance !== "undefined" ? performance.now() : Date.now();
     if (now - (lastPlayed.get(name) ?? -Infinity) < DEDUPE_MS) return;
     lastPlayed.set(name, now);
-    const a = audio();
-    if (!a) return;
-    if (a.c.state === "suspended") void a.c.resume();
-    render(a.c, a.out, name);
+    init();
+    // ±4 cents of drift so no two plays are identical.
+    PLAYERS[name]({ detune: (Math.random() - 0.5) * 8 });
   } catch {
     /* audio is a bonus layer — failures are silent */
   }

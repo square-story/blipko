@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { playSound, resumeAudio, type SoundName } from "@/lib/sound";
 import { useSoundStore } from "@/hooks/use-sound-store";
 
@@ -12,17 +13,30 @@ const RULES: { selector: string; sound: SoundName | "toggle" }[] = [
   { selector: '[data-slot="switch"],[data-slot="checkbox"]', sound: "toggle" },
   {
     selector:
-      '[data-slot="select-item"],[data-slot="dropdown-menu-item"],[data-slot="dropdown-menu-radio-item"],[data-slot="dropdown-menu-checkbox-item"],[data-slot="command-item"],[role="option"]',
+      '[data-slot="select-item"],[data-slot="dropdown-menu-item"],[data-slot="dropdown-menu-radio-item"],[data-slot="dropdown-menu-checkbox-item"],[data-slot="command-item"],[data-slot="tabs-trigger"],[data-slot="radio-group-item"],[role="option"]',
     sound: "select",
   },
+  { selector: '[data-slot="slider"],[data-slot="slider-thumb"]', sound: "slide" },
   { selector: '[data-slot$="-trigger"]', sound: "open" },
   { selector: '[data-slot="button"]', sound: "tick" },
-  { selector: 'a[href],[role="link"]', sound: "nav" },
 ];
 
 const DISABLED = '[disabled],[aria-disabled="true"],[data-disabled]';
 
 export function SoundProvider() {
+  const pathname = usePathname();
+  const firstPath = useRef(true);
+
+  // Route change → nav. Covers programmatic navigation too, not just link clicks
+  // (the old link-pointerdown rule is dropped so this doesn't double-fire).
+  useEffect(() => {
+    if (firstPath.current) {
+      firstPath.current = false;
+      return;
+    }
+    playSound("nav");
+  }, [pathname]);
+
   useEffect(() => {
     // If the user never chose and the OS prefers reduced motion, default off.
     if (
@@ -51,9 +65,24 @@ export function SoundProvider() {
       }
     };
 
+    // Opt-in hover: only elements explicitly marked [data-sound-hover] (never all
+    // buttons — hover-spam on frequent controls is the anti-pattern). Fires once
+    // per entered element, not while moving within it.
+    let hovered: Element | null = null;
+    const onPointerOver = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      const el = target?.closest?.("[data-sound-hover]") ?? null;
+      if (el === hovered) return;
+      hovered = el;
+      if (el && !el.closest(DISABLED)) playSound("hover");
+    };
+
     document.addEventListener("pointerdown", onPointerDown, true);
-    return () =>
+    document.addEventListener("pointerover", onPointerOver, true);
+    return () => {
       document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("pointerover", onPointerOver, true);
+    };
   }, []);
 
   return null;
