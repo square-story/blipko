@@ -4,11 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { Bucket, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import {
+  expenseEditSchema,
+  type ExpenseEditInput,
+} from "@/lib/validations/expense";
 
 export type ExpenseData = {
   id: string;
   amount: number;
   bucket: Bucket;
+  categoryId: string | null;
   categoryName: string | null;
   note: string | null;
   source: string;
@@ -125,6 +130,7 @@ export async function getExpenses({
       id: e.id,
       amount: Number(e.amount),
       bucket: e.bucket,
+      categoryId: e.categoryId,
       categoryName: e.category?.name ?? null,
       note: e.note,
       source: e.source,
@@ -260,6 +266,49 @@ export async function assignExpenseCategory(
   });
 
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/categories");
+  revalidatePath("/dashboard/analytics");
+  return { success: true };
+}
+
+export async function updateExpense(id: string, input: ExpenseEditInput) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const parsed = expenseEditSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
+  }
+  const { amount, date, categoryId, note } = parsed.data;
+
+  const expense = await prisma.expense.findUnique({
+    where: { id, userId: session.user.id },
+  });
+  if (!expense) return { success: false, message: "Expense not found" };
+
+  // Bucket is driven by the category. Pick one → adopt its bucket; clear it →
+  // uncategorize but keep the existing bucket.
+  let categoryUpdate: { categoryId: string | null; bucket?: Bucket };
+  if (categoryId) {
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId, userId: session.user.id },
+    });
+    if (!category) return { success: false, message: "Category not found" };
+    categoryUpdate = { categoryId: category.id, bucket: category.bucket };
+  } else {
+    categoryUpdate = { categoryId: null };
+  }
+
+  await prisma.expense.update({
+    where: { id },
+    data: { amount, date, note: note || null, ...categoryUpdate },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/expenses");
   revalidatePath("/dashboard/categories");
   revalidatePath("/dashboard/analytics");
   return { success: true };

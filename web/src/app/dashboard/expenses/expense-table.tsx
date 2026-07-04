@@ -10,8 +10,9 @@ import {
 } from "@tanstack/react-table";
 import { useQueryState, parseAsInteger, parseAsString } from "nuqs";
 import { ExpenseData, ExpenseFilters } from "@/lib/actions/expenses";
+import type { CategoryStat } from "@/lib/actions/categories";
 import { DataTable } from "@/components/data-table/data-table";
-import { columns } from "./_components/columns";
+import { getExpenseColumns } from "./_components/columns";
 import { ExpenseTableToolbar } from "./_components/expense-table-toolbar";
 import { ExpenseTableFloatingBar } from "./_components/expense-table-floating-bar";
 
@@ -20,13 +21,19 @@ interface ExpenseTableProps {
     pageCount: number;
     total: number;
     categoryOptions: { label: string; value: string }[];
+    categories: CategoryStat[];
 }
 
 export function ExpenseTable({
     data,
     pageCount,
     categoryOptions,
+    categories,
 }: ExpenseTableProps) {
+    const columns = React.useMemo(
+        () => getExpenseColumns(categories),
+        [categories],
+    );
     // URL State
     const [page, setPage] = useQueryState(
         "page",

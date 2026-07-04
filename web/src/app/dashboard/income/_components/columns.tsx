@@ -1,11 +1,11 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { IncomeData } from "@/lib/actions/income";
 import { formatMoney } from "@/lib/budget";
+import { IncomeRowActions } from "./income-row-actions";
 
 export const columns: ColumnDef<IncomeData>[] = [
   {
@@ -46,27 +46,15 @@ export const columns: ColumnDef<IncomeData>[] = [
   {
     accessorKey: "amount",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} label="Amount" />
+      <div className="flex justify-end">
+        <DataTableColumnHeader column={column} label="Amount" />
+      </div>
     ),
     cell: ({ row }) => (
-      <div className="font-medium text-green-600">
+      <div className="text-right font-medium text-green-600">
         +{formatMoney(row.getValue("amount"))}
       </div>
     ),
-  },
-  {
-    accessorKey: "source",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} label="Source" />
-    ),
-    cell: ({ row }) => {
-      const source = row.original.source;
-      return source ? (
-        <Badge variant="outline">{source}</Badge>
-      ) : (
-        <span className="text-muted-foreground">—</span>
-      );
-    },
   },
   {
     accessorKey: "note",
@@ -78,5 +66,15 @@ export const columns: ColumnDef<IncomeData>[] = [
         {row.getValue("note") || "—"}
       </div>
     ),
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => (
+      <div className="flex justify-end">
+        <IncomeRowActions income={row.original} />
+      </div>
+    ),
+    enableSorting: false,
+    enableHiding: false,
   },
 ];

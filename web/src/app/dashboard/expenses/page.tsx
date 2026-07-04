@@ -47,6 +47,7 @@ export default async function Page({ searchParams }: PageProps) {
                     pageCount={pageCount}
                     total={total}
                     categoryOptions={categoryOptions}
+                    categories={categories}
                 />
             </div>
         </ContentLayout>

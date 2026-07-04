@@ -5,9 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { ExpenseData } from "@/lib/actions/expenses";
+import type { CategoryStat } from "@/lib/actions/categories";
 import { BUCKET_META, formatMoney } from "@/lib/budget";
+import { ExpenseRowActions } from "./expense-row-actions";
 
-export const columns: ColumnDef<ExpenseData>[] = [
+export function getExpenseColumns(
+    categories: CategoryStat[],
+): ColumnDef<ExpenseData>[] {
+    return [
     {
         id: "select",
         header: ({ table }) => (
@@ -46,10 +51,14 @@ export const columns: ColumnDef<ExpenseData>[] = [
     {
         accessorKey: "amount",
         header: ({ column }) => (
-            <DataTableColumnHeader column={column} label="Amount" />
+            <div className="flex justify-end">
+                <DataTableColumnHeader column={column} label="Amount" />
+            </div>
         ),
         cell: ({ row }) => (
-            <div className="font-medium">{formatMoney(row.getValue("amount"))}</div>
+            <div className="text-right font-medium">
+                {formatMoney(row.getValue("amount"))}
+            </div>
         ),
     },
     {
@@ -94,17 +103,14 @@ export const columns: ColumnDef<ExpenseData>[] = [
         ),
     },
     {
-        accessorKey: "source",
-        header: ({ column }) => (
-            <DataTableColumnHeader column={column} label="Source" />
+        id: "actions",
+        cell: ({ row }) => (
+            <div className="flex justify-end">
+                <ExpenseRowActions expense={row.original} categories={categories} />
+            </div>
         ),
-        cell: ({ row }) => {
-            const source = row.getValue("source") as string;
-            return (
-                <Badge variant={source === "VOICE" ? "default" : "secondary"}>
-                    {source === "VOICE" ? "🎙 Voice" : "💬 Text"}
-                </Badge>
-            );
-        },
+        enableSorting: false,
+        enableHiding: false,
     },
-];
+    ];
+}

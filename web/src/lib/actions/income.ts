@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import {
+  incomeEditSchema,
+  type IncomeEditInput,
+} from "@/lib/validations/income";
 
 export type IncomeData = {
   id: string;
@@ -123,6 +127,34 @@ export async function deleteIncome(ids: string[]) {
   await prisma.income.updateMany({
     where: { id: { in: ids }, userId: session.user.id },
     data: { isDeleted: true, deletedAt: new Date() },
+  });
+
+  revalidatePath("/dashboard/income");
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+export async function updateIncome(id: string, input: IncomeEditInput) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const parsed = incomeEditSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
+  }
+  const { amount, date, source, note } = parsed.data;
+
+  const income = await prisma.income.findUnique({
+    where: { id, userId: session.user.id },
+  });
+  if (!income) return { success: false, message: "Income not found" };
+
+  await prisma.income.update({
+    where: { id },
+    data: { amount, date, source: source || null, note: note || null },
   });
 
   revalidatePath("/dashboard/income");
