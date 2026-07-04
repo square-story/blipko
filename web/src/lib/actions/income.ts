@@ -42,7 +42,7 @@ function buildWhere(
   if (from || to) {
     where.date = {};
     if (from) where.date.gte = new Date(Number(from));
-    if (to) where.date.lte = new Date(Number(to));
+    if (to) where.date.lte = new Date(Number(to) + 86_399_999);
   }
 
   return where;

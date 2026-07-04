@@ -48,7 +48,11 @@ export function IncomeTableToolbar<TData>({
         className="h-8 w-[150px] lg:w-[250px]"
       />
       {table.getColumn("date") && (
-        <DataTableDateFilter column={table.getColumn("date")!} title="Date" />
+        <DataTableDateFilter
+          column={table.getColumn("date")!}
+          title="Date"
+          multiple
+        />
       )}
       {isFiltered && (
         <Button

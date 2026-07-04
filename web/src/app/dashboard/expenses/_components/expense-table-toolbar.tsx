@@ -75,6 +75,7 @@ export function ExpenseTableToolbar<TData>({
                 <DataTableDateFilter
                     column={table.getColumn("date")!}
                     title="Date"
+                    multiple
                 />
             )}
             {isFiltered && (
