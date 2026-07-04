@@ -117,7 +117,10 @@ async function OverviewSection({
             <div className="grid gap-4 md:grid-cols-3">
                 {buckets.map((b, i) => {
                     const meta = BUCKET_META[b.bucket];
-                    const over = b.pct > 100;
+                    const isSavings = b.bucket === "SAVINGS";
+                    // Savings: beating the target is a win, not a warning.
+                    const savingsWin = isSavings && b.spent >= b.budget && b.budget > 0;
+                    const overspent = !isSavings && b.pct > 100;
                     const barWidth = Math.min(100, b.pct);
                     return (
                         <Card
@@ -131,7 +134,7 @@ async function OverviewSection({
                                         {meta.emoji} {meta.label}
                                     </span>
                                     <span
-                                        className={`text-sm font-medium ${over ? "text-destructive" : "text-muted-foreground"}`}
+                                        className={`text-sm font-medium ${overspent ? "text-destructive" : savingsWin ? "text-green-600" : "text-muted-foreground"}`}
                                     >
                                         {b.pct}%
                                     </span>
@@ -148,14 +151,20 @@ async function OverviewSection({
                                 </div>
                                 <div className="h-2 w-full rounded-full bg-muted">
                                     <div
-                                        className={`bar-fill h-2 w-full rounded-full ${over ? "bg-destructive" : "bg-primary"}`}
+                                        className={`bar-fill h-2 w-full rounded-full ${overspent ? "bg-destructive" : savingsWin ? "bg-green-600" : "bg-primary"}`}
                                         style={{ "--pct": barWidth / 100 } as CSSProperties}
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    {b.remaining >= 0
-                                        ? `${formatMoney(b.remaining, currency)} left`
-                                        : `${formatMoney(Math.abs(b.remaining), currency)} over`}
+                                <p className={`text-xs ${savingsWin ? "text-green-600" : "text-muted-foreground"}`}>
+                                    {isSavings
+                                        ? b.remaining < 0
+                                            ? `🎉 ${formatMoney(Math.abs(b.remaining), currency)} above target`
+                                            : b.remaining === 0
+                                                ? "🎉 Target reached"
+                                                : `${formatMoney(b.remaining, currency)} to go`
+                                        : b.remaining >= 0
+                                            ? `${formatMoney(b.remaining, currency)} left`
+                                            : `${formatMoney(Math.abs(b.remaining), currency)} over`}
                                 </p>
                             </CardContent>
                         </Card>
