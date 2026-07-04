@@ -19,7 +19,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import { AnimatedNumber } from "@/components/animated-number";
 import Onboarding from "@/components/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -180,20 +180,31 @@ async function OverviewSection({
                                 {recentExpenses.map((e) => (
                                     <div
                                         key={e.id}
-                                        className="flex items-center justify-between"
+                                        className="flex items-center justify-between gap-3"
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary" className="text-xs">
-                                                {BUCKET_META[e.bucket].emoji}{" "}
-                                                {e.categoryName ?? BUCKET_META[e.bucket].label}
-                                            </Badge>
-                                            <span className="text-sm text-muted-foreground">
-                                                {e.note ?? ""}
-                                            </span>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="shrink-0">
+                                                    {BUCKET_META[e.bucket].emoji}
+                                                </span>
+                                                <span className="truncate text-sm font-medium">
+                                                    {e.categoryName ?? BUCKET_META[e.bucket].label}
+                                                </span>
+                                            </div>
+                                            {e.note && (
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {e.note}
+                                                </p>
+                                            )}
                                         </div>
-                                        <span className="text-sm font-medium">
-                                            {formatMoney(e.amount, currency)}
-                                        </span>
+                                        <div className="shrink-0 text-right">
+                                            <div className="text-sm font-medium">
+                                                {formatMoney(e.amount, currency)}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {format(new Date(e.date), "MMM d")}
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
