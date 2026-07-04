@@ -2,7 +2,7 @@
 
 import type { Table } from "@tanstack/react-table";
 import { Loader, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,9 @@ function DataTableActionBar<TData>({
   ...props
 }: DataTableActionBarProps<TData>) {
   const [mounted, setMounted] = React.useState(false);
+  const reduce = useReducedMotion();
+  // Reduced motion: keep the opacity fade, drop the vertical slide.
+  const offset = reduce ? "translateY(0px)" : "translateY(20px)";
 
   React.useLayoutEffect(() => {
     setMounted(true);
@@ -60,11 +63,11 @@ function DataTableActionBar<TData>({
         <motion.div
           role="toolbar"
           aria-orientation="horizontal"
-          initial={{ opacity: 0, transform: "translateY(20px)" }}
+          initial={{ opacity: 0, transform: offset }}
           animate={{ opacity: 1, transform: "translateY(0px)" }}
           exit={{
             opacity: 0,
-            transform: "translateY(20px)",
+            transform: offset,
             transition: { duration: 0.15, ease: [0.23, 1, 0.32, 1] },
           }}
           transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}

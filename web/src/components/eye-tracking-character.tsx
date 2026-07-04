@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { motion, useMotionValue, useSpring } from 'motion/react';
+import { motion, useMotionValue, useSpring, useReducedMotion } from 'motion/react';
 
 interface EyeProps {
     cx: string; // Center X as percentage
@@ -23,8 +23,10 @@ const Eye = ({ cx, cy, radius, pupilRadius }: EyeProps) => {
     // Spring values for smooth animation
     const x = useSpring(targetX, springs);
     const y = useSpring(targetY, springs);
+    const reduce = useReducedMotion();
 
     useEffect(() => {
+        if (reduce) return; // reduced motion: eyes stay centered, no tracking
         const handleMouseMove = (e: MouseEvent) => {
             if (!eyeRef.current) return;
 
@@ -56,7 +58,7 @@ const Eye = ({ cx, cy, radius, pupilRadius }: EyeProps) => {
 
         window.addEventListener('mousemove', handleMouseMove);
         return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, [radius, pupilRadius, targetX, targetY]);
+    }, [radius, pupilRadius, targetX, targetY, reduce]);
 
     return (
         <svg

@@ -1,5 +1,7 @@
+'use client'
+
 import { MessageCircle, Mic, PieChart, Activity, Bell, LayoutDashboard } from 'lucide-react'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 
 const features = [
     {
@@ -35,6 +37,7 @@ const features = [
 ];
 
 export default function Features() {
+    const reduce = useReducedMotion();
     return (
         <section id="features" className="py-12 md:py-20 scroll-mt-20">
             <div className="mx-auto max-w-5xl space-y-8 px-6 md:space-y-16">
@@ -55,10 +58,10 @@ export default function Features() {
                         return (
                             <motion.div
                                 key={i}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
+                                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 20 }}
+                                whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: i * 0.08 }}
+                                transition={reduce ? { duration: 0.3 } : { delay: i * 0.08 }}
                                 className="group relative border-b border-r p-8 last:border-b-0 sm:last:border-r-0 lg:last:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0 hover:bg-muted/50 transition-colors"
                             >
                                 <div className="space-y-3 relative z-10">

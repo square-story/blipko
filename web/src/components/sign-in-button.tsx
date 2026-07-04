@@ -10,7 +10,7 @@ export function SignInButton() {
             >
                 <span className="pl-4">Get Early Access</span>
                 <div className="relative mr-1 h-9 w-9 overflow-hidden rounded-full bg-black dark:bg-white">
-                    <div className="absolute top-[0.7em] left-[-0.1em] grid h-full w-full place-content-center transition-all duration-200 group-hover:translate-x-4 group-hover:-translate-y-5">
+                    <div className="absolute top-[0.7em] left-[-0.1em] grid h-full w-full place-content-center transition-transform duration-200 group-hover:translate-x-4 group-hover:-translate-y-5">
                         <svg
                             width="15"
                             height="15"

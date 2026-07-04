@@ -3,7 +3,7 @@
 import { EyeTrackingCharacter } from "./eye-tracking-character"
 import { TextAnimate } from "./ui/text-animate"
 import { FaqsSection } from "./faqs-section"
-import { motion } from "motion/react"
+import { motion, useReducedMotion } from "motion/react"
 import { SignInButton } from "./sign-in-button"
 import { LineShadowText } from "./ui/line-shadow-text";
 import { WatchDemoButton } from "./watch-demo-button";
@@ -24,6 +24,14 @@ interface HomeContentProps {
 
 
 export const HomeContent = ({ session }: HomeContentProps) => {
+    // Reduced motion: keep the fades, drop the rise/scale movement.
+    const reduce = useReducedMotion();
+    const rise = reduce
+        ? { hidden: { opacity: 0 }, visible: { opacity: 1 } }
+        : { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
+    const pop = reduce
+        ? { hidden: { opacity: 0 }, visible: { opacity: 1 } }
+        : { hidden: { scale: 0.8, opacity: 0 }, visible: { scale: 1, opacity: 1 } };
     return (
         <main className="relative min-h-screen overflow-hidden flex flex-col items-center">
             <div className="fixed inset-0 pointer-events-none -z-10">
@@ -39,14 +47,14 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 className="w-full max-w-4xl gap-4 px-6 flex flex-col items-center justify-center text-center mt-24 pt-16 pb-24 relative z-10"
             >
                 <motion.div
-                    variants={{ hidden: { scale: 0.8, opacity: 0 }, visible: { scale: 1, opacity: 1 } }}
+                    variants={pop}
                     transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 >
                     <EyeTrackingCharacter size={200} />
                 </motion.div>
 
                 <motion.div
-                    variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
+                    variants={rise}
                     transition={{ duration: 0.8 }}
                 >
                     <LineShadowText className="italic text-7xl md:text-9xl font-bold">
@@ -55,7 +63,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 </motion.div>
 
                 <motion.div
-                    variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
+                    variants={rise}
                     transition={{ duration: 0.8 }}
                 >
                     <TextAnimate className="text-lg md:text-2xl text-gray-400 max-w-2xl mb-4 font-medium">
@@ -68,7 +76,7 @@ export const HomeContent = ({ session }: HomeContentProps) => {
                 </motion.div>
 
                 <motion.div
-                    variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
+                    variants={rise}
                     transition={{ duration: 0.8 }}
                 >
                     {session?.user ? (

@@ -1,7 +1,13 @@
 "use client";
 
-import { AnimatePresence, motion, MotionProps, Variants } from "motion/react";
-import type { JSX } from "react";
+import {
+  AnimatePresence,
+  motion,
+  MotionProps,
+  useReducedMotion,
+  Variants,
+} from "motion/react";
+import type { ElementType, JSX } from "react";
 import { memo } from "react";
 
 import { motionElements, type MotionHTMLElement } from "@/lib/motion-utils";
@@ -321,6 +327,13 @@ const TextAnimateBase = ({
   accessible = true,
   ...props
 }: TextAnimateProps) => {
+  // Reduced motion: render the text at rest, no per-segment reveal.
+  const reduce = useReducedMotion();
+  if (reduce) {
+    const Tag = tag as ElementType;
+    return <Tag className={cn("whitespace-pre-wrap", className)}>{children}</Tag>;
+  }
+
   const MotionComponent =
     motionElements[tag] ?? (motion.p as MotionHTMLElement);
 

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { ArrowRightIcon, SendIcon, CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/lib/toast";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ export default function Onboarding({
     .filter((g) => g.defaultSelected)
     .flatMap((g) => g.children.map((c) => c.name));
   const [step, setStep] = useState(1);
+  const reduce = useReducedMotion();
   const [open, setOpen] = useState(true);
 
   // Step 1
@@ -322,9 +323,9 @@ export default function Onboarding({
                                       key={c.name}
                                       type="button"
                                       onClick={() => toggleLeaf(c.name)}
-                                      initial={{ opacity: 0, scale: 0.85, y: 4 }}
-                                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                                      transition={{ delay: i * 0.03 }}
+                                      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85, y: 4 }}
+                                      animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                                      transition={reduce ? { duration: 0.2 } : { delay: i * 0.03 }}
                                       className={cn(
                                         "rounded-full border px-2.5 py-1 text-xs transition-colors",
                                         on
