@@ -46,7 +46,11 @@ export class TelegramMessageService implements IMessagingPlatform {
     opts?: SendInteractiveOptions,
   ): Promise<string> {
     const inline_keyboard = rows.map((row) =>
-      row.map((b) => ({ text: b.title, callback_data: b.id })),
+      row.map((b) =>
+        b.url
+          ? { text: b.title, url: b.url }
+          : { text: b.title, callback_data: b.id },
+      ),
     );
     const res = await fetch(`${this.base}/sendMessage`, {
       method: "POST",
@@ -79,7 +83,11 @@ export class TelegramMessageService implements IMessagingPlatform {
     rows: InlineButtonRows,
   ): Promise<void> {
     const inline_keyboard = rows.map((row) =>
-      row.map((b) => ({ text: b.title, callback_data: b.id })),
+      row.map((b) =>
+        b.url
+          ? { text: b.title, url: b.url }
+          : { text: b.title, callback_data: b.id },
+      ),
     );
     const res = await fetch(`${this.base}/editMessageText`, {
       method: "POST",

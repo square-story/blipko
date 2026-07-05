@@ -96,6 +96,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   messageService,
   queryAgent,
   runInTransaction,
+  env.WEB_APP_URL,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(

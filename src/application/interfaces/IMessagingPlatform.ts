@@ -4,8 +4,9 @@ export interface SendMessagePayload {
 }
 
 export interface InlineButton {
-  id: string; // callback_data sent back on press
+  id: string; // callback_data sent back on press (ignored when `url` is set)
   title: string; // display text
+  url?: string | undefined; // if set, an open-URL button instead of a callback
 }
 
 // Inline buttons are laid out as rows: InlineButton[][] (each inner array is one

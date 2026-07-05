@@ -5,6 +5,7 @@ import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
 import { getNeedsReviewExpenses } from "@/lib/actions/expenses";
 import { getCategories } from "@/lib/actions/categories";
 import { NeedsReviewInbox } from "./_components/needs-review-inbox";
+import { ConnectTelegramBanner } from "@/components/connect-telegram-banner";
 import {
     Stat,
     StatLabel,
@@ -63,7 +64,8 @@ async function OverviewSection({
     return (
         <>
             {!hasOnboarded && <Onboarding taxonomy={taxonomy} />}
-            
+            {hasOnboarded && <ConnectTelegramBanner />}
+
             <NeedsReviewInbox 
                 expenses={needsReview} 
                 categories={categories} 

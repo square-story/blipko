@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowRightIcon, SendIcon, CheckIcon, ChevronDown } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/lib/toast";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -37,13 +37,10 @@ import {
   type NotificationDosage,
 } from "@/lib/budget";
 import {
-  generateTelegramLinkToken,
-  getTelegramConnectionStatus,
-} from "@/lib/actions/user";
-import {
   submitOnboarding,
   type OnboardingGroup,
 } from "@/lib/actions/onboarding";
+import { ConnectTelegram } from "@/components/connect-telegram";
 import { playSound } from "@/lib/sound";
 
 const TOTAL_STEPS = 4;
@@ -73,11 +70,6 @@ export default function Onboarding({
   const [dosage, setDosage] = useState<NotificationDosage>("GENTLE");
 
   const [saving, setSaving] = useState(false);
-  // Step 4 (Telegram)
-  const [telegramLoading, setTelegramLoading] = useState(false);
-  const [telegramOpened, setTelegramOpened] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [linkMsg, setLinkMsg] = useState<string | null>(null);
 
   const incomeNum = Number(income.replace(/,/g, ""));
   const incomeValid = Number.isFinite(incomeNum) && incomeNum > 0;
@@ -142,37 +134,6 @@ export default function Onboarding({
     if (step === 1 && !incomeValid) return;
     if (step < 3) setStep(step + 1);
     else if (step === 3) void saveAndContinue();
-  };
-
-  const handleOpenTelegram = async () => {
-    setTelegramLoading(true);
-    setLinkMsg(null);
-    const win = window.open("", "_blank");
-    try {
-      const url = await generateTelegramLinkToken();
-      if (win) win.location.href = url;
-      else window.location.href = url;
-      setTelegramOpened(true);
-    } catch {
-      win?.close();
-      setLinkMsg("Couldn't open Telegram. Please try again.");
-    } finally {
-      setTelegramLoading(false);
-    }
-  };
-
-  const handleVerifyLink = async () => {
-    setChecking(true);
-    setLinkMsg(null);
-    const connected = await getTelegramConnectionStatus();
-    setChecking(false);
-    if (connected) {
-      setOpen(false);
-    } else {
-      setLinkMsg(
-        "We haven't seen your Telegram link yet — open the bot and tap Start, then try again (or finish for now).",
-      );
-    }
   };
 
   return (
@@ -402,11 +363,7 @@ export default function Onboarding({
                     and get your reminders. Optional, you can do this later.
                   </DialogDescription>
                 </DialogHeader>
-                {linkMsg && (
-                  <p className="text-sm text-amber-600 dark:text-amber-500">
-                    {linkMsg}
-                  </p>
-                )}
+                <ConnectTelegram onConnected={() => setOpen(false)} />
               </>
             )}
 
@@ -457,34 +414,13 @@ export default function Onboarding({
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setOpen(false)}
-                    >
-                      {telegramOpened ? "Finish" : "Skip"}
-                    </Button>
-                    {telegramOpened ? (
-                      <Button
-                        type="button"
-                        onClick={handleVerifyLink}
-                        disabled={checking}
-                      >
-                        {checking ? "Checking…" : "I've linked it"}
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        className="group"
-                        onClick={handleOpenTelegram}
-                        disabled={telegramLoading}
-                      >
-                        <SendIcon className="mr-2 size-4" />
-                        {telegramLoading ? "Opening…" : "Connect Telegram"}
-                      </Button>
-                    )}
-                  </>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setOpen(false)}
+                  >
+                    Do this later
+                  </Button>
                 )}
               </DialogFooter>
             </div>

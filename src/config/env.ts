@@ -13,6 +13,8 @@ const envSchema = z.object({
   SARVAM_API_KEY: z.string().default(""),
   TELEGRAM_BOT_TOKEN: z.string(),
   TELEGRAM_WEBHOOK_SECRET: z.string().min(1),
+  // Public URL of the web dashboard, used in the bot's onboarding hand-off.
+  WEB_APP_URL: z.string().url().default("https://blipko.lol"),
 });
 
 export const env = envSchema.parse(process.env);

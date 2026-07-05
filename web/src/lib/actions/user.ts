@@ -5,25 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
 
-export async function completeOnboarding() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  await prisma.user.update({
-    where: {
-      id: session.user.id,
-    },
-    data: {
-      hasOnboarded: true,
-    },
-  });
-
-  revalidatePath("/dashboard");
-  return { success: true };
-}
-
 export async function generateTelegramLinkToken(): Promise<string> {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
