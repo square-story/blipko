@@ -229,6 +229,9 @@ model Income {
   rawText    String
   confidence Float
 
+  // Link to the confirmation message (for reply/edit/undo handling)
+  confirmationMessageId String? @unique
+
   // Groups transactions parsed from one message, for batch undo.
   batchId String?
 
