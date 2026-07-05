@@ -23,10 +23,10 @@ Or send a *voice note* — I'll transcribe and log it.
 • /report — this month's summary + top leaks
 • /recurring — repeating income/expenses (rent, salary…)
 • /settings — reminder style (off / gentle / aggressive)
-• /start — set up or redo your budget
+• /start — connect your dashboard
 • \`undo\` — remove the last entry
 
-*Fine-tune anything* on the web dashboard — categories, per-category limits, income split, and reminders: blipko.lol`;
+*Set up & fine-tune everything* on the web dashboard — sign in, then tap *Connect Telegram* to link this chat. Categories, per-category limits, income split, and reminders all live there: blipko.lol`;
 
 // Replies to "help"/"/help" with a detailed guide. Pre-parse (no AI needed).
 export class HelpProcessor implements MessageProcessor {

@@ -22,7 +22,10 @@ import {
 } from "./processors/MessageProcessor";
 import { ConfirmBucketProcessor } from "./processors/ConfirmBucketProcessor";
 import { RecurringConfirmProcessor } from "./processors/RecurringConfirmProcessor";
-import { OnboardingProcessor } from "./processors/OnboardingProcessor";
+import {
+  ConnectAccountProcessor,
+  buildConnectHandoff,
+} from "./processors/ConnectAccountProcessor";
 import { SettingsProcessor } from "./processors/SettingsProcessor";
 import { HelpProcessor } from "./processors/HelpProcessor";
 import { StatusProcessor } from "./processors/StatusProcessor";
@@ -76,6 +79,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly messageService: IMessagingPlatform,
     private readonly queryAgent: IFinancialQueryAgent,
     private readonly runTransaction: RunInTransaction,
+    private readonly webAppUrl: string,
   ) {
     this.preParseProcessors = [
       new TransactionActionProcessor(
@@ -102,12 +106,7 @@ export class ProcessIncomingMessageUseCase {
         messageService,
         runTransaction,
       ),
-      new OnboardingProcessor(
-        userRepository,
-        budgetConfigRepository,
-        categoryRepository,
-        messageService,
-      ),
+      new ConnectAccountProcessor(messageService, webAppUrl),
       new SettingsProcessor(userRepository, messageService),
       new HelpProcessor(messageService),
       new StatusProcessor(
@@ -189,13 +188,27 @@ export class ProcessIncomingMessageUseCase {
     const linkToken = payload.textMessage?.match(/^\/?\s*start\s+(\S+)/i)?.[1];
     const { user, wasLinked } = await this.ensureUserExists(
       payload.platformUserId,
-      payload.platformUsername,
       linkToken,
     );
 
     if (wasLinked) {
       return {
         response: "✅ Account linked!",
+        parsed: { intent: "UNKNOWN", confidence: 1 },
+      };
+    }
+
+    // Brand-new, unlinked Telegram user — no account exists and no row was
+    // created. Hand off to the web dashboard instead of onboarding in chat.
+    if (!user) {
+      const { body, rows } = buildConnectHandoff(this.webAppUrl);
+      await this.messageService.sendInteractiveMessage(
+        payload.platformUserId,
+        body,
+        rows,
+      );
+      return {
+        response: body,
         parsed: { intent: "UNKNOWN", confidence: 1 },
       };
     }
@@ -287,9 +300,8 @@ export class ProcessIncomingMessageUseCase {
 
   private async ensureUserExists(
     telegramId: string,
-    name?: string,
     linkToken?: string,
-  ): Promise<{ user: User; wasLinked: boolean }> {
+  ): Promise<{ user: User | null; wasLinked: boolean }> {
     const existing = await this.userRepository.findByTelegramId(telegramId);
     // No link token: existing Telegram user is the user, as before.
     if (existing && !linkToken) return { user: existing, wasLinked: false };
@@ -314,10 +326,9 @@ export class ProcessIncomingMessageUseCase {
     // Token absent/expired but a Telegram user exists → use it.
     if (existing) return { user: existing, wasLinked: false };
 
-    const user = await this.userRepository.create({
-      telegramId,
-      ...(name !== undefined && { name }),
-    });
-    return { user, wasLinked: false };
+    // Brand-new, unlinked, no token → do NOT create a row. The caller hands off
+    // to the web dashboard; the account/link is created only via /start <token>
+    // (which links onto the signed-in web account, so no duplicates).
+    return { user: null, wasLinked: false };
   }
 }

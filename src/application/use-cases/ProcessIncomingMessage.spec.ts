@@ -114,30 +114,21 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       messageService,
       queryAgent,
       async (fn: any) => fn({}),
+      "https://blipko.lol",
     );
   });
 
-  it("captures income, shows the split, and moves to category selection", async () => {
-    userRepository.findByTelegramId.mockResolvedValue(newUser);
-    budgetConfigRepository.findByUserId.mockResolvedValue(null);
+  it("hands a brand-new unlinked user off to the dashboard (no row created)", async () => {
+    userRepository.findByTelegramId.mockResolvedValue(null);
 
-    await useCase.execute({ platformUserId: "123", textMessage: "50000" });
+    await useCase.execute({ platformUserId: "123", textMessage: "hi" });
 
-    expect(userRepository.update).toHaveBeenCalledWith(
-      "u1",
-      expect.objectContaining({
-        monthlyIncome: 50000,
-        onboardingStep: "PICK_GROUPS",
-      }),
-    );
-    expect(budgetConfigRepository.create).toHaveBeenCalledWith({
-      userId: "u1",
-    });
+    // No account is created and no in-chat onboarding runs.
+    expect(userRepository.create).not.toHaveBeenCalled();
     expect(aiParser.parseText).not.toHaveBeenCalled();
     const [, body, rows] = messageService.sendInteractiveMessage.mock.calls[0];
-    expect(body).toContain("25,000"); // Needs
-    expect(body).toContain("15,000"); // Wants
-    expect(rows.flat().some((b: any) => b.id === "ob:done")).toBe(true);
+    expect(body).toContain("Welcome to Blipko");
+    expect(rows[0][0].url).toBe("https://blipko.lol");
   });
 
   it("records a confident expense and shows remaining bucket budget", async () => {
