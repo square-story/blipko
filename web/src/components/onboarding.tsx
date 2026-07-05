@@ -137,6 +137,14 @@ export default function Onboarding({
     else if (step === 3) void saveAndContinue();
   };
 
+  // Finishing the wizard (connect Telegram or "Do this later") completes
+  // onboarding. Programmatic setOpen(false) doesn't fire Radix's onOpenChange,
+  // so mark completion explicitly here.
+  const completeAndClose = () => {
+    void markOnboardingComplete();
+    setOpen(false);
+  };
+
   return (
     <>
       {step === 4 && (
@@ -372,7 +380,7 @@ export default function Onboarding({
                     and get your reminders. Optional, you can do this later.
                   </DialogDescription>
                 </DialogHeader>
-                <ConnectTelegram onConnected={() => setOpen(false)} />
+                <ConnectTelegram onConnected={completeAndClose} />
               </>
             )}
 
@@ -426,7 +434,7 @@ export default function Onboarding({
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setOpen(false)}
+                    onClick={completeAndClose}
                   >
                     Do this later
                   </Button>
