@@ -34,6 +34,9 @@ import { IncomeProcessor } from "./processors/IncomeProcessor";
 import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
 import { QueryProcessor } from "./processors/QueryProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
+import { TransactionActionProcessor } from "./processors/TransactionActionProcessor";
+import { TransactionReplyProcessor } from "./processors/TransactionReplyProcessor";
+import { resolveByConfirmationMessage } from "./transactionActions";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -43,11 +46,15 @@ export interface ProcessIncomingMessageInput {
   // The message_id of the inline-keyboard message, when this is a button press —
   // lets processors edit that message in place (e.g. multi-select toggles).
   callbackMessageId?: string | undefined;
+  // The callback_query id, so a handler can ack the tap with a toast.
+  callbackQueryId?: string | undefined;
 }
 
 export interface ProcessIncomingMessageOutput {
   response: string;
   parsed: ParsedData;
+  // Optional toast to show on the tapped inline button (callbacks only).
+  toast?: string | undefined;
 }
 
 export class ProcessIncomingMessageUseCase {
@@ -71,6 +78,14 @@ export class ProcessIncomingMessageUseCase {
     private readonly runTransaction: RunInTransaction,
   ) {
     this.preParseProcessors = [
+      new TransactionActionProcessor(
+        expenseRepository,
+        incomeRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        parseLogRepository,
+        messageService,
+      ),
       new ConfirmBucketProcessor(
         parseLogRepository,
         expenseRepository,
@@ -116,6 +131,14 @@ export class ProcessIncomingMessageUseCase {
       ),
     ];
     this.postParseProcessors = [
+      new TransactionReplyProcessor(
+        expenseRepository,
+        incomeRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        parseLogRepository,
+        messageService,
+      ),
       new StatusProcessor(
         expenseRepository,
         budgetConfigRepository,
@@ -183,12 +206,29 @@ export class ProcessIncomingMessageUseCase {
       content: h.content,
     }));
 
+    // If the user replied to a transaction's confirmation message, resolve which
+    // transaction so the reply/edit processors can gate on it synchronously.
+    const replyTarget = payload.replyToMessageId
+      ? await resolveByConfirmationMessage(
+          {
+            expenseRepository: this.expenseRepository,
+            incomeRepository: this.incomeRepository,
+            categoryRepository: this.categoryRepository,
+            budgetConfigRepository: this.budgetConfigRepository,
+          },
+          user.id,
+          payload.replyToMessageId,
+        )
+      : null;
+
     const context: ProcessContext = {
       user,
       platformUserId: payload.platformUserId,
       textMessage: payload.textMessage,
       replyToMessageId: payload.replyToMessageId,
       callbackMessageId: payload.callbackMessageId,
+      callbackQueryId: payload.callbackQueryId,
+      replyTarget: replyTarget ?? undefined,
       conversationHistory: history,
     };
 

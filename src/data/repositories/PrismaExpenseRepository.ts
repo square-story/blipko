@@ -1,6 +1,7 @@
 import { Bucket, Expense, Prisma, PrismaClient } from "@prisma/client";
 import {
   CreateExpenseDTO,
+  UpdateExpenseDTO,
   IExpenseRepository,
   RecentExpenseFilter,
   RecentExpenseRow,
@@ -57,6 +58,18 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     });
   }
 
+  async update(id: string, data: UpdateExpenseDTO): Promise<void> {
+    await this.prisma.expense.update({
+      where: { id },
+      data: {
+        ...(data.amount !== undefined && { amount: data.amount }),
+        ...(data.bucket !== undefined && { bucket: data.bucket }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
+        ...(data.note !== undefined && { note: data.note }),
+      },
+    });
+  }
+
   async findByBatchId(batchId: string, userId: string): Promise<Expense[]> {
     return this.prisma.expense.findMany({
       where: { batchId, userId, isDeleted: false },
@@ -67,6 +80,20 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     await this.prisma.expense.updateMany({
       where: { batchId, userId, isDeleted: false },
       data: { isDeleted: true, deletedAt: new Date() },
+    });
+  }
+
+  async restore(id: string): Promise<void> {
+    await this.prisma.expense.update({
+      where: { id },
+      data: { isDeleted: false, deletedAt: null },
+    });
+  }
+
+  async restoreByBatchId(batchId: string, userId: string): Promise<void> {
+    await this.prisma.expense.updateMany({
+      where: { batchId, userId, isDeleted: true },
+      data: { isDeleted: false, deletedAt: null },
     });
   }
 

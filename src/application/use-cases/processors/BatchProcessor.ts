@@ -18,6 +18,7 @@ import {
   buildExpenseLine,
   buildBucketBudgetLine,
 } from "../expenseFlow";
+import { txnCb } from "../txnCallback";
 import {
   BUCKET_META,
   bucketBudget,
@@ -214,10 +215,15 @@ export class BatchProcessor implements MessageProcessor {
       parts.join("\n") ||
       'Hmm, I couldn\'t catch those. Try "chai 30, auto 80".';
 
-    const summaryMsgId = await this.messageService.sendMessage({
-      to: platformUserId,
-      body: summaryBody,
-    });
+    // Delete-all button when anything was logged (confirm-gated on tap).
+    const summaryRows: InlineButtonRows = firstExpenseId
+      ? [[{ id: txnCb.askdelbatch(batchId), title: "🗑 Delete all" }]]
+      : [];
+    const summaryMsgId = await this.messageService.sendInteractiveMessage(
+      platformUserId,
+      summaryBody,
+      summaryRows,
+    );
     // Link one representative row to the summary so replying to it undoes the
     // whole batch (batchId does the grouping — see UndoProcessor).
     if (summaryMsgId && firstExpenseId) {

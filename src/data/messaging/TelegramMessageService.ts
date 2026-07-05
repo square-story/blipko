@@ -2,6 +2,7 @@ import {
   IMessagingPlatform,
   SendMessagePayload,
   InlineButtonRows,
+  SendInteractiveOptions,
 } from "../../application/interfaces/IMessagingPlatform";
 import { env } from "../../config/env";
 
@@ -42,6 +43,7 @@ export class TelegramMessageService implements IMessagingPlatform {
     to: string,
     body: string,
     rows: InlineButtonRows,
+    opts?: SendInteractiveOptions,
   ): Promise<string> {
     const inline_keyboard = rows.map((row) =>
       row.map((b) => ({ text: b.title, callback_data: b.id })),
@@ -54,6 +56,10 @@ export class TelegramMessageService implements IMessagingPlatform {
         text: body,
         parse_mode: "Markdown",
         reply_markup: { inline_keyboard },
+        ...(opts?.replyToMessageId && {
+          reply_to_message_id: Number(opts.replyToMessageId),
+          allow_sending_without_reply: true,
+        }),
       }),
     });
     if (!res.ok) {
@@ -93,11 +99,17 @@ export class TelegramMessageService implements IMessagingPlatform {
     }
   }
 
-  async acknowledgeInteraction(callbackQueryId: string): Promise<void> {
+  async acknowledgeInteraction(
+    callbackQueryId: string,
+    text?: string,
+  ): Promise<void> {
     await fetch(`${this.base}/answerCallbackQuery`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ callback_query_id: callbackQueryId }),
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        ...(text && { text }),
+      }),
     }).catch(() => {});
   }
 }

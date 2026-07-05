@@ -45,7 +45,7 @@ describe("BatchProcessor", () => {
     };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("summary-msg"),
-      sendInteractiveMessage: vi.fn().mockResolvedValue("followup-msg"),
+      sendInteractiveMessage: vi.fn().mockResolvedValue("summary-msg"),
     };
     processor = new BatchProcessor(
       expenseRepository,
@@ -114,15 +114,18 @@ describe("BatchProcessor", () => {
     expect(new Set(batchIds).size).toBe(1);
     expect(batchIds[0]).toBeTruthy();
 
-    // Exactly one summary, no ambiguity follow-up.
-    expect(messageService.sendMessage).toHaveBeenCalledTimes(1);
-    expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
+    // Exactly one summary (interactive, with a delete-all button); no follow-up.
+    expect(messageService.sendInteractiveMessage).toHaveBeenCalledTimes(1);
 
     // Each recorded expense item carries a compact bucket sub-line.
-    const summary = messageService.sendMessage.mock.calls[0][0].body;
+    const summary = messageService.sendInteractiveMessage.mock.calls[0][1];
     expect(summary).toContain("· Wants:");
     expect(summary).toContain("· Needs:");
     expect(summary).toContain("left");
+
+    // Summary carries a Delete-all quick action.
+    const summaryRows = messageService.sendInteractiveMessage.mock.calls[0][2];
+    expect(summaryRows[0][0].id).toMatch(/^txn:askdelbatch:/);
 
     // Representative row linked to the summary message.
     expect(expenseRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
@@ -159,10 +162,9 @@ describe("BatchProcessor", () => {
     // ParseLog carries the batchId so confirmed items rejoin the batch.
     expect(parseLogRepository.create.mock.calls[0][0].batchId).toBeTruthy();
 
-    // One summary + one grouped follow-up with a bkt: button row per item.
-    expect(messageService.sendMessage).toHaveBeenCalledTimes(1);
-    expect(messageService.sendInteractiveMessage).toHaveBeenCalledTimes(1);
-    const rows = messageService.sendInteractiveMessage.mock.calls[0][2];
+    // Summary (interactive) + one grouped follow-up with a bkt: button row per item.
+    expect(messageService.sendInteractiveMessage).toHaveBeenCalledTimes(2);
+    const rows = messageService.sendInteractiveMessage.mock.calls[1][2];
     expect(rows).toHaveLength(2);
     expect(rows[0][0].id).toMatch(/^bkt:log1:NEEDS$/);
   });

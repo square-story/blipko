@@ -76,6 +76,8 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       sumForMonth: vi.fn().mockResolvedValue(0),
       findLastByUserId: vi.fn().mockResolvedValue(null),
+      findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
+      updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
     recurringRuleRepository = {
@@ -167,7 +169,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
         categoryId: "c1",
       }),
     );
-    const body = messageService.sendMessage.mock.calls[0][0].body;
+    const body = messageService.sendInteractiveMessage.mock.calls[0][1];
     expect(body).toContain("Wants · Food");
     expect(body).toContain("Food:"); // per-category line
     expect(body).toContain("Wants:"); // per-bucket line
@@ -176,7 +178,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(body).toContain("15,000");
     expect(expenseRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
       "e1",
-      "msg-id-123",
+      "msg-id-456",
     );
   });
 
@@ -225,7 +227,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
         parseLogId: "plog1",
       }),
     );
-    const body = messageService.sendMessage.mock.calls[0][0].body;
+    const body = messageService.sendInteractiveMessage.mock.calls[0][1];
     expect(body).toContain("Wants:");
     expect(body).toContain("left of");
     expect(body).toContain("13,500"); // 15000 - 1500
@@ -272,23 +274,24 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     );
   });
 
-  it("undoes the last expense on the plain 'undo' command", async () => {
+  it("asks to confirm before undoing on the plain 'undo' command", async () => {
     expenseRepository.findLastByUserId.mockResolvedValue({
       id: "e1",
       amount: 220,
       bucket: "WANTS",
       categoryId: "c1",
       note: "lunch",
+      batchId: null,
     });
-    expenseRepository.sumByBucketForMonth.mockResolvedValue(0);
 
     await useCase.execute({ platformUserId: "123", textMessage: "undo" });
 
     expect(aiParser.parseText).not.toHaveBeenCalled();
-    expect(expenseRepository.softDelete).toHaveBeenCalledWith("e1");
-    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "Removed: ₹220 Food",
-    );
+    // Confirms first — no immediate delete.
+    expect(expenseRepository.softDelete).not.toHaveBeenCalled();
+    const [, body, rows] = messageService.sendInteractiveMessage.mock.calls[0];
+    expect(body).toContain("Undo this?");
+    expect(rows[0][0].id).toBe("txn:del:e:e1:y");
   });
 
   it("records income and replies with the refreshed budget", async () => {
@@ -307,7 +310,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(incomeRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 5000, userId: "u1" }),
     );
-    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+    expect(messageService.sendInteractiveMessage.mock.calls[0][1]).toContain(
       "Income this cycle: ₹55,000",
     );
   });

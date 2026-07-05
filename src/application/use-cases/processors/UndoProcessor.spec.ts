@@ -1,15 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { UndoProcessor } from "./UndoProcessor";
 
-const user = { id: "u1", telegramId: "123", monthlyIncome: 50000 };
+const user = { id: "u1", telegramId: "123", payday: 1, monthlyIncome: 50000 };
 const lastExpense = {
   id: "e1",
   amount: 220,
   bucket: "WANTS",
   categoryId: "c1",
   note: "lunch",
+  batchId: null,
+  date: new Date(),
 };
 
+// UndoProcessor now CONFIRMS instead of deleting: it sends a Yes/No prompt whose
+// buttons carry the shared txn:del/txn:delbatch callbacks. The actual delete is
+// covered by TransactionActionProcessor.spec.
 describe("UndoProcessor", () => {
   let expenseRepository: any;
   let categoryRepository: any;
@@ -22,11 +27,7 @@ describe("UndoProcessor", () => {
     vi.clearAllMocks();
     expenseRepository = {
       findLastByUserId: vi.fn().mockResolvedValue(lastExpense),
-      findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       softDelete: vi.fn().mockResolvedValue(undefined),
-      findByBatchId: vi.fn().mockResolvedValue([]),
-      softDeleteByBatchId: vi.fn().mockResolvedValue(undefined),
-      sumByBucketForMonth: vi.fn().mockResolvedValue(0), // after delete
     };
     categoryRepository = {
       findById: vi
@@ -38,12 +39,12 @@ describe("UndoProcessor", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
     incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
       findLastByUserId: vi.fn().mockResolvedValue(null),
-      findByBatchId: vi.fn().mockResolvedValue([]),
-      softDeleteByBatchId: vi.fn().mockResolvedValue(undefined),
+    };
+    messageService = {
+      sendMessage: vi.fn().mockResolvedValue("m1"),
+      sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),
     };
     processor = new UndoProcessor(
       expenseRepository,
@@ -54,7 +55,7 @@ describe("UndoProcessor", () => {
     );
   });
 
-  it("matches 'undo'/'/undo' and the UNDO intent", () => {
+  it("matches 'undo'/'/undo' and the UNDO intent, but not replies", () => {
     const base = { user, platformUserId: "123" };
     expect(processor.canHandle({ ...base, textMessage: "undo" } as any)).toBe(
       true,
@@ -69,56 +70,41 @@ describe("UndoProcessor", () => {
         parsed: { intent: "UNDO", confidence: 0.9 },
       } as any),
     ).toBe(true);
+    // A reply to a transaction is handled by TransactionReplyProcessor.
+    expect(
+      processor.canHandle({
+        ...base,
+        textMessage: "undo",
+        replyTarget: { kind: "expense", row: lastExpense },
+      } as any),
+    ).toBe(false);
     expect(
       processor.canHandle({ ...base, textMessage: "lunch 30" } as any),
     ).toBe(false);
   });
 
-  it("removes the last expense and shows restored budget", async () => {
+  it("confirms before removing the latest expense (does not delete)", async () => {
     await processor.process({
       user,
       platformUserId: "123",
       textMessage: "undo",
     } as any);
 
-    expect(expenseRepository.softDelete).toHaveBeenCalledWith("e1");
-    const body = messageService.sendMessage.mock.calls[0][0].body;
-    expect(body).toContain("Removed: ₹220 Food");
-    expect(body).toContain("Wants left this month: ₹15,000");
+    // No deletion yet — only a confirmation prompt.
+    expect(expenseRepository.softDelete).not.toHaveBeenCalled();
+    const [, body, rows] = messageService.sendInteractiveMessage.mock.calls[0];
+    expect(body).toContain("Undo this?");
+    expect(body).toContain("Food");
+    // The Yes button carries the shared delete callback for this expense.
+    expect(rows[0][0].id).toBe("txn:del:e:e1:y");
+    expect(rows[0][1].id).toBe("txn:del:e:e1:n");
   });
 
-  it("targets the replied-to expense when a confirmation reply is undone", async () => {
-    expenseRepository.findByConfirmationMessageId.mockResolvedValue({
-      ...lastExpense,
-      id: "e9",
-    });
-
-    await processor.process({
-      user,
-      platformUserId: "123",
-      textMessage: "undo",
-      replyToMessageId: "msg-9",
-    } as any);
-
-    expect(expenseRepository.findByConfirmationMessageId).toHaveBeenCalledWith(
-      "msg-9",
-      "u1",
-    );
-    expect(expenseRepository.softDelete).toHaveBeenCalledWith("e9");
-  });
-
-  it("undoes the whole batch when the last entry has a batchId", async () => {
+  it("uses the batch delete callback when the latest entry is batched", async () => {
     expenseRepository.findLastByUserId.mockResolvedValue({
       ...lastExpense,
       batchId: "b1",
     });
-    expenseRepository.findByBatchId.mockResolvedValue([
-      { id: "e1", amount: 30, bucket: "WANTS" },
-      { id: "e2", amount: 80, bucket: "NEEDS" },
-    ]);
-    incomeRepository.findByBatchId.mockResolvedValue([
-      { id: "i1", amount: 50000 },
-    ]);
 
     await processor.process({
       user,
@@ -126,20 +112,11 @@ describe("UndoProcessor", () => {
       textMessage: "undo",
     } as any);
 
-    expect(expenseRepository.softDeleteByBatchId).toHaveBeenCalledWith(
-      "b1",
-      "u1",
-    );
-    expect(incomeRepository.softDeleteByBatchId).toHaveBeenCalledWith(
-      "b1",
-      "u1",
-    );
-    expect(expenseRepository.softDelete).not.toHaveBeenCalled();
-    const body = messageService.sendMessage.mock.calls[0][0].body;
-    expect(body).toContain("Removed 3 entries");
+    const rows = messageService.sendInteractiveMessage.mock.calls[0][2];
+    expect(rows[0][0].id).toBe("txn:delbatch:b1:y");
   });
 
-  it("undoes a single income when it is the most recent entry", async () => {
+  it("confirms the latest income when it is the most recent entry", async () => {
     expenseRepository.findLastByUserId.mockResolvedValue(null);
     incomeRepository.findLastByUserId.mockResolvedValue({
       id: "i9",
@@ -148,7 +125,6 @@ describe("UndoProcessor", () => {
       date: new Date(),
       batchId: null,
     });
-    incomeRepository.softDelete = vi.fn().mockResolvedValue(undefined);
 
     await processor.process({
       user,
@@ -156,13 +132,11 @@ describe("UndoProcessor", () => {
       textMessage: "undo",
     } as any);
 
-    expect(incomeRepository.softDelete).toHaveBeenCalledWith("i9");
-    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "Removed income: ₹5,000",
-    );
+    const rows = messageService.sendInteractiveMessage.mock.calls[0][2];
+    expect(rows[0][0].id).toBe("txn:del:i:i9:y");
   });
 
-  it("says there is nothing to undo when no expense exists", async () => {
+  it("says there is nothing to undo when no entry exists", async () => {
     expenseRepository.findLastByUserId.mockResolvedValue(null);
 
     await processor.process({
@@ -171,7 +145,7 @@ describe("UndoProcessor", () => {
       textMessage: "undo",
     } as any);
 
-    expect(expenseRepository.softDelete).not.toHaveBeenCalled();
+    expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Nothing to undo",
     );
