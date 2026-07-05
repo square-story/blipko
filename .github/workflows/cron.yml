@@ -1,0 +1,22 @@
+name: cron-tick
+
+# Drives the backend's scheduled jobs (nudges, cycle report, recurring). Each job
+# self-gates on the user's local hour, so an hourly UTC tick covers every local
+# hour once per day. Runs on a schedule + on-demand via the Actions tab.
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly, on the hour (UTC)
+  workflow_dispatch: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/cron/tick
+        run: |
+          code=$(curl -sS -o /tmp/out -w "%{http_code}" -X POST \
+            "https://blipko-production.up.railway.app/api/cron/tick" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}")
+          echo "HTTP $code"
+          cat /tmp/out; echo
+          test "$code" = "200"
