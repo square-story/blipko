@@ -142,7 +142,6 @@ export async function submitOnboarding(
         locale: localeForCurrency(d.currency),
         ...(d.payday !== undefined ? { payday: d.payday } : {}),
         notificationDosage: d.notificationDosage,
-        hasOnboarded: true,
         onboardingStep: null,
       },
     });
@@ -189,7 +188,27 @@ export async function submitOnboarding(
     }
   });
 
-  revalidatePath("/dashboard");
+  // NOTE: hasOnboarded is set only when the wizard actually finishes (Telegram
+  // step) via markOnboardingComplete — setting it here would flip the dashboard
+  // flag mid-wizard and unmount the modal before step 4. Don't revalidate
+  // /dashboard for the same reason.
   revalidatePath("/dashboard/categories");
+  return { success: true };
+}
+
+// Marks onboarding complete once the user reaches the end of the wizard (after
+// the Telegram step — whether they connect or tap "Do this later"). Kept
+// separate from submitOnboarding so the flag flips only when the modal should
+// actually close.
+export async function markOnboardingComplete(): Promise<{ success: boolean }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false };
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { hasOnboarded: true },
+  });
+
+  revalidatePath("/dashboard");
   return { success: true };
 }
