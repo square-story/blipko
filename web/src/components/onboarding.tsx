@@ -38,6 +38,7 @@ import {
 } from "@/lib/budget";
 import {
   submitOnboarding,
+  markOnboardingComplete,
   type OnboardingGroup,
 } from "@/lib/actions/onboarding";
 import { ConnectTelegram } from "@/components/connect-telegram";
@@ -141,7 +142,15 @@ export default function Onboarding({
       {step === 4 && (
         <Confetti className="fixed inset-0 h-full w-full pointer-events-none z-100" />
       )}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          // Closing from the final (Telegram) step — via Connect, "Do this
+          // later", or Escape — is what completes onboarding.
+          if (!o && step === 4) void markOnboardingComplete();
+          setOpen(o);
+        }}
+      >
         <DialogContent
           className="gap-0 p-0 [&>button:last-child]:text-white sm:max-w-[440px]"
           showCloseButton={false}
