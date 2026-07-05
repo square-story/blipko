@@ -21,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { TimezoneSelect } from "@/components/timezone-select";
 import { toast } from "@/lib/toast";
 import { updateBudgetSettings } from "@/lib/actions/budget";
 import { BUCKET_META, CURRENCIES, DOSAGES } from "@/lib/budget";
@@ -83,6 +84,7 @@ export type BudgetSettings = {
     payday: number;
     currency: string;
     locale: string;
+    timezone: string;
     needsPct: number;
     wantsPct: number;
     savingsPct: number;
@@ -93,6 +95,7 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
     const [income, setIncome] = useState(String(initial.monthlyIncome));
     const [payday, setPayday] = useState(String(initial.payday));
     const [currency, setCurrency] = useState(initial.currency);
+    const [timezone, setTimezone] = useState(initial.timezone);
     const [needs, setNeeds] = useState(initial.needsPct);
     const [wants, setWants] = useState(initial.wantsPct);
     const [savings, setSavings] = useState(initial.savingsPct);
@@ -123,6 +126,7 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                 payday: paydayNum,
                 currency,
                 locale,
+                timezone,
                 needsPct: needs,
                 wantsPct: wants,
                 savingsPct: savings,
@@ -186,6 +190,28 @@ export function BudgetSettingsCard({ initial }: { initial: BudgetSettings }) {
                             </SelectContent>
                         </Select>
                     </div>
+                </div>
+
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <Label>Timezone</Label>
+                        <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                            onClick={() =>
+                                setTimezone(
+                                    Intl.DateTimeFormat().resolvedOptions()
+                                        .timeZone,
+                                )
+                            }
+                        >
+                            Use device timezone
+                        </button>
+                    </div>
+                    <TimezoneSelect value={timezone} onChange={setTimezone} />
+                    <p className="text-xs text-muted-foreground">
+                        When your reminders, recurring items, and cycle report fire.
+                    </p>
                 </div>
 
                 <div className="space-y-2">

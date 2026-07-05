@@ -23,9 +23,6 @@ importers:
       express-rate-limit:
         specifier: ^8.5.1
         version: 8.5.1(express@5.1.0)
-      node-cron:
-        specifier: ^4.2.1
-        version: 4.2.1
       openai:
         specifier: ^6.9.1
         version: 6.9.1(ws@8.18.3)(zod@4.1.13)
@@ -3789,10 +3786,6 @@ packages:
         optional: true
       sass:
         optional: true
-
-  node-cron@4.2.1:
-    resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
-    engines: {node: '>=6.0.0'}
 
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
@@ -8380,8 +8373,6 @@ snapshots:
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
-
-  node-cron@4.2.1: {}
 
   node-domexception@1.0.0: {}
 
