@@ -177,6 +177,7 @@ export async function getBudgetSettings() {
         payday: true,
         currency: true,
         locale: true,
+        timezone: true,
         notificationDosage: true,
       },
     }),
@@ -188,11 +189,22 @@ export async function getBudgetSettings() {
     payday: user?.payday ?? 1,
     currency: user?.currency ?? "INR",
     locale: user?.locale ?? "en-IN",
+    timezone: user?.timezone ?? "Asia/Kolkata",
     needsPct: config?.needsPct ?? DEFAULT_SPLIT.needsPct,
     wantsPct: config?.wantsPct ?? DEFAULT_SPLIT.wantsPct,
     savingsPct: config?.savingsPct ?? DEFAULT_SPLIT.savingsPct,
     notificationDosage: user?.notificationDosage ?? "OFF",
   };
+}
+
+// A valid IANA timezone id — Intl throws RangeError on an unknown zone.
+function isValidTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const settingsSchema = z
@@ -201,6 +213,12 @@ const settingsSchema = z
     payday: z.number().int().min(1).max(28).optional(),
     currency: z.string().min(1).max(8).optional(),
     locale: z.string().min(2).max(16).optional(),
+    timezone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine(isValidTimezone, "Invalid timezone")
+      .optional(),
     needsPct: z.number().int().min(0).max(100).optional(),
     wantsPct: z.number().int().min(0).max(100).optional(),
     savingsPct: z.number().int().min(0).max(100).optional(),
@@ -227,6 +245,7 @@ export async function updateBudgetSettings(input: {
   payday?: number;
   currency?: string;
   locale?: string;
+  timezone?: string;
   needsPct?: number;
   wantsPct?: number;
   savingsPct?: number;
@@ -250,12 +269,14 @@ export async function updateBudgetSettings(input: {
     payday?: number;
     currency?: string;
     locale?: string;
+    timezone?: string;
     notificationDosage?: "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
   } = {};
   if (d.monthlyIncome !== undefined) userData.monthlyIncome = d.monthlyIncome;
   if (d.payday !== undefined) userData.payday = d.payday;
   if (d.currency !== undefined) userData.currency = d.currency;
   if (d.locale !== undefined) userData.locale = d.locale;
+  if (d.timezone !== undefined) userData.timezone = d.timezone;
   if (d.notificationDosage !== undefined)
     userData.notificationDosage = d.notificationDosage;
 

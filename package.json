@@ -33,7 +33,6 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^8.5.1",
-    "node-cron": "^4.2.1",
     "openai": "^6.9.1",
     "sarvamai": "^0.1.10",
     "undici": "^6.19.2",
