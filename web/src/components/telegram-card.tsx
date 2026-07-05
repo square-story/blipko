@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Send } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -35,7 +36,10 @@ export function TelegramCard() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Telegram</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    <Send className="size-4 text-muted-foreground" />
+                    Telegram
+                </CardTitle>
                 <CardDescription>
                     Connect your Telegram account to track payments via the Blipko bot.
                 </CardDescription>
