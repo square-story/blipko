@@ -115,6 +115,7 @@ export default function Onboarding({
     const res = await submitOnboarding({
       monthlyIncome: incomeNum,
       currency,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       notificationDosage: dosage,
       leafNames: [...selected],
     });

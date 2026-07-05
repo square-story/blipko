@@ -73,6 +73,7 @@ const schema = z.object({
   monthlyIncome: z.number().positive().max(1_000_000_000),
   currency: z.string().min(1).max(8),
   payday: z.number().int().min(1).max(28).optional(),
+  timezone: z.string().min(1).max(64).optional(), // IANA tz for scheduling
   notificationDosage: z.enum(["OFF", "GENTLE", "AGGRESSIVE", "RELENTLESS"]),
   // Individually-selected leaf category names (globally unique in the taxonomy).
   leafNames: z.array(z.string()).default([]),
@@ -141,6 +142,7 @@ export async function submitOnboarding(
         currency: d.currency,
         locale: localeForCurrency(d.currency),
         ...(d.payday !== undefined ? { payday: d.payday } : {}),
+        ...(d.timezone ? { timezone: d.timezone } : {}),
         notificationDosage: d.notificationDosage,
         onboardingStep: null,
       },

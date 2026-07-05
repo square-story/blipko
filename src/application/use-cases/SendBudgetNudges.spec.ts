@@ -6,8 +6,12 @@ const user = {
   telegramId: "123",
   monthlyIncome: 50000,
   payday: 1,
+  timezone: "UTC",
   notificationDosage: "GENTLE",
 };
+
+// force=true bypasses the local-hour gate so the tests aren't clock-dependent.
+const NOW = new Date(Date.UTC(2026, 5, 15, 12));
 
 describe("SendBudgetNudges", () => {
   let userRepository: any;
@@ -53,7 +57,7 @@ describe("SendBudgetNudges", () => {
   it("sends an overspend alert when a bucket is over budget", async () => {
     setSpend({ WANTS: 16200 }); // budget 15000 → over by 1200
 
-    const { sent } = await useCase.execute();
+    const { sent } = await useCase.execute(NOW, true);
 
     expect(sent).toBe(1);
     expect(nudgeRepository.recordSentIfNew).toHaveBeenCalledWith(
@@ -70,7 +74,7 @@ describe("SendBudgetNudges", () => {
   it("sends an 80% warning when a bucket crosses the threshold", async () => {
     setSpend({ WANTS: 12000 }); // 80% of 15000
 
-    await useCase.execute();
+    await useCase.execute(NOW, true);
 
     expect(nudgeRepository.recordSentIfNew).toHaveBeenCalledWith(
       "u1",
@@ -87,7 +91,7 @@ describe("SendBudgetNudges", () => {
     setSpend({ WANTS: 16200 });
     nudgeRepository.recordSentIfNew.mockResolvedValue(false);
 
-    const { sent } = await useCase.execute();
+    const { sent } = await useCase.execute(NOW, true);
 
     expect(sent).toBe(0);
     expect(messageService.sendMessage).not.toHaveBeenCalled();
@@ -96,7 +100,7 @@ describe("SendBudgetNudges", () => {
   it("stays quiet when buckets are under the threshold", async () => {
     setSpend({ NEEDS: 5000, WANTS: 5000 });
 
-    await useCase.execute();
+    await useCase.execute(NOW, true);
 
     expect(nudgeRepository.recordSentIfNew).not.toHaveBeenCalled();
     expect(messageService.sendMessage).not.toHaveBeenCalled();
@@ -108,7 +112,7 @@ describe("SendBudgetNudges", () => {
     ]);
     setSpend({ WANTS: 16200 });
 
-    const { sent } = await useCase.execute();
+    const { sent } = await useCase.execute(NOW, true);
 
     expect(sent).toBe(0);
     expect(messageService.sendMessage).not.toHaveBeenCalled();
@@ -120,7 +124,7 @@ describe("SendBudgetNudges", () => {
     ]);
     setSpend({ WANTS: 16200 }); // over → OVER alert + daily CHECKIN
 
-    const { sent } = await useCase.execute();
+    const { sent } = await useCase.execute(NOW, true);
 
     expect(sent).toBe(2);
     const kinds = nudgeRepository.recordSentIfNew.mock.calls.map(

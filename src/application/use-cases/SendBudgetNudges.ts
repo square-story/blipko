@@ -15,16 +15,13 @@ import {
   periodKey,
   pctSpent,
 } from "./budgetMath";
+import { zonedParts, zonedYmd } from "../../utils/time";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 // Savings overspend is good, not a leak — only nudge the spending buckets.
 const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
-
-// Today as "YYYY-MM-DD" — the idempotency key for daily kinds (CHECKIN, and the
-// repeated OVER for RELENTLESS) so they fire once per day, not on every run.
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+// Nudges go out at ~19:00 in each user's local timezone.
+const NUDGE_HOUR = 19;
 
 export interface SendBudgetNudgesResult {
   sent: number;
@@ -46,13 +43,17 @@ export class SendBudgetNudgesUseCase {
     private readonly messageService: IMessagingPlatform,
   ) {}
 
-  async execute(): Promise<SendBudgetNudgesResult> {
+  // `now`/`force` come from the cron tick; `force` bypasses the local-hour gate.
+  async execute(
+    now: Date = new Date(),
+    force = false,
+  ): Promise<SendBudgetNudgesResult> {
     const users = await this.userRepository.findOnboardedWithTelegram();
 
     let sent = 0;
     for (const user of users) {
       try {
-        sent += await this.nudgeUser(user);
+        sent += await this.nudgeUser(user, now, force);
       } catch (err) {
         // One user's failure must not abort the batch.
         console.error(`Nudge failed for user ${user.id}:`, err);
@@ -61,23 +62,32 @@ export class SendBudgetNudgesUseCase {
     return { sent };
   }
 
-  private async nudgeUser(user: {
-    id: string;
-    telegramId: string | null;
-    monthlyIncome: unknown;
-    payday: number;
-    notificationDosage: NotificationDosage;
-  }): Promise<number> {
+  private async nudgeUser(
+    user: {
+      id: string;
+      telegramId: string | null;
+      monthlyIncome: unknown;
+      payday: number;
+      timezone: string;
+      notificationDosage: NotificationDosage;
+    },
+    now: Date,
+    force: boolean,
+  ): Promise<number> {
     const dosage = user.notificationDosage;
     if (!user.telegramId || dosage === "OFF") return 0;
 
+    // Send only at the user's local evening hour (unless forced for testing).
+    const tz = user.timezone;
+    if (!force && zonedParts(now, tz).hour !== NUDGE_HOUR) return 0;
+
     const loud = dosage === "AGGRESSIVE" || dosage === "RELENTLESS";
 
-    // Per-user payday cycle.
-    const { start, end } = currentBudgetPeriod(user.payday);
-    const cycleKey = periodKey(user.payday);
-    const dayKey = todayKey();
-    const { day, daysInPeriod } = periodDayInfo(user.payday);
+    // Per-user payday cycle, computed in the user's timezone.
+    const { start, end } = currentBudgetPeriod(user.payday, now, tz);
+    const cycleKey = periodKey(user.payday, now, tz);
+    const dayKey = zonedYmd(now, tz);
+    const { day, daysInPeriod } = periodDayInfo(user.payday, now, tz);
     const daysLeft = daysInPeriod - day;
 
     const income = effectiveMonthlyIncome(

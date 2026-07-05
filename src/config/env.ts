@@ -15,6 +15,8 @@ const envSchema = z.object({
   TELEGRAM_WEBHOOK_SECRET: z.string().min(1),
   // Public URL of the web dashboard, used in the bot's onboarding hand-off.
   WEB_APP_URL: z.string().url().default("https://blipko.lol"),
+  // Shared secret guarding the scheduled-jobs endpoint (POST /api/cron/tick).
+  CRON_SECRET: z.string().min(1).default("dev-cron-secret"),
 });
 
 export const env = envSchema.parse(process.env);

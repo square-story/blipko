@@ -24,13 +24,15 @@ describe("PostRecurringCharges", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     recurringRuleRepository = {
-      findActiveUnpostedForMonth: vi.fn().mockResolvedValue([expenseRule]),
+      findAllActive: vi.fn().mockResolvedValue([expenseRule]),
       markPosted: vi.fn().mockResolvedValue(undefined),
     };
     expenseRepository = { create: vi.fn().mockResolvedValue({ id: "e1" }) };
     incomeRepository = { create: vi.fn().mockResolvedValue({ id: "i1" }) };
     userRepository = {
-      findById: vi.fn().mockResolvedValue({ id: "u1", telegramId: "123" }),
+      findById: vi
+        .fn()
+        .mockResolvedValue({ id: "u1", telegramId: "123", timezone: "UTC" }),
     };
     categoryRepository = {
       findById: vi.fn().mockResolvedValue({ id: "c1", name: "Rent" }),
@@ -48,7 +50,11 @@ describe("PostRecurringCharges", () => {
   });
 
   it("posts a due expense, marks it, and notifies", async () => {
-    const { posted } = await useCase.execute(new Date(2026, 5, 15)); // day 15 >= dueDay 1
+    // force=true bypasses the local-hour gate; tz UTC keeps the day math fixed.
+    const { posted } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 15, 12)),
+      true,
+    ); // day 15 >= dueDay 1
 
     expect(posted).toBe(1);
     expect(expenseRepository.create).toHaveBeenCalledWith(
@@ -66,11 +72,14 @@ describe("PostRecurringCharges", () => {
   });
 
   it("skips a rule before its due day", async () => {
-    recurringRuleRepository.findActiveUnpostedForMonth.mockResolvedValue([
+    recurringRuleRepository.findAllActive.mockResolvedValue([
       { ...expenseRule, dayOfMonth: 28 },
     ]);
 
-    const { posted } = await useCase.execute(new Date(2026, 5, 15)); // day 15 < 28
+    const { posted } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 15, 12)),
+      true,
+    ); // day 15 < 28
 
     expect(posted).toBe(0);
     expect(expenseRepository.create).not.toHaveBeenCalled();
@@ -78,7 +87,7 @@ describe("PostRecurringCharges", () => {
   });
 
   it("posts a due income via the income repository", async () => {
-    recurringRuleRepository.findActiveUnpostedForMonth.mockResolvedValue([
+    recurringRuleRepository.findAllActive.mockResolvedValue([
       {
         id: "rr2",
         userId: "u1",
@@ -89,7 +98,10 @@ describe("PostRecurringCharges", () => {
       },
     ]);
 
-    const { posted } = await useCase.execute(new Date(2026, 5, 26)); // day 26 >= 25
+    const { posted } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 26, 12)),
+      true,
+    ); // day 26 >= 25
 
     expect(posted).toBe(1);
     expect(incomeRepository.create).toHaveBeenCalledWith(

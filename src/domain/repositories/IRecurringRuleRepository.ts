@@ -15,8 +15,9 @@ export interface IRecurringRuleRepository {
   create(data: CreateRecurringRuleDTO): Promise<RecurringRule>;
   findByUserId(userId: string): Promise<RecurringRule[]>;
   findById(id: string): Promise<RecurringRule | null>;
-  // Active rules not yet posted for the given "YYYY-MM" key.
-  findActiveUnpostedForMonth(monthKey: string): Promise<RecurringRule[]>;
+  // All active rules (the per-user-timezone "due this month" check is done in
+  // PostRecurringCharges, since monthKey depends on the owner's timezone).
+  findAllActive(): Promise<RecurringRule[]>;
   markPosted(id: string, monthKey: string, tx?: TxClient): Promise<void>;
   delete(id: string, userId: string): Promise<void>;
 }

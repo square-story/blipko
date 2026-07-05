@@ -1,4 +1,10 @@
 import { Bucket } from "@prisma/client";
+import { zonedParts, zonedStartOfDayUtc, zonedYmd } from "../../utils/time";
+
+// Default timezone for day/cycle math when a caller doesn't pass the user's tz.
+// Keeps the app IST-correct regardless of the server clock; scheduling callers
+// pass the user's own timezone.
+const DEFAULT_TZ = "Asia/Kolkata";
 
 export const BUCKET_META: Record<Bucket, { label: string; emoji: string }> = {
   NEEDS: { label: "Needs", emoji: "🏠" },
@@ -32,14 +38,20 @@ function clampPayday(payday: number): number {
 export function currentBudgetPeriod(
   payday: number,
   now: Date = new Date(),
+  tz: string = DEFAULT_TZ,
 ): { start: Date; end: Date } {
   const d = clampPayday(payday);
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  if (now.getDate() >= d) {
-    return { start: new Date(y, m, d), end: new Date(y, m + 1, d) };
+  const { year: y, month: m, day } = zonedParts(now, tz); // month is 1-12
+  if (day >= d) {
+    return {
+      start: zonedStartOfDayUtc(y, m, d, tz),
+      end: zonedStartOfDayUtc(y, m + 1, d, tz),
+    };
   }
-  return { start: new Date(y, m - 1, d), end: new Date(y, m, d) };
+  return {
+    start: zonedStartOfDayUtc(y, m - 1, d, tz),
+    end: zonedStartOfDayUtc(y, m, d, tz),
+  };
 }
 
 // The `n` most recent COMPLETE cycles (excludes the current partial one), newest
@@ -49,13 +61,15 @@ export function previousCycles(
   payday: number,
   n: number,
   now: Date = new Date(),
+  tz: string = DEFAULT_TZ,
 ): { start: Date; end: Date }[] {
   const out: { start: Date; end: Date }[] = [];
-  let ref = currentBudgetPeriod(payday, now).start; // start of the current cycle
+  let ref = currentBudgetPeriod(payday, now, tz).start; // start of current cycle
   for (let i = 0; i < n; i++) {
     const prev = currentBudgetPeriod(
       payday,
       new Date(ref.getTime() - 86400000),
+      tz,
     );
     out.push(prev);
     ref = prev.start;
@@ -106,12 +120,13 @@ export interface PeriodDayInfo {
 
 // Opaque per-cycle key (the period start date) — scopes once-per-cycle nudges
 // and could key other per-period state. payday=1 → e.g. "2026-06-01".
-export function periodKey(payday: number, now: Date = new Date()): string {
-  const { start } = currentBudgetPeriod(payday, now);
-  const y = start.getFullYear();
-  const mo = String(start.getMonth() + 1).padStart(2, "0");
-  const d = String(start.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${d}`;
+export function periodKey(
+  payday: number,
+  now: Date = new Date(),
+  tz: string = DEFAULT_TZ,
+): string {
+  const { start } = currentBudgetPeriod(payday, now, tz);
+  return zonedYmd(start, tz);
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -119,8 +134,9 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export function periodDayInfo(
   payday: number,
   now: Date = new Date(),
+  tz: string = DEFAULT_TZ,
 ): PeriodDayInfo {
-  const { start, end } = currentBudgetPeriod(payday, now);
+  const { start, end } = currentBudgetPeriod(payday, now, tz);
   const daysInPeriod = Math.round(
     (end.getTime() - start.getTime()) / MS_PER_DAY,
   );

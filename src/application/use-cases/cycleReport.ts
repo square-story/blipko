@@ -10,6 +10,9 @@ import {
   previousCycles,
   sanitizeMd,
 } from "./budgetMath";
+import { zonedYmd } from "../../utils/time";
+
+const DEFAULT_TZ = "Asia/Kolkata";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
@@ -31,14 +34,6 @@ export interface CycleReportUser {
 export interface CycleReport {
   text: string;
   endedKey: string; // period key of the ended cycle — idempotency scope
-}
-
-// "YYYY-MM-DD" of a date — matches periodKey's format.
-function dateKey(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
 }
 
 // "May" for calendar-month cycles (payday=1), else "May 25 – Jun 25".
@@ -146,9 +141,10 @@ export async function buildCycleReport(
   deps: CycleReportDeps,
   user: CycleReportUser,
   now: Date = new Date(),
+  tz: string = DEFAULT_TZ,
 ): Promise<CycleReport> {
   const { payday } = user;
-  const cycles = previousCycles(payday, 2, now);
+  const cycles = previousCycles(payday, 2, now, tz);
   const ended = cycles[0]!;
   const prior = cycles[1]!;
   const expected = Number(user.monthlyIncome ?? 0);
@@ -225,5 +221,5 @@ export async function buildCycleReport(
     text += `\n\nBiggest movers: ${moverBits.join(" · ")}`;
   }
 
-  return { text, endedKey: dateKey(ended.start) };
+  return { text, endedKey: zonedYmd(ended.start, tz) };
 }

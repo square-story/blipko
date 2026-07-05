@@ -23,6 +23,7 @@ import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeReposi
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
 import { PostRecurringChargesUseCase } from "../../application/use-cases/PostRecurringCharges";
 import { SendCycleReportUseCase } from "../../application/use-cases/SendCycleReport";
+import { CronController } from "./CronController";
 import { prisma } from "../../data/prisma/client";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { logger } from "../../utils/logger";
@@ -325,4 +326,12 @@ export const sendCycleReport = new SendCycleReportUseCase(
   nudgeRepository,
   incomeRepository,
   messageService,
+);
+
+export const cronController = new CronController(
+  sendBudgetNudges,
+  postRecurringCharges,
+  sendCycleReport,
+  prisma,
+  env.CRON_SECRET,
 );
