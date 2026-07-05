@@ -21,7 +21,13 @@ describe("IncomeProcessor", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    incomeRepository.updateConfirmationMessageId = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    messageService = {
+      sendMessage: vi.fn().mockResolvedValue("m1"),
+      sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),
+    };
     processor = new IncomeProcessor(
       incomeRepository,
       budgetConfigRepository,
@@ -62,13 +68,17 @@ describe("IncomeProcessor", () => {
         source: "freelance",
       }),
     );
-    const body = messageService.sendMessage.mock.calls[0][0].body;
+    const body = messageService.sendInteractiveMessage.mock.calls[0][1];
     expect(body).toContain("Income ₹5,000");
     expect(body).toContain("Income this cycle: ₹55,000");
     expect(body).toContain("Budget on ₹55,000");
     expect(body).toContain("Needs ₹27,500"); // 55000 * 50%
     expect(body).toContain("Wants ₹16,500"); // 55000 * 30%
     expect(body).toContain("Savings ₹11,000"); // 55000 * 20%
+    expect(incomeRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
+      "inc1",
+      "m2",
+    );
   });
 
   it("asks again when the amount is missing", async () => {

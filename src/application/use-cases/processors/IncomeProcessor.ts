@@ -6,6 +6,7 @@ import {
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
+import { txnCb } from "../txnCallback";
 import {
   BUCKET_META,
   bucketBudget,
@@ -52,7 +53,7 @@ export class IncomeProcessor implements MessageProcessor {
       return { response, parsed };
     }
 
-    await this.incomeRepository.create({
+    const income = await this.incomeRepository.create({
       userId: user.id,
       amount,
       rawText: textMessage,
@@ -79,10 +80,24 @@ export class IncomeProcessor implements MessageProcessor {
 💵 Income this cycle: ${formatMoney(monthIncome)}
 Budget on ${formatMoney(effective)} → ${BUCKET_META.NEEDS.emoji} Needs ${formatMoney(bucketBudget(effective, config, "NEEDS"))} · ${BUCKET_META.WANTS.emoji} Wants ${formatMoney(bucketBudget(effective, config, "WANTS"))} · ${BUCKET_META.SAVINGS.emoji} Savings ${formatMoney(bucketBudget(effective, config, "SAVINGS"))}`;
 
-    await this.messageService.sendMessage({
-      to: platformUserId,
-      body: response,
-    });
+    // Send with quick-action buttons + store the message id so the user can
+    // reply to (or tap) this confirmation to edit/delete the income later.
+    const messageId = await this.messageService.sendInteractiveMessage(
+      platformUserId,
+      response,
+      [
+        [
+          { id: txnCb.hintedit("income", income.id), title: "✏️ Edit" },
+          { id: txnCb.askdel("income", income.id), title: "🗑 Delete" },
+        ],
+      ],
+    );
+    if (messageId) {
+      await this.incomeRepository.updateConfirmationMessageId(
+        income.id,
+        messageId,
+      );
+    }
     return { response, parsed };
   }
 }

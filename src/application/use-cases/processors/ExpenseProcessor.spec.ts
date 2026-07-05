@@ -83,7 +83,14 @@ describe("ExpenseProcessor", () => {
     expect(expenseRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "u1", amount: 30, bucket: "WANTS" }),
     );
-    expect(messageService.sendMessage.mock.calls[0][0].body).toContain("₹30");
+    // Confirmation now carries Edit/Delete quick-action buttons.
+    expect(messageService.sendInteractiveMessage.mock.calls[0][1]).toContain(
+      "₹30",
+    );
+    expect(expenseRepository.updateConfirmationMessageId).toHaveBeenCalledWith(
+      "e1",
+      "m2",
+    );
     expect(parseLogRepository.create).not.toHaveBeenCalled();
   });
 

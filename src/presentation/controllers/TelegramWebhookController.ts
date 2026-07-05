@@ -183,22 +183,28 @@ export class TelegramWebhookController {
           return;
         }
 
-        // Ack the button press immediately so Telegram stops showing the spinner
-        await this.messageService.acknowledgeInteraction(cq.id);
         await this.messageService.sendTypingIndicator(platformUserId);
 
-        const result = await this.processIncomingMessage.execute({
-          platformUserId,
-          platformUsername: cq.from.username ?? cq.from.first_name,
-          textMessage: cq.data ?? "",
-          callbackMessageId: cq.message?.message_id
-            ? String(cq.message.message_id)
-            : undefined,
-        });
-
-        res
-          .status(200)
-          .json({ success: true, data: { response: result.response } });
+        // Ack AFTER handling so the toast can reflect the outcome. The `finally`
+        // guarantees the spinner always stops, even if processing throws.
+        let toast: string | undefined;
+        try {
+          const result = await this.processIncomingMessage.execute({
+            platformUserId,
+            platformUsername: cq.from.username ?? cq.from.first_name,
+            textMessage: cq.data ?? "",
+            callbackMessageId: cq.message?.message_id
+              ? String(cq.message.message_id)
+              : undefined,
+            callbackQueryId: cq.id,
+          });
+          toast = result.toast;
+          res
+            .status(200)
+            .json({ success: true, data: { response: result.response } });
+        } finally {
+          await this.messageService.acknowledgeInteraction(cq.id, toast);
+        }
         return;
       }
 

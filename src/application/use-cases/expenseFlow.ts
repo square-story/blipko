@@ -4,6 +4,7 @@ import { ICategoryRepository } from "../../domain/repositories/ICategoryReposito
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
+import { txnCb } from "./txnCallback";
 import {
   BUCKET_META,
   bucketBudget,
@@ -94,6 +95,41 @@ export function buildBucketBudgetLine(
   return `${meta.emoji} ${meta.label}: ${formatMoney(remaining)} left of ${formatMoney(budget)} · ${formatMoney(safeDaily)}/day safe`;
 }
 
+// Resolve a category name to a leaf id + label for a user, creating it if new.
+// Expenses only ever attach to leaf categories — never a group row. If the name
+// resolves to a group, it stays uncategorized (still lands in the right bucket).
+// Returns the category's own bucket too, so an edit can re-derive the bucket
+// from a changed category (create keeps its caller-supplied bucket).
+export async function resolveExpenseCategory(
+  categoryRepository: ICategoryRepository,
+  userId: string,
+  bucket: Bucket,
+  name?: string | undefined,
+): Promise<{
+  categoryId?: string | undefined;
+  categoryLabel: string;
+  bucket: Bucket;
+}> {
+  let categoryId: string | undefined;
+  let categoryLabel = name ?? "General";
+  let resolvedBucket = bucket;
+  if (name) {
+    const existing = await categoryRepository.findByNameForUser(userId, name);
+    if (existing && !existing.isGroup) {
+      categoryId = existing.id;
+      categoryLabel = existing.name;
+      resolvedBucket = existing.bucket;
+    } else if (existing && existing.isGroup) {
+      resolvedBucket = existing.bucket; // group → uncategorized, adopt its bucket
+    } else {
+      const created = await categoryRepository.create({ userId, name, bucket });
+      categoryId = created.id;
+      categoryLabel = created.name;
+    }
+  }
+  return { categoryId, categoryLabel, bucket: resolvedBucket };
+}
+
 // Creates the expense and returns it plus the resolved category label. No
 // messaging — callers decide how to reply (single confirmation vs batch summary).
 export async function recordExpense(
@@ -102,31 +138,19 @@ export async function recordExpense(
 ): Promise<{ expense: Expense; categoryLabel: string }> {
   const { user, amount, bucket } = args;
 
-  // Resolve the category: use a known id, else find-or-create by name + bucket.
-  // Expenses only ever attach to leaf categories — never a group row. If the
-  // name resolves to a group, the expense stays uncategorized (it still lands in
-  // the right bucket and shows up in Needs Review). We can't create a same-name
-  // leaf either: (userId, name) is unique.
+  // Use a known leaf id when the caller already resolved one; otherwise
+  // find-or-create by name (bucket stays the caller-supplied one).
   let categoryId = args.categoryId;
   let categoryLabel = args.categoryName ?? "General";
   if (!categoryId && args.categoryName) {
-    const existing = await deps.categoryRepository.findByNameForUser(
+    const resolved = await resolveExpenseCategory(
+      deps.categoryRepository,
       user.id,
+      bucket,
       args.categoryName,
     );
-    if (existing && !existing.isGroup) {
-      categoryId = existing.id;
-      categoryLabel = existing.name;
-    } else if (!existing) {
-      const created = await deps.categoryRepository.create({
-        userId: user.id,
-        name: args.categoryName,
-        bucket,
-      });
-      categoryId = created.id;
-      categoryLabel = created.name;
-    }
-    // else: name matches a group → leave uncategorized.
+    categoryId = resolved.categoryId;
+    categoryLabel = resolved.categoryLabel;
   }
 
   const expense = await deps.expenseRepository.create({
@@ -207,10 +231,18 @@ export async function recordExpenseAndReply(
     .filter(Boolean)
     .join("\n");
 
-  const messageId = await deps.messageService.sendMessage({
-    to: args.platformUserId,
-    body: response,
-  });
+  // Send with quick-action buttons so the user can edit/delete without knowing
+  // the reply trick; store the message id so replies can target this expense.
+  const messageId = await deps.messageService.sendInteractiveMessage(
+    args.platformUserId,
+    response,
+    [
+      [
+        { id: txnCb.hintedit("expense", expense.id), title: "✏️ Edit" },
+        { id: txnCb.askdel("expense", expense.id), title: "🗑 Delete" },
+      ],
+    ],
+  );
   if (messageId) {
     await deps.expenseRepository.updateConfirmationMessageId(
       expense.id,

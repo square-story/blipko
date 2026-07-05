@@ -47,7 +47,10 @@ describe("ConfirmBucketProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
-    messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    messageService = {
+      sendMessage: vi.fn().mockResolvedValue("m1"),
+      sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),
+    };
     processor = new ConfirmBucketProcessor(
       parseLogRepository,
       expenseRepository,
@@ -82,7 +85,7 @@ describe("ConfirmBucketProcessor", () => {
       }),
     );
     // Per-category budget line is included (chai has a ₹1,000 cap, ₹30 spent).
-    const body = messageService.sendMessage.mock.calls[0][0].body;
+    const body = messageService.sendInteractiveMessage.mock.calls[0][1];
     expect(body).toContain("chai:");
     expect(body).toContain("left of");
   });

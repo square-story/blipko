@@ -1,6 +1,7 @@
 import { Income, PrismaClient } from "@prisma/client";
 import {
   CreateIncomeDTO,
+  UpdateIncomeDTO,
   IIncomeRepository,
 } from "../../domain/repositories/IIncomeRepository";
 import { TxClient } from "../../domain/repositories/UnitOfWork";
@@ -38,10 +39,44 @@ export class PrismaIncomeRepository implements IIncomeRepository {
     return Number(result._sum.amount ?? 0);
   }
 
+  async findById(id: string): Promise<Income | null> {
+    return this.prisma.income.findUnique({ where: { id } });
+  }
+
   async findLastByUserId(userId: string): Promise<Income | null> {
     return this.prisma.income.findFirst({
       where: { userId, isDeleted: false },
       orderBy: { date: "desc" },
+    });
+  }
+
+  async findByConfirmationMessageId(
+    messageId: string,
+    userId: string,
+  ): Promise<Income | null> {
+    return this.prisma.income.findFirst({
+      where: { confirmationMessageId: messageId, userId, isDeleted: false },
+    });
+  }
+
+  async updateConfirmationMessageId(
+    id: string,
+    messageId: string,
+  ): Promise<void> {
+    await this.prisma.income.update({
+      where: { id },
+      data: { confirmationMessageId: messageId },
+    });
+  }
+
+  async update(id: string, data: UpdateIncomeDTO): Promise<void> {
+    await this.prisma.income.update({
+      where: { id },
+      data: {
+        ...(data.amount !== undefined && { amount: data.amount }),
+        ...(data.source !== undefined && { source: data.source }),
+        ...(data.note !== undefined && { note: data.note }),
+      },
     });
   }
 
@@ -62,6 +97,20 @@ export class PrismaIncomeRepository implements IIncomeRepository {
     await this.prisma.income.update({
       where: { id },
       data: { isDeleted: true, deletedAt: new Date() },
+    });
+  }
+
+  async restore(id: string): Promise<void> {
+    await this.prisma.income.update({
+      where: { id },
+      data: { isDeleted: false, deletedAt: null },
+    });
+  }
+
+  async restoreByBatchId(batchId: string, userId: string): Promise<void> {
+    await this.prisma.income.updateMany({
+      where: { batchId, userId, isDeleted: true },
+      data: { isDeleted: false, deletedAt: null },
     });
   }
 }

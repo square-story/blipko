@@ -14,6 +14,14 @@ export interface CreateExpenseDTO {
   batchId?: string | undefined;
 }
 
+// Partial edit of an existing expense (amount/bucket/category/note).
+export interface UpdateExpenseDTO {
+  amount?: number | undefined;
+  bucket?: Bucket | undefined;
+  categoryId?: string | null | undefined;
+  note?: string | null | undefined;
+}
+
 export interface IExpenseRepository {
   create(data: CreateExpenseDTO, tx?: TxClient): Promise<Expense>;
   findById(id: string): Promise<Expense | null>;
@@ -28,10 +36,15 @@ export interface IExpenseRepository {
     expenseId: string,
     messageId: string,
   ): Promise<void>;
+  // Partial edit of a single expense (amount/bucket/category/note).
+  update(id: string, data: UpdateExpenseDTO): Promise<void>;
   // All non-deleted expenses sharing a batchId (transactions from one message).
   findByBatchId(batchId: string, userId: string): Promise<Expense[]>;
   // Soft-delete every expense in a batch.
   softDeleteByBatchId(batchId: string, userId: string): Promise<void>;
+  // Undo a soft-delete (single + whole batch).
+  restore(id: string): Promise<void>;
+  restoreByBatchId(batchId: string, userId: string): Promise<void>;
   // Sum of non-deleted expense amounts for a bucket within [monthStart, monthEnd).
   sumByBucketForMonth(
     userId: string,
