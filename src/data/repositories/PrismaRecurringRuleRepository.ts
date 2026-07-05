@@ -33,9 +33,10 @@ export class PrismaRecurringRuleRepository implements IRecurringRuleRepository {
     return this.prisma.recurringRule.findUnique({ where: { id } });
   }
 
-  async findActiveUnpostedForMonth(monthKey: string): Promise<RecurringRule[]> {
+  async findAllActive(): Promise<RecurringRule[]> {
     return this.prisma.recurringRule.findMany({
-      where: { isActive: true, NOT: { lastPostedKey: monthKey } },
+      where: { isActive: true },
+      orderBy: { dayOfMonth: "asc" },
     });
   }
 

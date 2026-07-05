@@ -60,6 +60,7 @@ model User {
   monthlyIncome Decimal? @db.Decimal(12, 2)
   currency      String   @default("INR")
   locale        String   @default("en-IN")
+  timezone      String   @default("Asia/Kolkata") // IANA tz — drives scheduling
   payday        Int      @default(1)
 
   // Lifecycle

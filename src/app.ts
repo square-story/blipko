@@ -4,13 +4,8 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env";
 import { prisma } from "./data/prisma/client";
 import { telegramRoutes } from "./presentation/routes/telegramRoutes";
-import {
-  telegramWebhookController,
-  sendBudgetNudges,
-  postRecurringCharges,
-  sendCycleReport,
-} from "./presentation/controllers/TelegramWebhookController";
-import { startScheduler } from "./infrastructure/scheduler";
+import { cronRoutes } from "./presentation/routes/cronRoutes";
+import { telegramWebhookController } from "./presentation/controllers/TelegramWebhookController";
 import { logger } from "./utils/logger";
 
 const app: Application = express();
@@ -31,6 +26,8 @@ const webhookLimiter = rateLimit({
 
 app.use("/api/webhooks", webhookLimiter);
 app.use("/api/webhooks/telegram", telegramRoutes);
+// Scheduled jobs, driven by an external hourly cron (guarded by CRON_SECRET).
+app.use("/api/cron", cronRoutes);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error("Unhandled request error", { err });
@@ -51,7 +48,6 @@ if (process.env.NODE_ENV !== "test") {
         "SARVAM_API_KEY not set — voice transcription disabled; users will be asked to type instead.",
       );
     }
-    startScheduler(sendBudgetNudges, postRecurringCharges, sendCycleReport);
     telegramWebhookController
       .registerBotCommands()
       .catch((err) => logger.error("registerBotCommands failed", { err }));

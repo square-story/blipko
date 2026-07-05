@@ -28,6 +28,7 @@ export class PrismaUserRepository implements IUserRepository {
         ...(data.monthlyIncome !== undefined && {
           monthlyIncome: data.monthlyIncome,
         }),
+        ...(data.timezone !== undefined && { timezone: data.timezone }),
         ...(data.hasOnboarded !== undefined && {
           hasOnboarded: data.hasOnboarded,
         }),
@@ -60,7 +61,6 @@ export class PrismaUserRepository implements IUserRepository {
       where: {
         hasOnboarded: true,
         telegramId: { not: null },
-        monthlyIncome: { not: null },
       },
     });
   }

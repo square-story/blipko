@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SendCycleReportUseCase } from "./SendCycleReport";
 
 // payday=1 → cycle rolls over on the 1st. Jun 1 is day 1; Jun 10 is not.
-const user = { id: "u1", telegramId: "123", monthlyIncome: 50000, payday: 1 };
+// tz UTC + UTC-instant "now" keep the day math deterministic in tests.
+const user = {
+  id: "u1",
+  telegramId: "123",
+  monthlyIncome: 50000,
+  payday: 1,
+  timezone: "UTC",
+};
 
 describe("SendCycleReport", () => {
   let userRepository: any;
@@ -41,7 +48,10 @@ describe("SendCycleReport", () => {
   });
 
   it("sends the report on day 1 of a new cycle", async () => {
-    const { sent } = await useCase.execute(new Date(2026, 5, 1));
+    const { sent } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 1, 12)),
+      true,
+    );
     expect(sent).toBe(1);
     expect(nudgeRepository.recordSentIfNew).toHaveBeenCalledWith(
       "u1",
@@ -53,14 +63,20 @@ describe("SendCycleReport", () => {
   });
 
   it("does nothing mid-cycle", async () => {
-    const { sent } = await useCase.execute(new Date(2026, 5, 10));
+    const { sent } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 10, 12)),
+      true,
+    );
     expect(sent).toBe(0);
     expect(messageService.sendMessage).not.toHaveBeenCalled();
   });
 
   it("is idempotent — skips when already recorded for this cycle", async () => {
     nudgeRepository.recordSentIfNew.mockResolvedValue(false);
-    const { sent } = await useCase.execute(new Date(2026, 5, 1));
+    const { sent } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 1, 12)),
+      true,
+    );
     expect(sent).toBe(0);
     expect(messageService.sendMessage).not.toHaveBeenCalled();
   });
