@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SendIcon } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -11,32 +10,17 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { generateTelegramLinkToken, getTelegramConnectionStatus, unlinkTelegram } from "@/lib/actions/user";
+import { getTelegramConnectionStatus, unlinkTelegram } from "@/lib/actions/user";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ConnectTelegram } from "@/components/connect-telegram";
 import { toast } from "@/lib/toast";
 
 export function TelegramCard() {
     const [connected, setConnected] = useState<boolean | null>(null);
-    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         getTelegramConnectionStatus().then(setConnected);
     }, []);
-
-    const handleConnect = async () => {
-        setLoading(true);
-        // Open blank window NOW (inside click handler) so browser doesn't block it as a popup
-        const win = window.open("", "_blank");
-        try {
-            const url = await generateTelegramLinkToken();
-            if (win) win.location.href = url;
-            else window.location.href = url;
-        } catch {
-            win?.close();
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleUnlink = async () => {
         const res = await unlinkTelegram();
@@ -79,10 +63,13 @@ export function TelegramCard() {
                         />
                     </div>
                 ) : (
-                    <Button onClick={handleConnect} disabled={loading} variant="outline">
-                        <SendIcon className="mr-2 size-4" />
-                        {loading ? "Opening…" : "Connect Telegram"}
-                    </Button>
+                    <ConnectTelegram
+                        className="mx-auto max-w-xs"
+                        onConnected={() => {
+                            setConnected(true);
+                            toast.success("Telegram connected");
+                        }}
+                    />
                 )}
             </CardContent>
         </Card>
