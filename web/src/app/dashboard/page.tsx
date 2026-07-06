@@ -20,12 +20,22 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { AnimatedNumber } from "@/components/animated-number";
 import Onboarding from "@/components/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wallet, TrendingDown, PiggyBank } from "lucide-react";
 import { BUCKET_META, formatMoney } from "@/lib/budget";
+
+const CATEGORY_COLORS = [
+    "bg-emerald-500 dark:bg-emerald-400",
+    "bg-amber-500 dark:bg-amber-400",
+    "bg-rose-500 dark:bg-rose-400",
+    "bg-blue-500 dark:bg-blue-400",
+    "bg-indigo-500 dark:bg-indigo-400",
+    "bg-purple-500 dark:bg-purple-400",
+];
 
 async function OverviewSection({
     overviewPromise,
@@ -224,39 +234,69 @@ async function OverviewSection({
                 </Card>
 
                 <Card className="reveal-rise" style={{ animationDelay: "40ms" }}>
-                    <CardHeader>
-                        <CardTitle>Top Categories</CardTitle>
-                        <CardDescription>Where your money went this month</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {categoryBreakdown.length === 0 ? (
-                            <p className="py-8 text-center text-sm text-muted-foreground">
-                                No category spend yet.
-                            </p>
-                        ) : (
-                            <div className="space-y-4">
-                                {categoryBreakdown.slice(0, 6).map((c) => {
-                                    const max = categoryBreakdown[0].value || 1;
-                                    const pct = Math.round((c.value / max) * 100);
-                                    return (
-                                        <div key={c.name} className="space-y-1">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="font-medium">{c.name}</span>
-                                                <span className="text-muted-foreground">
-                                                    {formatMoney(c.value, currency)}
-                                                </span>
-                                            </div>
-                                            <div className="h-2 w-full rounded-full bg-muted">
-                                                <div
-                                                    className="bar-fill h-2 w-full rounded-full bg-primary"
-                                                    style={{ "--pct": pct / 100 } as CSSProperties}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                    <CardContent className="flex flex-col justify-between pt-6">
+                        <div>
+                            <div className="flex items-center justify-between gap-2">
+                                <h3 className="text-balance text-sm font-bold text-foreground">Top Categories</h3>
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-amber-50 text-amber-700 ring-1 ring-amber-500/30 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
+                                >
+                                    This Month
+                                </Badge>
                             </div>
-                        )}
+
+                            <p className="text-pretty mt-2 flex items-baseline gap-2">
+                                <span className="text-xl text-foreground">{formatMoney(totalSpent, currency)}</span>
+                                <span className="text-sm text-muted-foreground">total spent</span>
+                            </p>
+
+                            {categoryBreakdown.length === 0 ? (
+                                <p className="py-8 text-center text-sm text-muted-foreground">
+                                    No category spend yet.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="mt-4">
+                                        <p className="text-pretty text-sm font-medium text-foreground">
+                                            Category breakdown
+                                        </p>
+                                        <div className="mt-2 flex items-center gap-0.5">
+                                            {categoryBreakdown.slice(0, 6).map((c, index) => {
+                                                const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
+                                                const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+                                                return (
+                                                    <div
+                                                        key={c.name}
+                                                        className={`${colorClass} h-1.5 rounded-xs`}
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <ul role="list" className="mt-5 space-y-2">
+                                        {categoryBreakdown.slice(0, 6).map((c, index) => {
+                                            const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
+                                            const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+                                            return (
+                                                <li key={c.name} className="flex items-center gap-2 text-xs">
+                                                    <span
+                                                        className={`${colorClass} size-2.5 rounded-xs`}
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span className="text-foreground flex-1">{c.name}</span>
+                                                    <span className="text-muted-foreground">
+                                                        {formatMoney(c.value, currency)} / {pct.toFixed(1)}%
+                                                    </span>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
