@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { BUCKET_META } from "@/lib/budget";
-import { CategoryRow } from "./category-row";
+import { CategoryCard } from "./category-card";
 import type {
   CategoryStat,
   CategorySuggestion,
@@ -158,9 +158,9 @@ export const BucketSection = ({
           No categories in this bucket yet.
         </p>
       ) : (
-        <div className="divide-y">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-4">
           {categories.map((cat) => (
-            <CategoryRow
+            <CategoryCard
               key={cat.id}
               cat={cat}
               groupName={

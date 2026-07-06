@@ -1,6 +1,5 @@
 "use client";
 
-import { GravityStarsBackground } from "@/components/animate-ui/components/backgrounds/gravity-stars";
 import { motion, useScroll, useSpring } from "motion/react";
 import { ArrowRight, Bot, FileText, Lock, Shield, User } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -51,11 +50,6 @@ export default function PrivacyPolicyPage() {
                 className="fixed top-0 left-0 right-0 h-1 bg-primary origin-left z-50"
                 style={{ scaleX }}
             />
-
-            {/* Background Decor */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <GravityStarsBackground />
-            </div>
 
             <div className="container mx-auto px-4 py-20 lg:py-32 relative z-10">
                 <div className="grid lg:grid-cols-[1fr_300px] gap-12">

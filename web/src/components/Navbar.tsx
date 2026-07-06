@@ -37,26 +37,8 @@ export const Header = () => {
             </Link>
 
             <div className="flex items-center gap-2">
-              <Link
-                href="/#features"
-                className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
-              >
-                Features
-              </Link>
-              <Link
-                href="/#faq"
-                className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
-              >
-                FAQ
-              </Link>
-              <Link
-                href="/privacy-policy"
-                className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground px-3 py-1.5 transition-colors"
-              >
-                Privacy
-              </Link>
               <Button asChild className="rounded-full" size="sm">
-                <Link href="/terms">Terms</Link>
+                <Link href="#features">Features</Link>
               </Button>
             </div>
           </div>
