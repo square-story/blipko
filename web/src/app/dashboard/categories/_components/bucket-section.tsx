@@ -97,7 +97,7 @@ export const BucketSection = ({
         <div className="h-2 w-full rounded-full bg-muted">
           <div
             className={cn(
-              "h-2 w-full origin-left rounded-full transition-transform duration-300 ease-[var(--ease-out)]",
+              "h-2 w-full origin-left rounded-full transition-transform duration-300 ease-out",
               over ? "bg-red-500" : "bg-primary",
             )}
             style={{ transform: `scaleX(${Math.min(100, pct) / 100})` }}
@@ -163,11 +163,6 @@ export const BucketSection = ({
             <CategoryCard
               key={cat.id}
               cat={cat}
-              groupName={
-                cat.parentId
-                  ? (groupNameById.get(cat.parentId) ?? null)
-                  : null
-              }
               suggestion={suggestionById.get(cat.id) ?? null}
               money={money}
               day={day}
