@@ -22,11 +22,13 @@ export type CategoryStat = {
   parentId: string | null;
   monthlyBudget: number | null;
   budgetLocked: boolean;
+  icon: string | null;
   spend: number;
 };
 
 const nameSchema = z.string().min(1).max(50).trim();
 const bucketSchema = z.enum(["NEEDS", "WANTS", "SAVINGS"]);
+const iconSchema = z.string().min(1).max(32);
 
 export async function getCategories(): Promise<CategoryStat[]> {
   const session = await auth();
@@ -104,6 +106,7 @@ export async function getCategories(): Promise<CategoryStat[]> {
     parentId: c.parentId,
     monthlyBudget: c.monthlyBudget === null ? null : Number(c.monthlyBudget),
     budgetLocked: c.budgetLocked,
+    icon: c.icon,
     spend: spendById.get(c.id) ?? 0,
   }));
 }
@@ -203,6 +206,7 @@ export async function createCategory(
     parentId?: string | null;
     monthlyBudget?: number | null;
     locked?: boolean;
+    icon?: string | null;
   },
 ): Promise<{ success: boolean; message?: string }> {
   const session = await auth();
@@ -212,6 +216,9 @@ export async function createCategory(
   const parsedBucket = bucketSchema.safeParse(bucket);
   if (!parsedName.success || !parsedBucket.success)
     return { success: false, message: "Invalid category" };
+
+  const icon =
+    opts?.icon != null ? (iconSchema.safeParse(opts.icon).data ?? null) : null;
 
   const existing = await prisma.category.findFirst({
     where: { userId: session.user.id, name: parsedName.data },
@@ -236,6 +243,7 @@ export async function createCategory(
       parentId,
       monthlyBudget: opts?.monthlyBudget ?? null,
       budgetLocked: opts?.locked ?? false,
+      icon,
     },
   });
 
@@ -399,6 +407,29 @@ export async function renameCategory(
   await prisma.category.update({
     where: { id },
     data: { name: parsedName.data },
+  });
+
+  revalidatePath("/dashboard/categories");
+  return { success: true };
+}
+
+export async function setCategoryIcon(
+  id: string,
+  icon: string,
+): Promise<{ success: boolean; message?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const parsedIcon = iconSchema.safeParse(icon);
+  if (!parsedIcon.success) return { success: false, message: "Invalid icon" };
+
+  const cat = await ownedCategory(id, session.user.id);
+  if (!cat)
+    return { success: false, message: "Category not found or not editable" };
+
+  await prisma.category.update({
+    where: { id },
+    data: { icon: parsedIcon.data },
   });
 
   revalidatePath("/dashboard/categories");

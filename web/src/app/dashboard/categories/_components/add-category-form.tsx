@@ -26,6 +26,8 @@ import { Bucket } from "@prisma/client";
 import { createCategory } from "@/lib/actions/categories";
 import { BUCKETS, BUCKET_META } from "@/lib/budget";
 import { toast } from "@/lib/toast";
+import { resolveCategoryEmoji } from "@/lib/category-emoji";
+import { EmojiPickerField } from "./emoji-picker-field";
 
 interface AddCategoryFormProps {
   onAdded: () => void;
@@ -38,13 +40,18 @@ export const AddCategoryForm = ({ onAdded }: AddCategoryFormProps) => {
   const [bucket, setBucket] = useState<Bucket>("NEEDS");
   const [fixed, setFixed] = useState(false);
   const [amount, setAmount] = useState("");
+  const [pickedIcon, setPickedIcon] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  // Auto-suggest an emoji from the name; a manual pick overrides it.
+  const icon = pickedIcon ?? resolveCategoryEmoji(name);
 
   const reset = () => {
     setName("");
     setBucket("NEEDS");
     setFixed(false);
     setAmount("");
+    setPickedIcon(null);
     setError("");
   };
 
@@ -58,7 +65,7 @@ export const AddCategoryForm = ({ onAdded }: AddCategoryFormProps) => {
       const res = await createCategory(
         name,
         bucket,
-        fixed ? { monthlyBudget: amt, locked: true } : undefined,
+        fixed ? { monthlyBudget: amt, locked: true, icon } : { icon },
       );
       if (!res.success) {
         toast.error(res.message ?? "Failed to add category");
@@ -94,19 +101,23 @@ export const AddCategoryForm = ({ onAdded }: AddCategoryFormProps) => {
         <div className="space-y-4 px-4 pb-2 sm:px-0">
           <div className="space-y-1">
             <Label htmlFor="new-cat-name">Name</Label>
-            <Input
-              id="new-cat-name"
-              value={name}
-              placeholder="e.g. Gym"
-              onChange={(e) => {
-                setName(e.target.value);
-                setError("");
-              }}
-              onKeyDown={(e) =>
-                e.key === "Enter" && name.trim() && handleAdd()
-              }
-              autoFocus
-            />
+            <div className="flex items-center gap-2">
+              <EmojiPickerField value={icon} onChange={setPickedIcon} />
+              <Input
+                id="new-cat-name"
+                className="flex-1"
+                value={name}
+                placeholder="e.g. Gym"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError("");
+                }}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && name.trim() && handleAdd()
+                }
+                autoFocus
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label>Bucket</Label>

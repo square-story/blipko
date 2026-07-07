@@ -25,10 +25,13 @@ import {
   renameCategory,
   setCategoryBucket,
   setCategoryBudget,
+  setCategoryIcon,
   type CategoryStat,
 } from "@/lib/actions/categories";
 import { BUCKETS, BUCKET_META } from "@/lib/budget";
 import { toast } from "@/lib/toast";
+import { resolveCategoryEmoji } from "@/lib/category-emoji";
+import { EmojiPickerField } from "./emoji-picker-field";
 
 interface EditCategoryModalProps {
   category: CategoryStat | null;
@@ -47,6 +50,7 @@ export const EditCategoryModal = ({
   const [editBucket, setEditBucket] = useState<Bucket>("NEEDS");
   const [editBudget, setEditBudget] = useState("");
   const [editLocked, setEditLocked] = useState(false);
+  const [pickedIcon, setPickedIcon] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   // Sync the form when a different category is opened (and reset the tracker on
@@ -61,8 +65,12 @@ export const EditCategoryModal = ({
       category.monthlyBudget == null ? "" : String(category.monthlyBudget),
     );
     setEditLocked(category.budgetLocked);
+    setPickedIcon(category.icon ?? null);
     setError("");
   }
+
+  // Auto-suggest from the name until the user picks (or a stored icon exists).
+  const editIcon = pickedIcon ?? resolveCategoryEmoji(editName);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) onClose();
@@ -83,6 +91,13 @@ export const EditCategoryModal = ({
         if (!r.success) {
           toast.error(r.message ?? "Failed to change bucket");
           return setError(r.message ?? "Failed to change bucket");
+        }
+      }
+      if (editIcon && editIcon !== category.icon) {
+        const r = await setCategoryIcon(category.id, editIcon);
+        if (!r.success) {
+          toast.error(r.message ?? "Failed to change icon");
+          return setError(r.message ?? "Failed to change icon");
         }
       }
       const trimmed = editBudget.trim();
@@ -119,14 +134,18 @@ export const EditCategoryModal = ({
         <div className="space-y-4 px-4 pb-2 sm:px-0">
           <div className="space-y-1">
             <Label>Name</Label>
-            <Input
-              value={editName}
-              onChange={(e) => {
-                setEditName(e.target.value);
-                setError("");
-              }}
-              autoFocus
-            />
+            <div className="flex items-center gap-2">
+              <EmojiPickerField value={editIcon} onChange={setPickedIcon} />
+              <Input
+                className="flex-1"
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  setError("");
+                }}
+                autoFocus
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label>Bucket</Label>
