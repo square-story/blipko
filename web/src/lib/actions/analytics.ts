@@ -12,6 +12,8 @@ export async function getAnalyticsData(months: number = 6) {
     redirect("/");
   }
 
+  months = Math.min(Math.max(1, Math.floor(months)), 24);
+
   const userId = session.user.id;
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);

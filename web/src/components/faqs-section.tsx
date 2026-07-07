@@ -27,7 +27,7 @@ export function FaqsSection() {
 				defaultValue="item-1"
 				type="single"
 			>
-				{questions.map((item) => (
+				{faqQuestions.map((item) => (
 					<AccordionItem
 						className="relative border-x first:rounded-t-lg first:border-t last:rounded-b-lg last:border-b"
 						key={item.id}
@@ -50,7 +50,7 @@ export function FaqsSection() {
 	);
 }
 
-const questions = [
+export const faqQuestions = [
 	{
 		id: "item-1",
 		title: "ഇത് എന്താണ് Blipko? (What is Blipko?)",

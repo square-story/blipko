@@ -37,8 +37,11 @@ export const Header = () => {
             </Link>
 
             <div className="flex items-center gap-2">
+              <Button asChild className="rounded-full" size="sm" variant="ghost">
+                <Link href="/faq">FAQ</Link>
+              </Button>
               <Button asChild className="rounded-full" size="sm">
-                <Link href="#features">Features</Link>
+                <Link href="/#features">Features</Link>
               </Button>
             </div>
           </div>
