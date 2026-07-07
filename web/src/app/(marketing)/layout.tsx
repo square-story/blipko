@@ -1,4 +1,5 @@
 import { Footer } from "@/components/Footer";
+import { Header } from "@/components/Navbar";
 
 export default function MarketingLayout({
     children,
@@ -7,6 +8,7 @@ export default function MarketingLayout({
 }>) {
     return (
         <>
+            <Header />
             {children}
             <footer>
                 <Footer />

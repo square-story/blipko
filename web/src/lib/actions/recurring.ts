@@ -64,8 +64,8 @@ export async function createRecurringRule(
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
     if (data.categoryId) {
-      const existing = await prisma.category.findUnique({
-        where: { id: data.categoryId },
+      const existing = await prisma.category.findFirst({
+        where: { id: data.categoryId, userId },
       });
       if (existing) {
         categoryId = existing.id;
@@ -127,8 +127,8 @@ export async function updateRecurringRule(
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
     if (data.categoryId) {
-      const existing = await prisma.category.findUnique({
-        where: { id: data.categoryId },
+      const existing = await prisma.category.findFirst({
+        where: { id: data.categoryId, userId },
       });
       if (existing) {
         categoryId = existing.id;
