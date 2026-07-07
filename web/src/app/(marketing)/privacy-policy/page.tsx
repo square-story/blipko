@@ -225,7 +225,7 @@ export default function PrivacyPolicyPage() {
                                         onClick={() => {
                                             document.getElementById(section.id)?.scrollIntoView({ behavior: "smooth" });
                                         }}
-                                        className={`w-full text-left px-4 py-2 text-sm transition-all duration-200 border-l-2 -ml-[2px] hover:text-primary flex items-center gap-2 ${activeSection === section.id
+                                        className={`w-full text-left px-4 py-2 text-sm transition-all duration-200 border-l-2 -ml-0.5 hover:text-primary flex items-center gap-2 ${activeSection === section.id
                                             ? "border-primary text-primary font-medium"
                                             : "border-transparent text-muted-foreground hover:border-gray-300"
                                             }`}
