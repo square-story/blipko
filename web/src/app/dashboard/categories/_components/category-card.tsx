@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,38 +14,15 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CircularProgress } from "@/components/ui/circular-progress";
 import { categoryPacing } from "@/lib/budget";
 import { cn } from "@/lib/utils";
-import { 
-  Utensils, Home, CarFront, ShoppingBag, Clapperboard, Pill, Plane, BookOpen, 
-  MoreVertical, Pencil, Trash2, CheckCircle2, CircleDashed, Coffee, Lightbulb, 
-  Wifi, Smartphone, Shirt, Dumbbell, Baby, Dog, Gamepad2, Gift, HeartHandshake, Lock
+import {
+  MoreVertical,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  Lock,
 } from "lucide-react";
+import { resolveCategoryEmoji } from "@/lib/category-emoji";
 import type { CategoryStat, CategorySuggestion } from "@/lib/actions/categories";
-
-function getCategoryIcon(name: string) {
-  const n = name.toLowerCase();
-  if (n.includes("food") || n.includes("dining") || n.includes("restaurant") || n.includes("eat")) return Utensils;
-  if (n.includes("coffee") || n.includes("cafe")) return Coffee;
-  if (n.includes("house") || n.includes("housing") || n.includes("rent") || n.includes("mortgage")) return Home;
-  if (n.includes("transport") || n.includes("car") || n.includes("auto") || n.includes("gas") || n.includes("fuel") || n.includes("travel") || n.includes("flight") || n.includes("vacation") || n.includes("trip") || n.includes("hotel")) {
-      if (n.includes("flight") || n.includes("plane")) return Plane;
-      return CarFront;
-  }
-  if (n.includes("shop") || n.includes("store") || n.includes("grocer") || n.includes("supermarket")) return ShoppingBag;
-  if (n.includes("clothes") || n.includes("apparel") || n.includes("clothing")) return Shirt;
-  if (n.includes("entertain") || n.includes("movie") || n.includes("film") || n.includes("cinema") || n.includes("subscrip")) return Clapperboard;
-  if (n.includes("health") || n.includes("medical") || n.includes("doctor") || n.includes("pharm") || n.includes("medicine")) return Pill;
-  if (n.includes("fitness") || n.includes("gym") || n.includes("workout")) return Dumbbell;
-  if (n.includes("education") || n.includes("school") || n.includes("tuition") || n.includes("book") || n.includes("course")) return BookOpen;
-  if (n.includes("utilit") || n.includes("electric") || n.includes("water") || n.includes("bill")) return Lightbulb;
-  if (n.includes("internet") || n.includes("wifi") || n.includes("broadband")) return Wifi;
-  if (n.includes("phone") || n.includes("mobile") || n.includes("cell")) return Smartphone;
-  if (n.includes("baby") || n.includes("kids") || n.includes("child")) return Baby;
-  if (n.includes("pet") || n.includes("dog") || n.includes("cat") || n.includes("vet")) return Dog;
-  if (n.includes("game") || n.includes("gaming") || n.includes("hobby")) return Gamepad2;
-  if (n.includes("gift") || n.includes("present") || n.includes("donation")) return Gift;
-  if (n.includes("charity") || n.includes("give")) return HeartHandshake;
-  return CircleDashed;
-}
 
 interface CategoryCardProps {
   cat: CategoryStat;
@@ -72,6 +50,8 @@ export function CategoryCard({
   onApplyBudget,
 }: CategoryCardProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const reduce = useReducedMotion();
+  const displayIcon = cat.icon ?? resolveCategoryEmoji(cat.name);
 
   const hasLimit = cat.monthlyBudget != null;
   const limit = cat.monthlyBudget ?? 0;
@@ -135,8 +115,16 @@ export function CategoryCard({
     <>
       <div className="relative flex items-center justify-between p-5 rounded-2xl bg-card border shadow-sm overflow-hidden group hover:border-border/80 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/50 text-muted-foreground shrink-0">
-            {React.createElement(getCategoryIcon(cat.name), { className: "w-5 h-5" })}
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/50 shrink-0">
+            <motion.span
+              key={displayIcon}
+              initial={reduce ? false : { scale: 0.6, opacity: 0 }}
+              animate={reduce ? {} : { scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 22 }}
+              className="text-lg leading-none"
+            >
+              {displayIcon}
+            </motion.span>
           </div>
           
           <div className="flex flex-col gap-0.5 min-w-0">
@@ -174,7 +162,7 @@ export function CategoryCard({
             color={ringColor} 
           />
           
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">

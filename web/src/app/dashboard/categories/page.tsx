@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
 
 import {
   getCategories,
@@ -71,6 +77,18 @@ export default function CategoriesPage() {
     [suggestions],
   );
 
+  // One entry per bucket, reused by both the tab triggers (counts) and content.
+  const bucketData = useMemo(
+    () =>
+      BUCKETS.map((bucket) => ({
+        bucket,
+        meta: BUCKET_META[bucket],
+        ov: overview?.buckets.find((b) => b.bucket === bucket),
+        inBucket: leaves.filter((c) => c.bucket === bucket),
+      })),
+    [overview, leaves],
+  );
+
   const handleDelete = (cat: CategoryStat) =>
     startTransition(async () => {
       const res = await deleteCategory(cat.id);
@@ -136,47 +154,47 @@ export default function CategoriesPage() {
         )}
 
         {leaves.length > 0 && (
-          <div className="space-y-12 pt-6">
-            {BUCKETS.map((bucket) => {
-              const meta = BUCKET_META[bucket];
-              const ov = overview?.buckets.find((b) => b.bucket === bucket);
-              const inBucket = leaves.filter((c) => c.bucket === bucket);
+          <Tabs defaultValue={BUCKETS[0]} className="pt-2">
+            <TabsList className="grid w-full grid-cols-3">
+              {bucketData.map(({ bucket, meta, inBucket }) => (
+                <TabsTrigger key={bucket} value={bucket}>
+                  <span>{meta.emoji}</span>
+                  <span className="hidden sm:inline">{meta.label}</span>
+                  <span className="text-muted-foreground font-normal">
+                    ({inBucket.length})
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-              return (
-                <div key={bucket} className="space-y-4">
-                  <h2 className="text-xl font-semibold flex items-center gap-2">
-                    {meta.emoji} {meta.label}
-                    <span className="text-sm font-normal text-muted-foreground">
-                      ({inBucket.length})
-                    </span>
-                  </h2>
-                  <div className="bg-card/30 border rounded-2xl p-4 md:p-6 shadow-sm">
-                    <BucketSection
-                      bucket={bucket}
-                      overview={{
-                        budget: ov?.budget ?? 0,
-                        spent: ov?.spent ?? 0,
-                        remaining: ov?.remaining ?? 0,
-                        pct: ov?.pct ?? 0,
-                      }}
-                      categories={inBucket}
-                      groupNameById={groupNameById}
-                      suggestionById={suggestionById}
-                      money={money}
-                      day={day}
-                      daysInPeriod={daysInPeriod}
-                      remainingDays={remainingDays}
-                      isPending={isPending}
-                      onEdit={setEditing}
-                      onDelete={handleDelete}
-                      onApplyBudget={applyBudget}
-                      onRebalance={rebalance}
-                    />
-                  </div>
+            {bucketData.map(({ bucket, ov, inBucket }) => (
+              <TabsContent key={bucket} value={bucket}>
+                <div className="bg-card/30 border rounded-2xl p-4 md:p-6 shadow-sm">
+                  <BucketSection
+                    bucket={bucket}
+                    overview={{
+                      budget: ov?.budget ?? 0,
+                      spent: ov?.spent ?? 0,
+                      remaining: ov?.remaining ?? 0,
+                      pct: ov?.pct ?? 0,
+                    }}
+                    categories={inBucket}
+                    groupNameById={groupNameById}
+                    suggestionById={suggestionById}
+                    money={money}
+                    day={day}
+                    daysInPeriod={daysInPeriod}
+                    remainingDays={remainingDays}
+                    isPending={isPending}
+                    onEdit={setEditing}
+                    onDelete={handleDelete}
+                    onApplyBudget={applyBudget}
+                    onRebalance={rebalance}
+                  />
                 </div>
-              );
-            })}
-          </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         )}
       </div>
 

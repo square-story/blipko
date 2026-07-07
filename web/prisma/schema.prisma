@@ -132,6 +132,10 @@ model Category {
   isSystem Boolean @default(false)
   isGroup  Boolean @default(false)
 
+  // User-chosen emoji shown as the category's icon. Null falls back to a
+  // name-derived emoji resolver in the UI.
+  icon String?
+
   // Per-leaf monthly budget suggestion (editable; null = uncapped).
   monthlyBudget Decimal? @db.Decimal(12, 2)
 
