@@ -53,7 +53,6 @@ export async function sendEmail({
       subject: template.subject,
       html: template.html,
     });
-    console.log(`Email (${templateType}) sent to ${email}`);
   } catch (error) {
     console.error("Error sending email:", error);
     // Don't throw, just log. We don't want to block sign-in if email fails.

@@ -74,6 +74,9 @@ export async function getIncome({
     };
   }
 
+  limit = Math.min(Math.max(1, Math.floor(limit)), 100);
+  page = Math.max(1, Math.floor(page));
+
   const skip = (page - 1) * limit;
   const ALLOWED_SORT_FIELDS = ["date", "amount", "createdAt"] as const;
   type AllowedSortField = (typeof ALLOWED_SORT_FIELDS)[number];

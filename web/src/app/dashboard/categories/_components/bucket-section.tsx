@@ -39,7 +39,6 @@ export const BucketSection = ({
   bucket,
   overview,
   categories,
-  groupNameById,
   suggestionById,
   money,
   day,
