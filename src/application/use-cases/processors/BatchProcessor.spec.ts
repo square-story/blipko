@@ -25,7 +25,7 @@ describe("BatchProcessor", () => {
     expenseRepository = {
       create: vi.fn().mockImplementation(async () => ({ id: `e${++n}` })),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
-      sumByBucketForMonth: vi.fn().mockResolvedValue(0),
+      spendByCategoryForMonth: vi.fn().mockResolvedValue([]),
     };
     categoryRepository = {
       findByNameForUser: vi.fn().mockResolvedValue(null),
@@ -42,6 +42,7 @@ describe("BatchProcessor", () => {
     incomeRepository = {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       sumForMonth: vi.fn().mockResolvedValue(50000),
+      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
     };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("summary-msg"),

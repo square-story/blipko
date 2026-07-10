@@ -24,6 +24,7 @@ import {
   bucketBudget,
   currentBudgetPeriod,
   effectiveMonthlyIncome,
+  effectiveSpentByBucket,
   formatMoney,
   periodDayInfo,
   sanitizeMd,
@@ -81,7 +82,9 @@ export class BatchProcessor implements MessageProcessor {
       note?: string | undefined;
     }[] = [];
     let firstExpenseId: string | undefined;
-    let recordedIncome = false;
+    // Only GENERAL (uncategorized) income moves the 50/30/20 budget — earmarked
+    // income is a category pot and doesn't touch it.
+    let recordedGeneralIncome = false;
 
     const deps = {
       expenseRepository: this.expenseRepository,
@@ -104,11 +107,30 @@ export class BatchProcessor implements MessageProcessor {
       Number(user.monthlyIncome ?? 0),
       await this.incomeRepository.sumForMonth(user.id, periodStart, periodEnd),
     );
+    // Earmarked income per category (computed once; income logged mid-batch
+    // isn't reflected in later items' offset — acceptable for the terse hint).
+    const receivedByCategory = new Map(
+      (
+        await this.incomeRepository.receivedByCategoryForMonth(
+          user.id,
+          periodStart,
+          periodEnd,
+        )
+      ).map((r) => [r.categoryId, r.total]),
+    );
 
     for (const item of items) {
       // Batch mode only logs money; skip stray non-EXPENSE/INCOME items.
       if (item.intent === "INCOME") {
         if (!isValidAmount(item.amount, INCOME_MAX)) continue;
+        // Earmark to a leaf category when named; group/unknown stays general.
+        const incMatched = item.category
+          ? await this.categoryRepository.findByNameForUser(
+              user.id,
+              item.category,
+            )
+          : null;
+        const incLeaf = incMatched && !incMatched.isGroup ? incMatched : null;
         await this.incomeRepository.create({
           userId: user.id,
           amount: item.amount,
@@ -117,10 +139,18 @@ export class BatchProcessor implements MessageProcessor {
           source: item.note,
           note: item.note,
           batchId,
+          categoryId: incLeaf?.id,
         });
-        recordedIncome = true;
-        const label = item.note ? ` (${sanitizeMd(item.note)})` : "";
-        logged.push(`✅ Income ${formatMoney(item.amount)}${label}`);
+        if (incLeaf) {
+          const icon = incLeaf.icon ? `${incLeaf.icon} ` : "";
+          logged.push(
+            `✅ ${formatMoney(item.amount)} → ${icon}${sanitizeMd(incLeaf.name)} fund`,
+          );
+        } else {
+          recordedGeneralIncome = true;
+          const label = item.note ? ` (${sanitizeMd(item.note)})` : "";
+          logged.push(`✅ Income ${formatMoney(item.amount)}${label}`);
+        }
         continue;
       }
       if (item.intent !== "EXPENSE") continue;
@@ -164,12 +194,14 @@ export class BatchProcessor implements MessageProcessor {
         batchId,
       });
       firstExpenseId ??= expense.id;
-      const bucketSpent = await this.expenseRepository.sumByBucketForMonth(
-        user.id,
-        bucket,
-        periodStart,
-        periodEnd,
-      );
+      const bucketSpent = effectiveSpentByBucket(
+        await this.expenseRepository.spendByCategoryForMonth(
+          user.id,
+          periodStart,
+          periodEnd,
+        ),
+        receivedByCategory,
+      )[bucket];
       const bucketBudgetAmt = bucketBudget(batchIncome, splitConfig, bucket);
       logged.push(
         buildExpenseLine(bucket, categoryLabel, item.amount) +
@@ -184,9 +216,9 @@ export class BatchProcessor implements MessageProcessor {
       );
     }
 
-    // Recompute the effective budget once if any income landed in this batch.
+    // Recompute the effective budget once if any general income landed.
     let budgetLine = "";
-    if (recordedIncome) {
+    if (recordedGeneralIncome) {
       const { start, end } = currentBudgetPeriod(user.payday);
       const monthIncome = await this.incomeRepository.sumForMonth(
         user.id,

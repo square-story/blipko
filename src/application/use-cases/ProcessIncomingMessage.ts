@@ -169,6 +169,8 @@ export class ProcessIncomingMessageUseCase {
       ),
       new IncomeProcessor(
         incomeRepository,
+        categoryRepository,
+        expenseRepository,
         budgetConfigRepository,
         messageService,
       ),

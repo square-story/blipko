@@ -13,6 +13,8 @@ import {
   currentBudgetPeriod,
   periodDayInfo,
   effectiveMonthlyIncome,
+  effectiveCategorySpend,
+  effectiveSpentByBucket,
   pctSpent,
   type BudgetSplit,
 } from "@/lib/budget";
@@ -44,11 +46,12 @@ export async function getBudgetOverview() {
   const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
   const { day, daysInPeriod, remainingDays } = periodDayInfo(user?.payday ?? 1);
 
-  const [config, grouped, recent, categoryGroups, incomeAgg] =
+  const [config, spendGroups, recent, receivedGroups, incomeAgg, generalAgg] =
     await Promise.all([
       prisma.budgetConfig.findUnique({ where: { userId } }),
+      // Per-(category, bucket) spend feeds the true-offset rollup.
       prisma.expense.groupBy({
-        by: ["bucket"],
+        by: ["categoryId", "bucket"],
         _sum: { amount: true },
         where: { userId, isDeleted: false, date: { gte: start, lt: end } },
       }),
@@ -58,21 +61,40 @@ export async function getBudgetOverview() {
         orderBy: { date: "desc" },
         take: 8,
       }),
-      prisma.expense.groupBy({
+      // Earmarked income received per category.
+      prisma.income.groupBy({
         by: ["categoryId"],
         _sum: { amount: true },
-        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+        where: {
+          userId,
+          isDeleted: false,
+          categoryId: { not: null },
+          date: { gte: start, lt: end },
+        },
       }),
+      // All income received this cycle (display).
       prisma.income.aggregate({
         _sum: { amount: true },
         where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+      }),
+      // General (uncategorized) income — the budget floor.
+      prisma.income.aggregate({
+        _sum: { amount: true },
+        where: {
+          userId,
+          isDeleted: false,
+          categoryId: null,
+          date: { gte: start, lt: end },
+        },
       }),
     ]);
 
   const expectedIncome = Number(user?.monthlyIncome ?? 0);
   const incomeThisMonth = Number(incomeAgg._sum.amount ?? 0);
-  // Budgets track actual income this month, floored at the expected salary.
-  const monthlyIncome = effectiveMonthlyIncome(expectedIncome, incomeThisMonth);
+  const generalIncome = Number(generalAgg._sum.amount ?? 0);
+  // Budgets track general income this cycle, floored at the expected salary.
+  // Earmarked income is excluded — it can't inflate the 50/30/20 budget.
+  const monthlyIncome = effectiveMonthlyIncome(expectedIncome, generalIncome);
   const currency = user?.currency ?? "INR";
   const locale = user?.locale ?? "en-IN";
   const split: BudgetSplit = config
@@ -83,14 +105,23 @@ export async function getBudgetOverview() {
       }
     : DEFAULT_SPLIT;
 
-  const spentByBucket = new Map<Bucket, number>();
-  for (const g of grouped) {
-    spentByBucket.set(g.bucket, Number(g._sum.amount ?? 0));
+  const receivedByCategory = new Map<string, number>();
+  for (const g of receivedGroups) {
+    if (g.categoryId)
+      receivedByCategory.set(g.categoryId, Number(g._sum.amount ?? 0));
   }
+
+  const spendRows = spendGroups.map((g) => ({
+    categoryId: g.categoryId,
+    bucket: g.bucket,
+    total: Number(g._sum.amount ?? 0),
+  }));
+  // Spend counted against budgets is net of earmarked income, per category.
+  const effSpent = effectiveSpentByBucket(spendRows, receivedByCategory);
 
   const buckets: BucketOverview[] = BUCKETS.map((bucket) => {
     const budget = bucketBudget(monthlyIncome, split, bucket);
-    const spent = spentByBucket.get(bucket) ?? 0;
+    const spent = effSpent[bucket];
     return {
       bucket,
       budget,
@@ -103,10 +134,20 @@ export async function getBudgetOverview() {
   const totalSpent = buckets.reduce((sum, b) => sum + b.spent, 0);
   const savings = buckets.find((b) => b.bucket === "SAVINGS")!;
 
-  // Category breakdown for the current month (named, spend desc).
-  const categoryIds = categoryGroups
-    .map((g) => g.categoryId)
-    .filter((id): id is string => !!id);
+  // Category breakdown for the current month, net of earmarked income.
+  const grossByCategory = new Map<string, number>();
+  let uncategorizedGross = 0;
+  for (const row of spendRows) {
+    if (row.categoryId == null) {
+      uncategorizedGross += row.total;
+    } else {
+      grossByCategory.set(
+        row.categoryId,
+        (grossByCategory.get(row.categoryId) ?? 0) + row.total,
+      );
+    }
+  }
+  const categoryIds = [...grossByCategory.keys()];
   const categories = categoryIds.length
     ? await prisma.category.findMany({
         where: { id: { in: categoryIds } },
@@ -114,13 +155,18 @@ export async function getBudgetOverview() {
       })
     : [];
   const nameById = new Map(categories.map((c) => [c.id, c.name]));
-  const categoryBreakdown = categoryGroups
-    .map((g) => ({
-      name: g.categoryId
-        ? (nameById.get(g.categoryId) ?? "Uncategorized")
-        : "Uncategorized",
-      value: Number(g._sum.amount ?? 0),
-    }))
+  const categoryBreakdown = [
+    ...categoryIds.map((id) => ({
+      name: nameById.get(id) ?? "Uncategorized",
+      value: effectiveCategorySpend(
+        grossByCategory.get(id) ?? 0,
+        receivedByCategory.get(id) ?? 0,
+      ),
+    })),
+    ...(uncategorizedGross > 0
+      ? [{ name: "Uncategorized", value: uncategorizedGross }]
+      : []),
+  ]
     .filter((c) => c.value > 0)
     .sort((a, b) => b.value - a.value);
 

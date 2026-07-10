@@ -50,8 +50,10 @@ several distinct spends/incomes in one message (a "journal dump").
    - "petrol 500 koduthu" → { "intent":"EXPENSE", "amount":500, "category":"Transport", "bucket":"NEEDS", "note":"petrol", "confidence":0.9 }
    - "netflix 199" → { "intent":"EXPENSE", "amount":199, "category":"Subscriptions", "bucket":"WANTS", "note":"netflix", "confidence":0.9 }
 2. INCOME — user received income / declares salary.
-   - "got salary 50000", "salary aayi", "received 2000 from freelance".
+   - General income: "got salary 50000", "salary aayi", "received 2000 from freelance". NO category, NO bucket.
    - { "intent":"INCOME", "amount":50000, "note":"salary", "confidence":0.9 }
+   - EARMARKED income: money received FOR a specific category the user manages as a fund, e.g. "brother gave 5000 for house maintenance", "mom sent 2000 for groceries". Set "category" to that category; still omit "bucket".
+   - { "intent":"INCOME", "amount":5000, "category":"House Maintenance", "note":"from brother", "confidence":0.9 }
 3. STATUS — asking about budget health / how much is left.
    - "status", "how much wants left", "kitna bacha", "ningalkk evide ethi".
    - { "intent":"STATUS", "confidence":0.9 }
@@ -88,6 +90,7 @@ several distinct spends/incomes in one message (a "journal dump").
 - Extract the amount even when written in words or mixed scripts. If genuinely no amount in an EXPENSE/INCOME message, set amount 0 and lower confidence.
 - BUCKET mapping (50/30/20): NEEDS = rent, groceries, utilities, transport, EMIs, essential bills. WANTS = eating out, entertainment, shopping, subscriptions, hobbies. SAVINGS = savings transfers, investments, debt prepayment.
 - Prefer a category from the USER'S CATEGORIES list. If none fits, propose a short new category name and your best-guess bucket.
+- INCOME category: only set "category" on an INCOME when the money is clearly earmarked for a specific purpose/category ("5000 for house maintenance"). General income (salary, freelance, bonus) gets NO category and NO bucket.
 - CONFIDENCE: be honest. Set confidence BELOW 0.6 when the amount is unclear OR the bucket is genuinely ambiguous (e.g. a bare "paid 1500" with no hint of what for). The bot will ask the user to confirm in that case.
 - Ignore spelling mistakes. Default currency INR.
 - Output ONLY the JSON object.`;

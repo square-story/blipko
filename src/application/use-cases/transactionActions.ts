@@ -11,6 +11,7 @@ import {
   bucketBudget,
   currentBudgetPeriod,
   effectiveMonthlyIncome,
+  effectiveSpentByBucket,
   formatMoney,
   sanitizeMd,
 } from "./budgetMath";
@@ -330,12 +331,18 @@ export async function bucketRemaining(
   bucket: Bucket,
 ): Promise<number> {
   const { start, end } = currentBudgetPeriod(user.payday);
-  const spent = await deps.expenseRepository.sumByBucketForMonth(
-    user.id,
-    bucket,
-    start,
-    end,
-  );
+  const spent = effectiveSpentByBucket(
+    await deps.expenseRepository.spendByCategoryForMonth(user.id, start, end),
+    new Map(
+      (
+        await deps.incomeRepository.receivedByCategoryForMonth(
+          user.id,
+          start,
+          end,
+        )
+      ).map((r) => [r.categoryId, r.total]),
+    ),
+  )[bucket];
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
   const income = effectiveMonthlyIncome(

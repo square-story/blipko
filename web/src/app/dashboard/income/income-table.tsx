@@ -10,8 +10,9 @@ import {
 } from "@tanstack/react-table";
 import { useQueryState, parseAsInteger, parseAsString } from "nuqs";
 import { IncomeData, IncomeFilters } from "@/lib/actions/income";
+import type { CategoryStat } from "@/lib/actions/categories";
 import { DataTable } from "@/components/data-table/data-table";
-import { columns } from "./_components/columns";
+import { getIncomeColumns } from "./_components/columns";
 import { IncomeTableToolbar } from "./_components/income-table-toolbar";
 import { IncomeTableFloatingBar } from "./_components/income-table-floating-bar";
 
@@ -19,9 +20,14 @@ interface IncomeTableProps {
   data: IncomeData[];
   pageCount: number;
   total: number;
+  categories: CategoryStat[];
 }
 
-export function IncomeTable({ data, pageCount }: IncomeTableProps) {
+export function IncomeTable({ data, pageCount, categories }: IncomeTableProps) {
+  const columns = React.useMemo(
+    () => getIncomeColumns(categories),
+    [categories],
+  );
   const [page, setPage] = useQueryState(
     "page",
     parseAsInteger.withDefault(1).withOptions({ shallow: false }),

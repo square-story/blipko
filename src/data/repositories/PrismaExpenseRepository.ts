@@ -205,6 +205,29 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     }));
   }
 
+  async spendByCategoryForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<
+    Array<{ categoryId: string | null; bucket: Bucket; total: number }>
+  > {
+    const groups = await this.prisma.expense.groupBy({
+      by: ["categoryId", "bucket"],
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: monthStart, lt: monthEnd },
+      },
+      _sum: { amount: true },
+    });
+    return groups.map((g) => ({
+      categoryId: g.categoryId,
+      bucket: g.bucket,
+      total: Number(g._sum.amount ?? 0),
+    }));
+  }
+
   async findRecent(
     userId: string,
     opts: RecentExpenseFilter,

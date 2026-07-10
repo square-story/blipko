@@ -155,6 +155,7 @@ model Category {
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expenses       Expense[]
+  incomes        Income[]
   recurringRules RecurringRule[]
 
   createdAt DateTime @default(now())
@@ -234,6 +235,12 @@ model Income {
   rawText    String
   confidence Float
 
+  // Optional earmark: income received for a specific category (a two-way "pot").
+  // Earmarked income offsets that category's spend and is excluded from the
+  // general budget floor. Null = general income (salary, etc.).
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
   // Link to the confirmation message (for reply/edit/undo handling)
   confirmationMessageId String? @unique
 
@@ -251,6 +258,7 @@ model Income {
   @@index([userId, date])
   @@index([userId, isDeleted, date])
   @@index([userId, batchId])
+  @@index([userId, categoryId])
 }
 
 // ─── Infra ────────────────────────────────────────────────────────────────────

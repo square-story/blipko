@@ -7,6 +7,8 @@ export const incomeEditSchema = z.object({
   date: z.date(),
   source: z.string().trim().max(50).optional(),
   note: z.string().trim().max(100).optional(),
+  // Optional earmark to a leaf category; "" / undefined = general income.
+  categoryId: z.string().optional(),
 });
 
 export type IncomeEditInput = z.infer<typeof incomeEditSchema>;

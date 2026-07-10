@@ -19,11 +19,31 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         source: data.source ?? null,
         note: data.note ?? null,
         batchId: data.batchId ?? null,
+        categoryId: data.categoryId ?? null,
       },
     });
   }
 
+  // General (uncategorized) income only — the budget floor.
   async sumForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number> {
+    const result = await this.prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        isDeleted: false,
+        categoryId: null,
+        date: { gte: monthStart, lt: monthEnd },
+      },
+    });
+    return Number(result._sum.amount ?? 0);
+  }
+
+  // All income (general + earmarked) — for "received this cycle" displays.
+  async sumTotalForMonth(
     userId: string,
     monthStart: Date,
     monthEnd: Date,
@@ -37,6 +57,31 @@ export class PrismaIncomeRepository implements IIncomeRepository {
       },
     });
     return Number(result._sum.amount ?? 0);
+  }
+
+  async receivedByCategoryForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<Array<{ categoryId: string; total: number }>> {
+    const groups = await this.prisma.income.groupBy({
+      by: ["categoryId"],
+      where: {
+        userId,
+        isDeleted: false,
+        categoryId: { not: null },
+        date: { gte: monthStart, lt: monthEnd },
+      },
+      _sum: { amount: true },
+    });
+    return groups
+      .filter(
+        (g): g is typeof g & { categoryId: string } => g.categoryId !== null,
+      )
+      .map((g) => ({
+        categoryId: g.categoryId,
+        total: Number(g._sum.amount ?? 0),
+      }));
   }
 
   async findById(id: string): Promise<Income | null> {
@@ -76,6 +121,7 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         ...(data.amount !== undefined && { amount: data.amount }),
         ...(data.source !== undefined && { source: data.source }),
         ...(data.note !== undefined && { note: data.note }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
       },
     });
   }

@@ -46,8 +46,9 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       findLastByUserId: vi.fn().mockResolvedValue(null),
       findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
-      sumByBucketForMonth: vi.fn().mockResolvedValue(220),
-      sumByCategoryForMonth: vi.fn().mockResolvedValue(220),
+      spendByCategoryForMonth: vi
+        .fn()
+        .mockResolvedValue([{ categoryId: "c1", bucket: "WANTS", total: 220 }]),
       topCategoriesForMonth: vi.fn().mockResolvedValue([]),
       softDelete: vi.fn().mockResolvedValue(undefined),
     };
@@ -75,6 +76,8 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     incomeRepository = {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       sumForMonth: vi.fn().mockResolvedValue(0),
+      sumTotalForMonth: vi.fn().mockResolvedValue(0),
+      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
       findLastByUserId: vi.fn().mockResolvedValue(null),
       findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
@@ -202,7 +205,9 @@ describe("ProcessIncomingMessage (budget flow)", () => {
         confidence: 0.4,
       },
     });
-    expenseRepository.sumByBucketForMonth.mockResolvedValue(1500);
+    expenseRepository.spendByCategoryForMonth.mockResolvedValue([
+      { categoryId: "c1", bucket: "WANTS", total: 1500 },
+    ]);
 
     await useCase.execute({
       platformUserId: "123",
@@ -287,6 +292,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
 
   it("records income and replies with the refreshed budget", async () => {
     incomeRepository.sumForMonth.mockResolvedValue(55000);
+    incomeRepository.sumTotalForMonth.mockResolvedValue(55000);
     aiParser.parseText.mockResolvedValue({
       transactions: [
         { intent: "INCOME", amount: 5000, note: "freelance", confidence: 0.9 },

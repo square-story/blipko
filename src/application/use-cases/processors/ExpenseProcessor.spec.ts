@@ -23,7 +23,7 @@ describe("ExpenseProcessor", () => {
     vi.clearAllMocks();
     expenseRepository = {
       create: vi.fn().mockResolvedValue({ id: "e1" }),
-      sumByBucketForMonth: vi.fn().mockResolvedValue(30),
+      spendByCategoryForMonth: vi.fn().mockResolvedValue([]),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
@@ -38,7 +38,10 @@ describe("ExpenseProcessor", () => {
     parseLogRepository = {
       create: vi.fn().mockResolvedValue({ id: "log1" }),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
+    };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("m1"),
       sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),

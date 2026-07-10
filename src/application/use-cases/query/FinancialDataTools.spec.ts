@@ -22,6 +22,7 @@ describe("FinancialDataTools", () => {
     vi.clearAllMocks();
     userRepository = { findById: vi.fn().mockResolvedValue(user) };
     expenseRepository = {
+      // Raw getSpendByBucket tool stays gross.
       sumByBucketForMonth: vi.fn((_u, bucket) =>
         Promise.resolve(
           (
@@ -32,6 +33,12 @@ describe("FinancialDataTools", () => {
           )[bucket] ?? 0,
         ),
       ),
+      // getPeriodStatus uses the effective (net-of-earmark) rollup.
+      spendByCategoryForMonth: vi.fn().mockResolvedValue([
+        { categoryId: null, bucket: "NEEDS", total: 10000 },
+        { categoryId: null, bucket: "WANTS", total: 6000 },
+        { categoryId: null, bucket: "SAVINGS", total: 2000 },
+      ]),
       categoryTotals: vi
         .fn()
         .mockResolvedValue([{ name: "Food", total: 1200 }]),
@@ -45,7 +52,11 @@ describe("FinancialDataTools", () => {
         },
       ]),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(50000) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(50000),
+      sumTotalForMonth: vi.fn().mockResolvedValue(50000),
+      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
+    };
     budgetConfigRepository = {
       findByUserId: vi
         .fn()

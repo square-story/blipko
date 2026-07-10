@@ -7,6 +7,8 @@ import {
   periodDayInfo,
   periodKey,
   effectiveMonthlyIncome,
+  effectiveCategorySpend,
+  effectiveSpentByBucket,
   formatMoney,
   pctSpent,
   progressBar,
@@ -102,5 +104,40 @@ describe("budgetMath", () => {
     expect(periodKey(25, new Date(2026, 5, 12))).toBe("2026-05-25");
     expect(periodKey(25, new Date(2026, 5, 26))).toBe("2026-06-25");
     expect(periodKey(1, new Date(2026, 5, 12))).toBe("2026-06-01");
+  });
+
+  it("effectiveCategorySpend offsets spend by received, never negative", () => {
+    expect(effectiveCategorySpend(5000, 0)).toBe(5000); // no funding
+    expect(effectiveCategorySpend(5000, 2000)).toBe(3000); // partly funded
+    expect(effectiveCategorySpend(5000, 5000)).toBe(0); // fully funded
+    expect(effectiveCategorySpend(3000, 5000)).toBe(0); // over-funded → 0, no negative
+  });
+
+  it("effectiveSpentByBucket offsets per-category before rollup (no cross-subsidy)", () => {
+    // NEEDS has two categories: A over-funded (surplus), B unfunded overspend.
+    // A's surplus must NOT cancel B's spend.
+    const rows = [
+      { categoryId: "A", bucket: "NEEDS" as const, total: 3000 },
+      { categoryId: "B", bucket: "NEEDS" as const, total: 4000 },
+    ];
+    const received = new Map([["A", 5000]]); // A funded 5000, spent 3000
+    const out = effectiveSpentByBucket(rows, received);
+    // A → max(0, 3000-5000)=0 ; B → max(0, 4000-0)=4000
+    expect(out.NEEDS).toBe(4000);
+    expect(out.WANTS).toBe(0);
+    expect(out.SAVINGS).toBe(0);
+  });
+
+  it("effectiveSpentByBucket never offsets uncategorized spend", () => {
+    const rows = [{ categoryId: null, bucket: "NEEDS" as const, total: 2000 }];
+    // A stray received map entry can't apply to null-category rows.
+    const out = effectiveSpentByBucket(rows, new Map([["X", 9000]]));
+    expect(out.NEEDS).toBe(2000);
+  });
+
+  it("effectiveSpentByBucket ignores a received-only category (no spend row)", () => {
+    // Category funded this cycle but not yet spent → no spend row → 0 effective.
+    const out = effectiveSpentByBucket([], new Map([["A", 5000]]));
+    expect(out).toEqual({ NEEDS: 0, WANTS: 0, SAVINGS: 0 });
   });
 });

@@ -76,6 +76,16 @@ export interface IExpenseRepository {
     bucket: Bucket | null,
     limit: number,
   ): Promise<Array<{ name: string; total: number }>>;
+  // Per-(category, bucket) non-deleted spend within [monthStart, monthEnd),
+  // including uncategorized rows (categoryId=null). Feeds the envelope offset
+  // (per-category max(0, spend − received) rolled up to buckets).
+  spendByCategoryForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<
+    Array<{ categoryId: string | null; bucket: Bucket; total: number }>
+  >;
   // Recent non-deleted expenses, newest first, with optional category-name and
   // date-range filters. For conversational Q&A ("last few spends on food").
   findRecent(

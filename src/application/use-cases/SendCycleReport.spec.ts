@@ -26,7 +26,7 @@ describe("SendCycleReport", () => {
       findOnboardedWithTelegram: vi.fn().mockResolvedValue([user]),
     };
     expenseRepository = {
-      sumByBucketForMonth: vi.fn().mockResolvedValue(0),
+      spendByCategoryForMonth: vi.fn().mockResolvedValue([]),
       categoryTotals: vi.fn().mockResolvedValue([]),
     };
     budgetConfigRepository = {
@@ -35,7 +35,11 @@ describe("SendCycleReport", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     nudgeRepository = { recordSentIfNew: vi.fn().mockResolvedValue(true) };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumTotalForMonth: vi.fn().mockResolvedValue(0),
+      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
+    };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
     useCase = new SendCycleReportUseCase(
       userRepository,

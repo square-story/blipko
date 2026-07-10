@@ -2,6 +2,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TransactionsTabs } from "@/components/transactions-tabs";
 import { IncomeTable } from "./income-table";
 import { getIncome } from "@/lib/actions/income";
+import { getCategories } from "@/lib/actions/categories";
 
 interface PageProps {
   searchParams: Promise<{
@@ -23,20 +24,28 @@ export default async function Page({ searchParams }: PageProps) {
   const from = params.from || "";
   const to = params.to || "";
 
-  const { data, total, pageCount } = await getIncome({
-    page,
-    limit,
-    search,
-    sort,
-    from,
-    to,
-  });
+  const [{ data, total, pageCount }, categories] = await Promise.all([
+    getIncome({
+      page,
+      limit,
+      search,
+      sort,
+      from,
+      to,
+    }),
+    getCategories(),
+  ]);
 
   return (
     <ContentLayout title="Transactions">
       <div className="space-y-4">
         <TransactionsTabs />
-        <IncomeTable data={data} pageCount={pageCount} total={total} />
+        <IncomeTable
+          data={data}
+          pageCount={pageCount}
+          total={total}
+          categories={categories}
+        />
       </div>
     </ContentLayout>
   );

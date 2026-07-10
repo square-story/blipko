@@ -9,23 +9,42 @@ export interface CreateIncomeDTO {
   source?: string | undefined;
   note?: string | undefined;
   batchId?: string | undefined;
+  // Earmark to a category (a two-way "pot"); null/undefined = general income.
+  categoryId?: string | undefined;
 }
 
-// Partial edit of an existing income (amount/source/note).
+// Partial edit of an existing income (amount/source/note/category).
 export interface UpdateIncomeDTO {
   amount?: number | undefined;
   source?: string | null | undefined;
   note?: string | null | undefined;
+  categoryId?: string | null | undefined;
 }
 
 export interface IIncomeRepository {
   create(data: CreateIncomeDTO, tx?: TxClient): Promise<Income>;
-  // Sum of non-deleted income within [monthStart, monthEnd).
+  // Sum of non-deleted GENERAL (uncategorized) income within [monthStart,
+  // monthEnd). This is the budget floor — earmarked income is excluded so it
+  // can't inflate the 50/30/20 budget.
   sumForMonth(
     userId: string,
     monthStart: Date,
     monthEnd: Date,
   ): Promise<number>;
+  // Sum of ALL non-deleted income within [monthStart, monthEnd), including
+  // earmarked. For "income received this cycle" displays and Q&A.
+  sumTotalForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number>;
+  // Earmarked income received per category within [monthStart, monthEnd).
+  // Only rows with a non-null categoryId. Feeds the per-category spend offset.
+  receivedByCategoryForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<Array<{ categoryId: string; total: number }>>;
   findById(id: string): Promise<Income | null>;
   findLastByUserId(userId: string): Promise<Income | null>;
   // Resolve the income behind a confirmation message the user replied to.

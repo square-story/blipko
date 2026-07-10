@@ -6,6 +6,7 @@ import {
   BUCKET_META,
   bucketBudget,
   effectiveMonthlyIncome,
+  effectiveSpentByBucket,
   formatMoney,
   previousCycles,
   sanitizeMd,
@@ -151,31 +152,57 @@ export async function buildCycleReport(
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
 
+  // Budget sizes on general income; display shows all income received.
   const endedLogged = await deps.incomeRepository.sumForMonth(
+    user.id,
+    ended.start,
+    ended.end,
+  );
+  const endedTotal = await deps.incomeRepository.sumTotalForMonth(
     user.id,
     ended.start,
     ended.end,
   );
   const endedIncome = effectiveMonthlyIncome(expected, endedLogged);
 
+  // Per-bucket spend, net of earmarked income, for the ended + prior cycle.
+  const [endedRows, endedRecv, priorRows, priorRecv] = await Promise.all([
+    deps.expenseRepository.spendByCategoryForMonth(
+      user.id,
+      ended.start,
+      ended.end,
+    ),
+    deps.incomeRepository.receivedByCategoryForMonth(
+      user.id,
+      ended.start,
+      ended.end,
+    ),
+    deps.expenseRepository.spendByCategoryForMonth(
+      user.id,
+      prior.start,
+      prior.end,
+    ),
+    deps.incomeRepository.receivedByCategoryForMonth(
+      user.id,
+      prior.start,
+      prior.end,
+    ),
+  ]);
+  const endedEff = effectiveSpentByBucket(
+    endedRows,
+    new Map(endedRecv.map((r) => [r.categoryId, r.total])),
+  );
+  const priorEff = effectiveSpentByBucket(
+    priorRows,
+    new Map(priorRecv.map((r) => [r.categoryId, r.total])),
+  );
+
   const lines: string[] = [];
   let totalSpent = 0;
   let totalPrev = 0;
   for (const bucket of ORDER) {
-    const [spent, prevSpent] = await Promise.all([
-      deps.expenseRepository.sumByBucketForMonth(
-        user.id,
-        bucket,
-        ended.start,
-        ended.end,
-      ),
-      deps.expenseRepository.sumByBucketForMonth(
-        user.id,
-        bucket,
-        prior.start,
-        prior.end,
-      ),
-    ]);
+    const spent = endedEff[bucket];
+    const prevSpent = priorEff[bucket];
     totalSpent += spent;
     totalPrev += prevSpent;
     lines.push(
@@ -213,7 +240,7 @@ export async function buildCycleReport(
   let text =
     `📊 ${label} wrapped\n\n` +
     headline +
-    `\n\nIncome logged ${formatMoney(endedLogged)} (budget on ${formatMoney(endedIncome)})\n` +
+    `\n\nIncome logged ${formatMoney(endedTotal)} (budget on ${formatMoney(endedIncome)})\n` +
     lines.join("\n") +
     `\n\n${net >= 0 ? "Net saved" : "Net overspent"} ${formatMoney(Math.abs(net))} (income − spend)`;
 
