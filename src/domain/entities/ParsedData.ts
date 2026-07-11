@@ -12,6 +12,7 @@ export const PARSED_INTENTS = [
   "STATUS",
   "RECURRING",
   "QUERY",
+  "BOX",
   "UNKNOWN",
 ] as const;
 export type ParsedIntent = (typeof PARSED_INTENTS)[number];
@@ -33,6 +34,9 @@ export const ParsedDataSchema = z.object({
   // For RECURRING: which day of the month it recurs, and income vs expense.
   dayOfMonth: z.number().optional(),
   recurringKind: z.enum(["INCOME", "EXPENSE"]).optional(),
+  // For BOX: the target box's name and whether money goes in or out.
+  boxName: z.string().optional(),
+  boxDirection: z.enum(["IN", "OUT"]).optional(),
   confidence: z.number().min(0).max(1),
   conversational_response: z.string().optional(),
 });

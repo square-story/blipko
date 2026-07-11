@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
 import { PostRecurringChargesUseCase } from "../../application/use-cases/PostRecurringCharges";
 import { SendCycleReportUseCase } from "../../application/use-cases/SendCycleReport";
+import { SendBoxTargetAlertsUseCase } from "../../application/use-cases/SendBoxTargetAlerts";
 import { zonedParts } from "../../utils/time";
 import { logger } from "../../utils/logger";
 
@@ -20,6 +21,7 @@ export class CronController {
     private readonly sendBudgetNudges: SendBudgetNudgesUseCase,
     private readonly postRecurringCharges: PostRecurringChargesUseCase,
     private readonly sendCycleReport: SendCycleReportUseCase,
+    private readonly sendBoxTargetAlerts: SendBoxTargetAlertsUseCase,
     private readonly prisma: PrismaClient,
     private readonly cronSecret: string,
   ) {}
@@ -54,6 +56,10 @@ export class CronController {
       }
       if (wants("report")) {
         data.report = await this.sendCycleReport.execute(now, force);
+      }
+      if (wants("boxes")) {
+        // Once-only via Box.targetReachedAt, so no hour-gate needed.
+        data.boxes = await this.sendBoxTargetAlerts.execute();
       }
 
       // Weekly prune of stale rows (Sunday 00:00 UTC), or on force.

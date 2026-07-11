@@ -63,11 +63,10 @@ export function CategoryCard({
       ? suggestion
       : null;
 
-  // Earmarked income offsets spend: budgets track net = max(0, spend − received).
-  const left = hasLimit ? limit - cat.net : null;
-
+  const left = hasLimit ? limit - cat.spend : null;
+  
   const pace = categoryPacing({
-    spent: cat.net,
+    spent: cat.spend,
     limit: cat.monthlyBudget,
     day,
     daysInPeriod,
@@ -75,7 +74,7 @@ export function CategoryCard({
   });
 
   const isSavings = cat.bucket === "SAVINGS";
-  const savedAll = hasLimit && cat.net >= limit;
+  const savedAll = hasLimit && cat.spend >= limit;
   const overPace = pace.overPace && pace.reliable;
   const overSpent = pace.overSpent;
 
@@ -107,8 +106,8 @@ export function CategoryCard({
 
   let pct = 0;
   if (hasLimit && limit > 0) {
-    pct = (cat.net / limit) * 100;
-  } else if (!hasLimit && cat.net > 0) {
+    pct = (cat.spend / limit) * 100;
+  } else if (!hasLimit && cat.spend > 0) {
     pct = 0;
   }
 
@@ -136,9 +135,9 @@ export function CategoryCard({
               )}
             </div>
             <div className="text-xl font-bold text-foreground">
-              {hasLimit ? money(limit) : money(cat.net)}
+              {hasLimit ? money(limit) : money(cat.spend)}
             </div>
-
+            
             {hasLimit ? (
                <div className={cn("text-xs font-medium", colorClass)}>
                  {isSavings ? (
@@ -151,12 +150,6 @@ export function CategoryCard({
                <div className="text-xs font-medium text-muted-foreground">
                  {isSavings ? "saved (no limit)" : "spent (no limit)"}
                </div>
-            )}
-
-            {cat.received > 0 && (
-              <div className="text-xs font-medium text-green-600 dark:text-green-500">
-                +{money(cat.received)} received
-              </div>
             )}
           </div>
         </div>

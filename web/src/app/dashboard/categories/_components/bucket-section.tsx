@@ -61,13 +61,10 @@ export const BucketSection = ({
   );
   const unallocated = budget - allocated;
   const overAllocated = unallocated < 0;
-  // overview.spent is net of earmarked income, so reconcile against the rows'
-  // NET spend too. Spend not attributed to any listed category (uncategorized
-  // or hidden system-category spend) is surfaced so the rows add up.
-  const shownSpend = categories.reduce((s, c) => s + c.net, 0);
+  // Spend not attributed to any listed category (uncategorized or hidden
+  // system-category spend) — surfaced so the rows reconcile with the bucket total.
+  const shownSpend = categories.reduce((s, c) => s + c.spend, 0);
   const uncategorized = Math.max(0, spent - shownSpend);
-  // Earmarked income received into this bucket's categories this cycle.
-  const received = categories.reduce((s, c) => s + c.received, 0);
   // Unpinned categories are the ones Auto-balance redistributes the bucket
   // budget across (pinned ones keep their limit).
   const unpinnedCount = categories.filter((c) => !c.budgetLocked).length;
@@ -118,11 +115,6 @@ export const BucketSection = ({
               )
             ))}
         </p>
-        {received > 0 && (
-          <p className="text-xs font-medium text-green-600 dark:text-green-500 tabular-nums">
-            +{money(received)} received into categories (offsets spend)
-          </p>
-        )}
       </div>
 
       {/* Allocation (informational) + apply data-driven suggestions */}

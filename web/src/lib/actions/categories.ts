@@ -23,9 +23,7 @@ export type CategoryStat = {
   monthlyBudget: number | null;
   budgetLocked: boolean;
   icon: string | null;
-  spend: number; // gross expense this cycle
-  received: number; // earmarked income this cycle
-  net: number; // max(0, spend − received) — the true-offset spend
+  spend: number;
 };
 
 const nameSchema = z.string().min(1).max(50).trim();
@@ -80,7 +78,7 @@ export async function getCategories(): Promise<CategoryStat[]> {
     }
   }
 
-  const [categories, spendGroups, receivedGroups] = await Promise.all([
+  const [categories, spendGroups] = await Promise.all([
     // Only the user's own categories. System rows (userId = null) are the bot's
     // fallback taxonomy and would otherwise duplicate the user's cloned copies.
     prisma.category.findMany({
@@ -92,47 +90,25 @@ export async function getCategories(): Promise<CategoryStat[]> {
       _sum: { amount: true },
       where: { userId, isDeleted: false, date: { gte: start, lt: end } },
     }),
-    // Earmarked income received per category — the two-way "pot" inflow.
-    prisma.income.groupBy({
-      by: ["categoryId"],
-      _sum: { amount: true },
-      where: {
-        userId,
-        isDeleted: false,
-        categoryId: { not: null },
-        date: { gte: start, lt: end },
-      },
-    }),
   ]);
 
   const spendById = new Map<string, number>();
   for (const g of spendGroups) {
     if (g.categoryId) spendById.set(g.categoryId, Number(g._sum.amount ?? 0));
   }
-  const receivedById = new Map<string, number>();
-  for (const g of receivedGroups) {
-    if (g.categoryId)
-      receivedById.set(g.categoryId, Number(g._sum.amount ?? 0));
-  }
 
-  return categories.map((c) => {
-    const spend = spendById.get(c.id) ?? 0;
-    const received = receivedById.get(c.id) ?? 0;
-    return {
-      id: c.id,
-      name: c.name,
-      bucket: c.bucket,
-      isSystem: c.userId === null,
-      isGroup: c.isGroup,
-      parentId: c.parentId,
-      monthlyBudget: c.monthlyBudget === null ? null : Number(c.monthlyBudget),
-      budgetLocked: c.budgetLocked,
-      icon: c.icon,
-      spend,
-      received,
-      net: Math.max(0, spend - received),
-    };
-  });
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    bucket: c.bucket,
+    isSystem: c.userId === null,
+    isGroup: c.isGroup,
+    parentId: c.parentId,
+    monthlyBudget: c.monthlyBudget === null ? null : Number(c.monthlyBudget),
+    budgetLocked: c.budgetLocked,
+    icon: c.icon,
+    spend: spendById.get(c.id) ?? 0,
+  }));
 }
 
 export type CategorySuggestion = {
@@ -494,12 +470,8 @@ export async function deleteCategory(
   if (!cat)
     return { success: false, message: "Category not found or not editable" };
 
-  // Detach expenses + earmarked income (keep the history) before removing.
+  // Detach expenses (keep the spend history) before removing the category.
   await prisma.expense.updateMany({
-    where: { categoryId: id },
-    data: { categoryId: null },
-  });
-  await prisma.income.updateMany({
     where: { categoryId: id },
     data: { categoryId: null },
   });

@@ -11,6 +11,7 @@ import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfig
 import { IParseLogRepository } from "../../domain/repositories/IParseLogRepository";
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
+import { IBoxRepository } from "../../domain/repositories/IBoxRepository";
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { IFinancialQueryAgent } from "../../domain/services/IFinancialQueryAgent";
@@ -37,6 +38,8 @@ import { IncomeProcessor } from "./processors/IncomeProcessor";
 import { RecurringSetupProcessor } from "./processors/RecurringSetupProcessor";
 import { QueryProcessor } from "./processors/QueryProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
+import { BoxProcessor } from "./processors/BoxProcessor";
+import { BoxCommandProcessor } from "./processors/BoxCommandProcessor";
 import { TransactionActionProcessor } from "./processors/TransactionActionProcessor";
 import { TransactionReplyProcessor } from "./processors/TransactionReplyProcessor";
 import { resolveByConfirmationMessage } from "./transactionActions";
@@ -75,6 +78,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly parseLogRepository: IParseLogRepository,
     private readonly incomeRepository: IIncomeRepository,
     private readonly recurringRuleRepository: IRecurringRuleRepository,
+    private readonly boxRepository: IBoxRepository,
     private readonly conversationRepository: IConversationRepository,
     private readonly messageService: IMessagingPlatform,
     private readonly queryAgent: IFinancialQueryAgent,
@@ -121,6 +125,7 @@ export class ProcessIncomingMessageUseCase {
         incomeRepository,
         messageService,
       ),
+      new BoxCommandProcessor(boxRepository, messageService),
       new UndoProcessor(
         expenseRepository,
         categoryRepository,
@@ -165,12 +170,11 @@ export class ProcessIncomingMessageUseCase {
         budgetConfigRepository,
         parseLogRepository,
         incomeRepository,
+        boxRepository,
         messageService,
       ),
       new IncomeProcessor(
         incomeRepository,
-        categoryRepository,
-        expenseRepository,
         budgetConfigRepository,
         messageService,
       ),
@@ -179,6 +183,7 @@ export class ProcessIncomingMessageUseCase {
         categoryRepository,
         messageService,
       ),
+      new BoxProcessor(boxRepository, messageService),
       new QueryProcessor(queryAgent, messageService),
       new FallbackProcessor(messageService),
     ];

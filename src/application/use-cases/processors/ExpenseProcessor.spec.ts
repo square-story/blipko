@@ -16,6 +16,7 @@ describe("ExpenseProcessor", () => {
   let budgetConfigRepository: any;
   let parseLogRepository: any;
   let incomeRepository: any;
+  let boxRepository: any;
   let messageService: any;
   let processor: ExpenseProcessor;
 
@@ -23,7 +24,7 @@ describe("ExpenseProcessor", () => {
     vi.clearAllMocks();
     expenseRepository = {
       create: vi.fn().mockResolvedValue({ id: "e1" }),
-      spendByCategoryForMonth: vi.fn().mockResolvedValue([]),
+      sumByBucketForMonth: vi.fn().mockResolvedValue(30),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
@@ -38,9 +39,12 @@ describe("ExpenseProcessor", () => {
     parseLogRepository = {
       create: vi.fn().mockResolvedValue({ id: "log1" }),
     };
-    incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
+    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    boxRepository = {
+      findByCategoryId: vi.fn().mockResolvedValue(null),
+      addEntry: vi.fn().mockResolvedValue({ id: "be1" }),
+      balanceFor: vi.fn().mockResolvedValue(3000),
+      markTargetReached: vi.fn().mockResolvedValue(false),
     };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("m1"),
@@ -52,6 +56,7 @@ describe("ExpenseProcessor", () => {
       budgetConfigRepository,
       parseLogRepository,
       incomeRepository,
+      boxRepository,
       messageService,
     );
   });
@@ -113,6 +118,49 @@ describe("ExpenseProcessor", () => {
     expect(expenseRepository.create).not.toHaveBeenCalled();
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "couldn't catch the amount",
+    );
+  });
+
+  it("diverts a box-linked category's expense into the box (no Expense row)", async () => {
+    categoryRepository.findByNameForUser.mockResolvedValue({
+      id: "cH",
+      name: "House Maintenance",
+      isGroup: false,
+      bucket: "NEEDS",
+    });
+    boxRepository.findByCategoryId.mockResolvedValue({
+      id: "bH",
+      name: "House Maintenance",
+      icon: null,
+      targetAmount: null,
+      targetReachedAt: null,
+    });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "repair 3000 house maintenance",
+      parsed: {
+        intent: "EXPENSE",
+        amount: 3000,
+        category: "House Maintenance",
+        bucket: "NEEDS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    // Diverted to the box ledger, NOT the 50/30/20 budget.
+    expect(boxRepository.addEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        boxId: "bH",
+        amount: 3000,
+        direction: "OUT",
+        source: "LINKED",
+      }),
+    );
+    expect(expenseRepository.create).not.toHaveBeenCalled();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "House Maintenance",
     );
   });
 

@@ -6,6 +6,7 @@ import {
   Settings,
   Tag,
   RefreshCw,
+  PiggyBank,
 } from "lucide-react";
 
 type Submenu = {
@@ -62,6 +63,11 @@ export function getMenuList(): Group[] {
           href: "/dashboard/recurring",
           label: "Recurring",
           icon: RefreshCw,
+        },
+        {
+          href: "/dashboard/boxes",
+          label: "Boxes",
+          icon: PiggyBank,
         },
       ],
     },

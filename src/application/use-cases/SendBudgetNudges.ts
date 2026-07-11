@@ -10,7 +10,6 @@ import {
   bucketBudget,
   currentBudgetPeriod,
   effectiveMonthlyIncome,
-  effectiveSpentByBucket,
   formatMoney,
   periodDayInfo,
   periodKey,
@@ -101,27 +100,18 @@ export class SendBudgetNudgesUseCase {
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
 
-    // Bucket spend net of earmarked income (envelope offset), fetched once.
-    const effSpent = effectiveSpentByBucket(
-      await this.expenseRepository.spendByCategoryForMonth(user.id, start, end),
-      new Map(
-        (
-          await this.incomeRepository.receivedByCategoryForMonth(
-            user.id,
-            start,
-            end,
-          )
-        ).map((r) => [r.categoryId, r.total]),
-      ),
-    );
-
     let sent = 0;
     const summary: string[] = [];
     for (const bucket of WATCHED) {
       const budget = bucketBudget(income, config, bucket);
       if (budget <= 0) continue;
 
-      const spent = effSpent[bucket];
+      const spent = await this.expenseRepository.sumByBucketForMonth(
+        user.id,
+        bucket,
+        start,
+        end,
+      );
       const meta = BUCKET_META[bucket];
       summary.push(`${meta.emoji} ${meta.label} ${pctSpent(spent, budget)}%`);
 

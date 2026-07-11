@@ -8,8 +8,10 @@ import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepos
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IParseLogRepository } from "../../../domain/repositories/IParseLogRepository";
+import { IBoxRepository } from "../../../domain/repositories/IBoxRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { recordExpenseAndReply } from "../expenseFlow";
+import { recordBoxEntry, boxEntryReply } from "../boxFlow";
 import { formatMoney } from "../budgetMath";
 
 const CONFIDENCE_THRESHOLD = 0.6;
@@ -18,7 +20,8 @@ const MAX_AMOUNT = 10_000_000;
 // Handles EXPENSE intent. On a confident parse it records the expense and shows
 // remaining budget. When confidence is low or the bucket is ambiguous, it stages
 // the parse in ParseLog and asks the user to pick a bucket (ConfirmBucketProcessor
-// finishes the save).
+// finishes the save). If the expense's category is linked to a box, it diverts
+// into that box (isolated) instead of the 50/30/20 budget.
 export class ExpenseProcessor implements MessageProcessor {
   constructor(
     private readonly expenseRepository: IExpenseRepository,
@@ -26,6 +29,7 @@ export class ExpenseProcessor implements MessageProcessor {
     private readonly budgetConfigRepository: IBudgetConfigRepository,
     private readonly parseLogRepository: IParseLogRepository,
     private readonly incomeRepository: IIncomeRepository,
+    private readonly boxRepository: IBoxRepository,
     private readonly messageService: IMessagingPlatform,
   ) {}
 
@@ -63,6 +67,30 @@ export class ExpenseProcessor implements MessageProcessor {
         )
       : null;
     const leaf = matched && !matched.isGroup ? matched : null;
+
+    // If the matched leaf category is linked to a box, this spend is box money —
+    // divert it into the box's ledger (isolated) instead of the 50/30/20 budget.
+    if (leaf) {
+      const box = await this.boxRepository.findByCategoryId(user.id, leaf.id);
+      if (box) {
+        const result = await recordBoxEntry(this.boxRepository, {
+          box,
+          userId: user.id,
+          amount,
+          direction: "OUT",
+          source: "LINKED",
+          note: parsed.note,
+          rawText: textMessage,
+        });
+        const response = boxEntryReply(box, amount, "OUT", result);
+        await this.messageService.sendMessage({
+          to: platformUserId,
+          body: response,
+        });
+        return { response, parsed };
+      }
+    }
+
     const bucket = matched?.bucket ?? parsed.bucket;
 
     const needsConfirm = parsed.confidence < CONFIDENCE_THRESHOLD || !bucket;

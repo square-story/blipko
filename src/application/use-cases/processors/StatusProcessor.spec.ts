@@ -11,14 +11,16 @@ describe("StatusProcessor", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Spend per bucket (uncategorized rows → no offset): Needs 21,400 / Wants
-    // 9,200 / Savings 10,000.
+    // Spend per bucket: Needs 21,400 / Wants 9,200 / Savings 10,000.
+    const spend: Record<string, number> = {
+      NEEDS: 21400,
+      WANTS: 9200,
+      SAVINGS: 10000,
+    };
     expenseRepository = {
-      spendByCategoryForMonth: vi.fn().mockResolvedValue([
-        { categoryId: null, bucket: "NEEDS", total: 21400 },
-        { categoryId: null, bucket: "WANTS", total: 9200 },
-        { categoryId: null, bucket: "SAVINGS", total: 10000 },
-      ]),
+      sumByBucketForMonth: vi.fn((_u: string, bucket: string) =>
+        Promise.resolve(spend[bucket] ?? 0),
+      ),
     };
     budgetConfigRepository = {
       findByUserId: vi
@@ -26,11 +28,7 @@ describe("StatusProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
-    const incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
-      sumTotalForMonth: vi.fn().mockResolvedValue(0),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
-    };
+    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     processor = new StatusProcessor(
       expenseRepository,
       budgetConfigRepository,
@@ -90,9 +88,10 @@ describe("StatusProcessor", () => {
   });
 
   it("flags an over-budget bucket with 🔴", async () => {
-    expenseRepository.spendByCategoryForMonth = vi
-      .fn()
-      .mockResolvedValue([{ categoryId: null, bucket: "WANTS", total: 18000 }]);
+    expenseRepository.sumByBucketForMonth = vi.fn(
+      (_u: string, bucket: string) =>
+        Promise.resolve(bucket === "WANTS" ? 18000 : 0),
+    );
     await processor.process({
       user,
       platformUserId: "123",

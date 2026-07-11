@@ -25,25 +25,21 @@ describe("buildCycleReport", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(50000),
-      sumTotalForMonth: vi.fn().mockResolvedValue(50000),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
-    };
+    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(50000) };
 
-    const endedRows = [
-      { categoryId: null, bucket: "NEEDS", total: 20000 },
-      { categoryId: null, bucket: "WANTS", total: 10000 },
-      { categoryId: null, bucket: "SAVINGS", total: 5000 },
-    ];
-    const priorRows = [
-      { categoryId: null, bucket: "NEEDS", total: 25000 },
-      { categoryId: null, bucket: "WANTS", total: 12000 },
-      { categoryId: null, bucket: "SAVINGS", total: 4000 },
-    ];
+    const ended: Record<string, number> = {
+      NEEDS: 20000,
+      WANTS: 10000,
+      SAVINGS: 5000,
+    };
+    const prior: Record<string, number> = {
+      NEEDS: 25000,
+      WANTS: 12000,
+      SAVINGS: 4000,
+    };
     expenseRepository = {
-      spendByCategoryForMonth: vi.fn((_u: string, start: Date) =>
-        Promise.resolve(isEnded(start) ? endedRows : priorRows),
+      sumByBucketForMonth: vi.fn((_u: string, bucket: string, start: Date) =>
+        Promise.resolve((isEnded(start) ? ended : prior)[bucket] ?? 0),
       ),
       categoryTotals: vi.fn((_u: string, start: Date) =>
         Promise.resolve(

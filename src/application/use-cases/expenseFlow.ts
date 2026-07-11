@@ -9,9 +9,7 @@ import {
   BUCKET_META,
   bucketBudget,
   currentBudgetPeriod,
-  effectiveCategorySpend,
   effectiveMonthlyIncome,
-  effectiveSpentByBucket,
   formatMoney,
   periodDayInfo,
   sanitizeMd,
@@ -184,34 +182,15 @@ export async function recordExpenseAndReply(
 
   const { start, end } = currentBudgetPeriod(user.payday);
 
-  // Gross spend per (category, bucket) + earmarked income per category, fetched
-  // once. Spend counted against budgets is net of earmarked income (envelope
-  // offset), per category so a funded pot never subsidizes another category.
-  const spendRows = await deps.expenseRepository.spendByCategoryForMonth(
-    user.id,
-    start,
-    end,
-  );
-  const receivedByCategory = new Map(
-    (
-      await deps.incomeRepository.receivedByCategoryForMonth(
-        user.id,
-        start,
-        end,
-      )
-    ).map((r) => [r.categoryId, r.total]),
-  );
-
   // Per-category budget line (only when the expense landed on a leaf category).
   let categoryLine: string | null = null;
   if (expense.categoryId) {
     const cat = await deps.categoryRepository.findById(expense.categoryId);
-    const catGross = spendRows
-      .filter((r) => r.categoryId === expense.categoryId)
-      .reduce((s, r) => s + r.total, 0);
-    const catSpent = effectiveCategorySpend(
-      catGross,
-      receivedByCategory.get(expense.categoryId) ?? 0,
+    const catSpent = await deps.expenseRepository.sumByCategoryForMonth(
+      user.id,
+      expense.categoryId,
+      start,
+      end,
     );
     const monthlyBudget =
       cat?.monthlyBudget != null ? Number(cat.monthlyBudget) : null;
@@ -222,8 +201,13 @@ export async function recordExpenseAndReply(
     );
   }
 
-  // Remaining budget for this bucket this month (net of earmarked income).
-  const spent = effectiveSpentByBucket(spendRows, receivedByCategory)[bucket];
+  // Remaining budget for this bucket this month (sum already includes the new expense).
+  const spent = await deps.expenseRepository.sumByBucketForMonth(
+    user.id,
+    bucket,
+    start,
+    end,
+  );
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
   const monthIncome = await deps.incomeRepository.sumForMonth(

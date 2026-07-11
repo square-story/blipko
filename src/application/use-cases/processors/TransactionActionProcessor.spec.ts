@@ -28,12 +28,9 @@ describe("TransactionActionProcessor", () => {
       softDelete: vi.fn().mockResolvedValue(undefined),
       restore: vi.fn().mockResolvedValue(undefined),
       update: vi.fn().mockResolvedValue(undefined),
-      spendByCategoryForMonth: vi.fn().mockResolvedValue([]),
+      sumByBucketForMonth: vi.fn().mockResolvedValue(0),
     };
-    incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
-    };
+    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     categoryRepository = {
       findById: vi
         .fn()

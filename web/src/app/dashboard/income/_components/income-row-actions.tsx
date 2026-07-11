@@ -13,16 +13,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteIncome, type IncomeData } from "@/lib/actions/income";
-import type { CategoryStat } from "@/lib/actions/categories";
 import { toast } from "@/lib/toast";
 import { EditIncomeModal } from "./edit-income-modal";
 
 interface IncomeRowActionsProps {
   income: IncomeData;
-  categories: CategoryStat[];
 }
 
-export function IncomeRowActions({ income, categories }: IncomeRowActionsProps) {
+export function IncomeRowActions({ income }: IncomeRowActionsProps) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -65,7 +63,6 @@ export function IncomeRowActions({ income, categories }: IncomeRowActionsProps) 
 
       <EditIncomeModal
         income={income}
-        categories={categories}
         open={editOpen}
         onOpenChange={setEditOpen}
       />

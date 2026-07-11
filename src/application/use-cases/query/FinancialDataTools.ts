@@ -17,7 +17,6 @@ import {
   bucketBudget,
   currentBudgetPeriod,
   effectiveMonthlyIncome,
-  effectiveSpentByBucket,
   pctSpent,
   periodDayInfo,
 } from "../budgetMath";
@@ -44,46 +43,34 @@ export class FinancialDataTools implements IFinancialDataTools {
       (await this.budgetConfigRepository.findByUserId(userId)) ?? DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
     const { day, daysInPeriod, remainingDays } = periodDayInfo(user.payday);
-    // Budget sizes on general income; incomeLogged reports all income received.
-    const generalIncome = await this.incomeRepository.sumForMonth(
-      userId,
-      start,
-      end,
-    );
-    const incomeLogged = await this.incomeRepository.sumTotalForMonth(
+    const incomeLogged = await this.incomeRepository.sumForMonth(
       userId,
       start,
       end,
     );
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      generalIncome,
+      incomeLogged,
     );
 
-    const effSpent = effectiveSpentByBucket(
-      await this.expenseRepository.spendByCategoryForMonth(userId, start, end),
-      new Map(
-        (
-          await this.incomeRepository.receivedByCategoryForMonth(
-            userId,
-            start,
-            end,
-          )
-        ).map((r) => [r.categoryId, r.total]),
-      ),
+    const buckets = await Promise.all(
+      ORDER.map(async (bucket) => {
+        const budget = bucketBudget(monthlyIncome, config, bucket);
+        const spent = await this.expenseRepository.sumByBucketForMonth(
+          userId,
+          bucket,
+          start,
+          end,
+        );
+        return {
+          bucket,
+          budget,
+          spent,
+          remaining: budget - spent,
+          pct: pctSpent(spent, budget),
+        };
+      }),
     );
-
-    const buckets = ORDER.map((bucket) => {
-      const budget = bucketBudget(monthlyIncome, config, bucket);
-      const spent = effSpent[bucket];
-      return {
-        bucket,
-        budget,
-        spent,
-        remaining: budget - spent,
-        pct: pctSpent(spent, budget),
-      };
-    });
 
     return {
       currency: user.currency,
@@ -139,11 +126,7 @@ export class FinancialDataTools implements IFinancialDataTools {
     range: DateRange,
   ): Promise<{ total: number }> {
     const { from, to } = await this.resolveRange(userId, range);
-    const total = await this.incomeRepository.sumTotalForMonth(
-      userId,
-      from,
-      to,
-    );
+    const total = await this.incomeRepository.sumForMonth(userId, from, to);
     return { total };
   }
 

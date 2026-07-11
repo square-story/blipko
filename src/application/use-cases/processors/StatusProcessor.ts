@@ -13,7 +13,6 @@ import {
   bucketBudget,
   currentBudgetPeriod,
   effectiveMonthlyIncome,
-  effectiveSpentByBucket,
   formatMoney,
   periodDayInfo,
   pctSpent,
@@ -50,44 +49,27 @@ export class StatusProcessor implements MessageProcessor {
       DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
     const { day, daysInPeriod, remainingDays } = periodDayInfo(user.payday);
-    // Budget sizes on general income only; the display shows all income
-    // received (incl. earmarked). Bucket spend is net of earmarked income.
-    const generalIncome = await this.incomeRepository.sumForMonth(
-      user.id,
-      start,
-      end,
-    );
-    const totalIncome = await this.incomeRepository.sumTotalForMonth(
+    const loggedIncome = await this.incomeRepository.sumForMonth(
       user.id,
       start,
       end,
     );
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      generalIncome,
+      loggedIncome,
     );
-    const spendRows = await this.expenseRepository.spendByCategoryForMonth(
-      user.id,
-      start,
-      end,
-    );
-    const receivedByCategory = new Map(
-      (
-        await this.incomeRepository.receivedByCategoryForMonth(
-          user.id,
-          start,
-          end,
-        )
-      ).map((r) => [r.categoryId, r.total]),
-    );
-    const effSpent = effectiveSpentByBucket(spendRows, receivedByCategory);
 
     const lines: string[] = [];
     const dailyParts: string[] = [];
 
     for (const bucket of ORDER) {
       const budget = bucketBudget(monthlyIncome, config, bucket);
-      const spent = effSpent[bucket];
+      const spent = await this.expenseRepository.sumByBucketForMonth(
+        user.id,
+        bucket,
+        start,
+        end,
+      );
       const pct = pctSpent(spent, budget);
       const remaining = budget - spent;
       const meta = BUCKET_META[bucket];
@@ -112,7 +94,7 @@ export class StatusProcessor implements MessageProcessor {
       }
     }
 
-    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n💵 Income: ${formatMoney(totalIncome)} (budget on ${formatMoney(monthlyIncome)})\n\n${lines.join("\n")}`;
+    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n💵 Income: ${formatMoney(loggedIncome)} (budget on ${formatMoney(monthlyIncome)})\n\n${lines.join("\n")}`;
     if (dailyParts.length > 0) {
       body += `\n\nSafe daily spend left:  ${dailyParts.join(" · ")}`;
     }

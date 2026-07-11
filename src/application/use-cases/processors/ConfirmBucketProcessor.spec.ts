@@ -30,9 +30,8 @@ describe("ConfirmBucketProcessor", () => {
     };
     expenseRepository = {
       create: vi.fn().mockResolvedValue({ id: "e1", categoryId: "c1" }),
-      spendByCategoryForMonth: vi
-        .fn()
-        .mockResolvedValue([{ categoryId: "c1", bucket: "WANTS", total: 30 }]),
+      sumByBucketForMonth: vi.fn().mockResolvedValue(30),
+      sumByCategoryForMonth: vi.fn().mockResolvedValue(30),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
     };
     categoryRepository = {
@@ -47,10 +46,7 @@ describe("ConfirmBucketProcessor", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
-    };
+    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("m1"),
       sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),

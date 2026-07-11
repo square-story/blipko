@@ -44,6 +44,19 @@ enum NotificationDosage {
   RELENTLESS
 }
 
+// Direction of a box ledger entry: money into the box vs out of it.
+enum BoxEntryDirection {
+  IN
+  OUT
+}
+
+// How a box entry was created: a direct contribution/withdrawal, or diverted
+// automatically from a transaction in the box's linked category.
+enum BoxEntrySource {
+  MANUAL
+  LINKED
+}
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -89,6 +102,8 @@ model User {
   logs           ParseLog[]
   budgetNudges   BudgetNudge[]
   recurringRules RecurringRule[]
+  boxes          Box[]
+  boxEntries     BoxEntry[]
 
   conversationMessages ConversationMessage[]
   telegramLinkToken    TelegramLinkToken?
@@ -155,8 +170,11 @@ model Category {
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expenses       Expense[]
-  incomes        Income[]
   recurringRules RecurringRule[]
+
+  // A category may be linked to at most one Box; when linked, transactions in
+  // this category divert into that box (see Box.categoryId).
+  box Box?
 
   createdAt DateTime @default(now())
 
@@ -235,12 +253,6 @@ model Income {
   rawText    String
   confidence Float
 
-  // Optional earmark: income received for a specific category (a two-way "pot").
-  // Earmarked income offsets that category's spend and is excluded from the
-  // general budget floor. Null = general income (salary, etc.).
-  categoryId String?
-  category   Category? @relation(fields: [categoryId], references: [id])
-
   // Link to the confirmation message (for reply/edit/undo handling)
   confirmationMessageId String? @unique
 
@@ -258,7 +270,70 @@ model Income {
   @@index([userId, date])
   @@index([userId, isDeleted, date])
   @@index([userId, batchId])
-  @@index([userId, categoryId])
+}
+
+// ─── Boxes ───────────────────────────────────────────────────────────────────
+
+// An isolated, persistent envelope: a savings goal ("Trip to New York") or a
+// managed fund ("House maintenance"). Holds its own income/expense ledger
+// (BoxEntry), never resets each cycle, and is invisible to the 50/30/20 budget.
+// Balance = Σ(entries IN) − Σ(entries OUT).
+model Box {
+  id     String  @id @default(cuid())
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name   String
+  icon   String?
+
+  // Optional goal. Null = an open-ended fund (no target, never "reached").
+  targetAmount Decimal? @db.Decimal(12, 2)
+
+  // Display order (user-set priority). Not used for auto-allocation in v1.
+  priority Int @default(0)
+
+  isActive   Boolean @default(true)
+  isArchived Boolean @default(false)
+
+  // Set once when the balance first reaches targetAmount — the once-only guard
+  // for the "target reached" push (mirrors BudgetNudge idempotency).
+  targetReachedAt DateTime?
+
+  // Optional link: transactions the user logs to this leaf category divert into
+  // this box instead of the normal budget. One box per category.
+  categoryId String?   @unique
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  entries BoxEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId, isActive])
+}
+
+// A single movement into or out of a Box. Fully isolated from Income/Expense.
+model BoxEntry {
+  id     String @id @default(cuid())
+  boxId  String
+  box    Box    @relation(fields: [boxId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount    Decimal           @db.Decimal(12, 2)
+  direction BoxEntryDirection
+  source    BoxEntrySource    @default(MANUAL)
+  note      String?
+  rawText   String? // set when created from a bot message
+
+  date DateTime @default(now())
+
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([boxId, isDeleted, date])
+  @@index([userId, date])
 }
 
 // ─── Infra ────────────────────────────────────────────────────────────────────

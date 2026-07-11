@@ -170,42 +170,6 @@ export function pctSpent(spent: number, budget: number): number {
   return Math.round((spent / budget) * 100);
 }
 
-// True-offset envelope math: earmarked income received for a category cancels
-// the spend it funds. Never negative — surplus is discarded (no rollover).
-// Port of `src/application/use-cases/budgetMath.ts`.
-export function effectiveCategorySpend(
-  spend: number,
-  received: number,
-): number {
-  return Math.max(0, spend - received);
-}
-
-export interface SpendRow {
-  categoryId: string | null;
-  bucket: Bucket;
-  total: number;
-}
-
-// Per-category offset rolled up per bucket. Uncategorized spend is never
-// offset; the per-category max() runs before summing so a surplus in one
-// category can't subsidize overspend in another.
-export function effectiveSpentByBucket(
-  spendRows: SpendRow[],
-  receivedByCategory: Map<string, number>,
-): Record<Bucket, number> {
-  const out: Record<Bucket, number> = { NEEDS: 0, WANTS: 0, SAVINGS: 0 };
-  for (const row of spendRows) {
-    out[row.bucket] +=
-      row.categoryId == null
-        ? row.total
-        : effectiveCategorySpend(
-            row.total,
-            receivedByCategory.get(row.categoryId) ?? 0,
-          );
-  }
-  return out;
-}
-
 export function formatMoney(
   amount: number,
   currency: string = "INR",

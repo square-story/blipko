@@ -21,14 +21,10 @@ describe("SendBudgetNudges", () => {
   let messageService: any;
   let useCase: SendBudgetNudgesUseCase;
 
-  // Helper: set per-bucket spend as uncategorized rows (no earmark offset).
+  // Helper: set per-bucket spend.
   const setSpend = (spend: Record<string, number>) => {
-    expenseRepository.spendByCategoryForMonth = vi.fn().mockResolvedValue(
-      Object.entries(spend).map(([bucket, total]) => ({
-        categoryId: null,
-        bucket,
-        total,
-      })),
+    expenseRepository.sumByBucketForMonth = vi.fn(
+      (_u: string, bucket: string) => Promise.resolve(spend[bucket] ?? 0),
     );
   };
 
@@ -38,7 +34,7 @@ describe("SendBudgetNudges", () => {
       findOnboardedWithTelegram: vi.fn().mockResolvedValue([user]),
     };
     expenseRepository = {
-      spendByCategoryForMonth: vi.fn().mockResolvedValue([]),
+      sumByBucketForMonth: vi.fn().mockResolvedValue(0),
     };
     budgetConfigRepository = {
       findByUserId: vi
@@ -47,10 +43,7 @@ describe("SendBudgetNudges", () => {
     };
     nudgeRepository = { recordSentIfNew: vi.fn().mockResolvedValue(true) };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
-    const incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
-    };
+    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     useCase = new SendBudgetNudgesUseCase(
       userRepository,
       expenseRepository,

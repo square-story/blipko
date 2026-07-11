@@ -27,7 +27,7 @@ import { createCategory } from "@/lib/actions/categories";
 import { BUCKETS, BUCKET_META } from "@/lib/budget";
 import { toast } from "@/lib/toast";
 import { resolveCategoryEmoji } from "@/lib/category-emoji";
-import { EmojiPickerField } from "./emoji-picker-field";
+import { EmojiPickerField } from "@/components/emoji-picker-field";
 
 interface AddCategoryFormProps {
   onAdded: () => void;

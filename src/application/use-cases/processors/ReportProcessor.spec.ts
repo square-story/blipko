@@ -12,13 +12,15 @@ describe("ReportProcessor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Needs 23,400/25,000 (under) · Wants 16,200/15,000 (over) · Savings 10,000/10,000 (hit)
-    // Uncategorized rows → no offset. Same rows returned for current + prior.
+    const spend: Record<string, number> = {
+      NEEDS: 23400,
+      WANTS: 16200,
+      SAVINGS: 10000,
+    };
     expenseRepository = {
-      spendByCategoryForMonth: vi.fn().mockResolvedValue([
-        { categoryId: null, bucket: "NEEDS", total: 23400 },
-        { categoryId: null, bucket: "WANTS", total: 16200 },
-        { categoryId: null, bucket: "SAVINGS", total: 10000 },
-      ]),
+      sumByBucketForMonth: vi.fn((_u: string, bucket: string) =>
+        Promise.resolve(spend[bucket] ?? 0),
+      ),
       topCategoriesForMonth: vi.fn().mockResolvedValue([
         { name: "Food delivery", total: 3800 },
         { name: "Shopping", total: 2900 },
@@ -30,11 +32,7 @@ describe("ReportProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
-    const incomeRepository = {
-      sumForMonth: vi.fn().mockResolvedValue(0),
-      sumTotalForMonth: vi.fn().mockResolvedValue(0),
-      receivedByCategoryForMonth: vi.fn().mockResolvedValue([]),
-    };
+    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
     processor = new ReportProcessor(
       expenseRepository,
       budgetConfigRepository,

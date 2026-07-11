@@ -15,20 +15,17 @@ export type IncomeData = {
   source: string | null;
   note: string | null;
   date: Date;
-  categoryId: string | null;
-  categoryName: string | null;
 };
 
 export type IncomeFilters = {
   search?: string;
-  categoryId?: string; // dot-separated
   from?: string; // epoch ms
   to?: string; // epoch ms
 };
 
 function buildWhere(
   userId: string,
-  { search, categoryId, from, to }: IncomeFilters,
+  { search, from, to }: IncomeFilters,
 ): Prisma.IncomeWhereInput {
   const where: Prisma.IncomeWhereInput = {
     userId,
@@ -46,11 +43,6 @@ function buildWhere(
     where.date = {};
     if (from) where.date.gte = new Date(Number(from));
     if (to) where.date.lte = new Date(Number(to) + 86_399_999);
-  }
-
-  if (categoryId) {
-    const ids = categoryId.split(".");
-    if (ids.length > 0) where.categoryId = { in: ids };
   }
 
   return where;
@@ -104,13 +96,7 @@ export async function getIncome({
   try {
     const [total, incomes] = await Promise.all([
       prisma.income.count({ where }),
-      prisma.income.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: { category: { select: { name: true } } },
-      }),
+      prisma.income.findMany({ where, orderBy, skip, take: limit }),
     ]);
 
     const data: IncomeData[] = incomes.map((i) => ({
@@ -119,8 +105,6 @@ export async function getIncome({
       source: i.source,
       note: i.note,
       date: i.date,
-      categoryId: i.categoryId,
-      categoryName: i.category?.name ?? null,
     }));
 
     return { success: true, data, total, pageCount: Math.ceil(total / limit) };
@@ -164,45 +148,20 @@ export async function updateIncome(id: string, input: IncomeEditInput) {
       message: parsed.error.issues[0]?.message ?? "Invalid input",
     };
   }
-  const { amount, date, source, note, categoryId } = parsed.data;
+  const { amount, date, source, note } = parsed.data;
 
   const income = await prisma.income.findUnique({
     where: { id, userId: session.user.id },
   });
   if (!income) return { success: false, message: "Income not found" };
 
-  // Earmark to a leaf category (adopt it), or clear it → general income.
-  let categoryUpdate: { categoryId: string | null };
-  if (categoryId) {
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId, userId: session.user.id },
-    });
-    if (!category) return { success: false, message: "Category not found" };
-    if (category.isGroup)
-      return {
-        success: false,
-        message: "Pick a specific category, not a group",
-      };
-    categoryUpdate = { categoryId: category.id };
-  } else {
-    categoryUpdate = { categoryId: null };
-  }
-
   await prisma.income.update({
     where: { id },
-    data: {
-      amount,
-      date,
-      source: source || null,
-      note: note || null,
-      ...categoryUpdate,
-    },
+    data: { amount, date, source: source || null, note: note || null },
   });
 
   revalidatePath("/dashboard/income");
   revalidatePath("/dashboard");
-  revalidatePath("/dashboard/categories");
-  revalidatePath("/dashboard/analytics");
   return { success: true };
 }
 
@@ -223,16 +182,14 @@ export async function exportIncomeCsv(
   const incomes = await prisma.income.findMany({
     where,
     orderBy: { date: "desc" },
-    include: { category: { select: { name: true } } },
   });
 
-  const header = ["Date", "Amount", "Source", "Category", "Note"];
+  const header = ["Date", "Amount", "Source", "Note"];
   const rows = incomes.map((i) =>
     [
       i.date.toISOString().split("T")[0],
       String(Number(i.amount)),
       i.source ?? "",
-      i.category?.name ?? "",
       i.note ?? "",
     ]
       .map(csvCell)

@@ -24,13 +24,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalHeader,
@@ -43,33 +36,22 @@ import {
   incomeEditSchema,
   type IncomeEditInput,
 } from "@/lib/validations/income";
-import type { CategoryStat } from "@/lib/actions/categories";
-import { BUCKET_META } from "@/lib/budget";
 import { toast } from "@/lib/toast";
-
-const NONE = "__none__";
 
 interface EditIncomeModalProps {
   income: IncomeData;
-  categories: CategoryStat[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function EditIncomeModal({
   income,
-  categories,
   open,
   onOpenChange,
 }: EditIncomeModalProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [dateOpen, setDateOpen] = useState(false);
-
-  // Income earmarks to a leaf category (a two-way "pot").
-  const leaves = categories.filter(
-    (c) => !c.isGroup || c.spend > 0 || c.received > 0 || c.monthlyBudget !== null,
-  );
 
   const form = useForm<IncomeEditInput>({
     resolver: zodResolver(incomeEditSchema),
@@ -78,7 +60,6 @@ export function EditIncomeModal({
       date: income.date,
       source: income.source ?? "",
       note: income.note ?? "",
-      categoryId: income.categoryId ?? undefined,
     },
   });
 
@@ -89,7 +70,6 @@ export function EditIncomeModal({
         date: income.date,
         source: income.source ?? "",
         note: income.note ?? "",
-        categoryId: income.categoryId ?? undefined,
       });
     }
   }, [open, income, form]);
@@ -113,8 +93,7 @@ export function EditIncomeModal({
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>Edit Income</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            Update the amount, date, source, category, or note. Earmarking a
-            category offsets that category&apos;s spend (a two-way pot).
+            Update the amount, date, source, or note for this income.
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <Form {...form}>
@@ -188,37 +167,6 @@ export function EditIncomeModal({
                     <FormControl>
                       <Input placeholder="salary, freelance, etc." {...field} />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category (Optional)</FormLabel>
-                    <Select
-                      value={field.value || NONE}
-                      onValueChange={(val) =>
-                        field.onChange(val === NONE ? undefined : val)
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="General income" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={NONE}>None (general)</SelectItem>
-                        {leaves.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {BUCKET_META[c.bucket].emoji} {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

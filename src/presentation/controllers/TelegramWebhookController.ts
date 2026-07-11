@@ -18,11 +18,13 @@ import { PrismaBudgetConfigRepository } from "../../data/repositories/PrismaBudg
 import { PrismaParseLogRepository } from "../../data/repositories/PrismaParseLogRepository";
 import { PrismaIncomeRepository } from "../../data/repositories/PrismaIncomeRepository";
 import { PrismaRecurringRuleRepository } from "../../data/repositories/PrismaRecurringRuleRepository";
+import { PrismaBoxRepository } from "../../data/repositories/PrismaBoxRepository";
 import { PrismaConversationRepository } from "../../data/repositories/PrismaConversationRepository";
 import { PrismaNudgeRepository } from "../../data/repositories/PrismaNudgeRepository";
 import { SendBudgetNudgesUseCase } from "../../application/use-cases/SendBudgetNudges";
 import { PostRecurringChargesUseCase } from "../../application/use-cases/PostRecurringCharges";
 import { SendCycleReportUseCase } from "../../application/use-cases/SendCycleReport";
+import { SendBoxTargetAlertsUseCase } from "../../application/use-cases/SendBoxTargetAlerts";
 import { CronController } from "./CronController";
 import { prisma } from "../../data/prisma/client";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
@@ -65,6 +67,7 @@ const budgetConfigRepository = new PrismaBudgetConfigRepository(prisma);
 const parseLogRepository = new PrismaParseLogRepository(prisma);
 const incomeRepository = new PrismaIncomeRepository(prisma);
 const recurringRuleRepository = new PrismaRecurringRuleRepository(prisma);
+const boxRepository = new PrismaBoxRepository(prisma);
 const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
@@ -93,6 +96,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   parseLogRepository,
   incomeRepository,
   recurringRuleRepository,
+  boxRepository,
   conversationRepository,
   messageService,
   queryAgent,
@@ -138,6 +142,7 @@ export class TelegramWebhookController {
                 command: "recurring",
                 description: "Manage repeating income/expenses",
               },
+              { command: "boxes", description: "Your savings goals & funds" },
               { command: "settings", description: "Reminders & preferences" },
               { command: "help", description: "How to use the bot" },
             ],
@@ -328,10 +333,17 @@ export const sendCycleReport = new SendCycleReportUseCase(
   messageService,
 );
 
+export const sendBoxTargetAlerts = new SendBoxTargetAlertsUseCase(
+  userRepository,
+  boxRepository,
+  messageService,
+);
+
 export const cronController = new CronController(
   sendBudgetNudges,
   postRecurringCharges,
   sendCycleReport,
+  sendBoxTargetAlerts,
   prisma,
   env.CRON_SECRET,
 );
