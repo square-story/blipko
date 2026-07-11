@@ -31,6 +31,9 @@ export type BoxEntryView = {
   source: "MANUAL" | "LINKED";
   note: string | null;
   date: Date;
+  // Set when this entry was created by moving a budget transaction here, so it
+  // can be moved back. Null for direct/bot entries.
+  movedFrom: "expense" | "income" | null;
 };
 
 export type BoxEntryFilters = {
@@ -201,6 +204,11 @@ export async function getBoxEntries({
       source: e.source,
       note: e.note,
       date: e.date,
+      movedFrom: e.sourceExpenseId
+        ? "expense"
+        : e.sourceIncomeId
+          ? "income"
+          : null,
     }));
     return { success: true, data, total, pageCount: Math.ceil(total / limit) };
   } catch (error) {
@@ -245,6 +253,44 @@ export async function getBoxContributionTrend(
       isDeleted: false,
       date: { gte: start },
     },
+    select: { amount: true, direction: true, date: true },
+  });
+
+  for (const e of entries) {
+    const key = `${e.date.getFullYear()}-${e.date.getMonth()}`;
+    const row = map.get(key);
+    if (!row) continue;
+    if (e.direction === "IN") row.in += Number(e.amount);
+    else row.out += Number(e.amount);
+  }
+
+  return [...map.values()];
+}
+
+// Aggregate monthly IN vs OUT across ALL the user's boxes for the last `months`
+// — powers the analytics "box contributions" chart.
+export async function getBoxesContributionTrend(
+  months = 6,
+): Promise<{ month: string; in: number; out: number }[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+  const map = new Map<string, { month: string; in: number; out: number }>();
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    map.set(key, {
+      month: d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
+      in: 0,
+      out: 0,
+    });
+  }
+
+  const entries = await prisma.boxEntry.findMany({
+    where: { userId: session.user.id, isDeleted: false, date: { gte: start } },
     select: { amount: true, direction: true, date: true },
   });
 
@@ -490,6 +536,8 @@ async function moveTransactionToBox(
         source: "MANUAL",
         note: note ?? tx.note,
         date: tx.date,
+        sourceExpenseId: kind === "expense" ? transactionId : null,
+        sourceIncomeId: kind === "income" ? transactionId : null,
       },
     }),
     softDelete,
@@ -520,6 +568,75 @@ export async function moveIncomeToBox(
   note?: string,
 ) {
   return moveTransactionToBox("income", incomeId, boxId, note);
+}
+
+// Reverse a "move to box": restore the source transaction to the budget and
+// soft-delete the box entry, atomically. Only works for entries that carry
+// provenance (created via moveExpenseToBox/moveIncomeToBox).
+export async function moveBoxEntryBackToBudget(
+  entryId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const userId = session.user.id;
+
+  const entry = await prisma.boxEntry.findFirst({
+    where: { id: entryId, userId, isDeleted: false },
+  });
+  if (!entry) return { success: false, error: "Entry not found" };
+
+  // Narrow on the provenance field itself so `sourceId` is a plain string
+  // (no non-null assertion needed).
+  const provenance: { kind: "expense" | "income"; sourceId: string } | null =
+    entry.sourceExpenseId
+      ? { kind: "expense", sourceId: entry.sourceExpenseId }
+      : entry.sourceIncomeId
+        ? { kind: "income", sourceId: entry.sourceIncomeId }
+        : null;
+  if (!provenance)
+    return {
+      success: false,
+      error: "This entry didn't come from a transaction",
+    };
+  const { kind, sourceId } = provenance;
+
+  const source =
+    kind === "expense"
+      ? await prisma.expense.findFirst({ where: { id: sourceId, userId } })
+      : await prisma.income.findFirst({ where: { id: sourceId, userId } });
+  if (!source)
+    return {
+      success: false,
+      error: "The original transaction no longer exists",
+    };
+
+  const restore =
+    kind === "expense"
+      ? prisma.expense.update({
+          where: { id: sourceId },
+          data: { isDeleted: false, deletedAt: null },
+        })
+      : prisma.income.update({
+          where: { id: sourceId },
+          data: { isDeleted: false, deletedAt: null },
+        });
+
+  await prisma.$transaction([
+    prisma.boxEntry.update({
+      where: { id: entryId },
+      data: { isDeleted: true, deletedAt: new Date() },
+    }),
+    restore,
+  ]);
+
+  revalidatePath("/dashboard");
+  revalidatePath(
+    kind === "expense" ? "/dashboard/expenses" : "/dashboard/income",
+  );
+  revalidatePath("/dashboard/boxes");
+  revalidatePath("/dashboard/analytics");
+  revalidatePath("/dashboard/categories");
+  return { success: true };
 }
 
 export async function deleteBoxEntry(

@@ -34,6 +34,7 @@ enum NudgeKind {
 enum RecurringKind {
   INCOME
   EXPENSE
+  BOX
 }
 
 // How hard the bot nudges the user. Default OFF — opt-in only.
@@ -60,11 +61,11 @@ enum BoxEntrySource {
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
-  id          String   @id @default(cuid())
-  email       String?  @unique
-  name        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Platform identity
   telegramId String? @unique
@@ -183,17 +184,19 @@ model Category {
 
 // A repeating income/expense the scheduler auto-posts each month on dayOfMonth.
 model RecurringRule {
-  id         String        @id @default(cuid())
-  userId     String
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind       RecurringKind
-  amount     Decimal       @db.Decimal(12, 2)
-  dayOfMonth Int // 1–28
-  bucket     Bucket? // for EXPENSE
-  categoryId String?
-  category   Category?     @relation(fields: [categoryId], references: [id])
-  note       String?
-  isActive   Boolean       @default(true)
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          RecurringKind
+  amount        Decimal       @db.Decimal(12, 2)
+  dayOfMonth    Int // 1–28
+  bucket        Bucket? // for EXPENSE
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  boxId         String? // for BOX: auto-contribute (IN) to this box each month
+  box           Box?          @relation(fields: [boxId], references: [id])
+  note          String?
+  isActive      Boolean       @default(true)
   // "YYYY-MM" of the last auto-post — idempotency for the daily job.
   lastPostedKey String?
 
@@ -303,7 +306,8 @@ model Box {
   categoryId String?   @unique
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  entries BoxEntry[]
+  entries        BoxEntry[]
+  recurringRules RecurringRule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -326,6 +330,11 @@ model BoxEntry {
   note      String?
   rawText   String? // set when created from a bot message
 
+  // Provenance for a web "move to box": the budget transaction this entry was
+  // created from. Null for manual/bot entries. Enables "move back to budget".
+  sourceExpenseId String?
+  sourceIncomeId  String?
+
   date DateTime @default(now())
 
   isDeleted Boolean   @default(false)
@@ -341,7 +350,7 @@ model BoxEntry {
 // Stores every parse (raw + parsed JSON + confidence). Also serves as the
 // pending-expense store for the low-confidence bucket-confirmation flow.
 model ParseLog {
-  id         String  @id @default(cuid())
+  id         String @id @default(cuid())
   rawText    String
   parsed     Json
   confidence Float?

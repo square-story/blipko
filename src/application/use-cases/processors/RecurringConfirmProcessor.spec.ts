@@ -18,6 +18,7 @@ describe("RecurringConfirmProcessor", () => {
   let incomeRepository: any;
   let categoryRepository: any;
   let messageService: any;
+  let boxRepository: any;
   let processor: RecurringConfirmProcessor;
 
   beforeEach(() => {
@@ -32,6 +33,10 @@ describe("RecurringConfirmProcessor", () => {
       findById: vi.fn().mockResolvedValue({ id: "c1", name: "Rent" }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    boxRepository = {
+      findByIdForUser: vi.fn(),
+      addEntry: vi.fn().mockResolvedValue({ id: "be1" }),
+    };
     processor = new RecurringConfirmProcessor(
       recurringRuleRepository,
       expenseRepository,
@@ -39,6 +44,7 @@ describe("RecurringConfirmProcessor", () => {
       categoryRepository,
       messageService,
       async (fn: any) => fn({}),
+      boxRepository,
     );
   });
 

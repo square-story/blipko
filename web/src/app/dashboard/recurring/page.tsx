@@ -18,6 +18,7 @@ import {
   type RecurringRuleView,
 } from "@/lib/actions/recurring";
 import { getCategories, type CategoryStat } from "@/lib/actions/categories";
+import { getBoxes, type BoxView } from "@/lib/actions/boxes";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RecurringFormModal } from "./_components/recurring-form-modal";
 import { toast } from "@/lib/toast";
@@ -26,17 +27,20 @@ import { BUCKET_META } from "@/lib/budget";
 export default function RecurringPage() {
   const [rules, setRules] = useState<RecurringRuleView[]>([]);
   const [categories, setCategories] = useState<CategoryStat[]>([]);
+  const [boxes, setBoxes] = useState<BoxView[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
 
   const load = async () => {
     try {
-      const [fetchedRules, fetchedCats] = await Promise.all([
+      const [fetchedRules, fetchedCats, fetchedBoxes] = await Promise.all([
         getRecurringRules(),
         getCategories(),
+        getBoxes(),
       ]);
       setRules(fetchedRules);
       setCategories(fetchedCats);
+      setBoxes(fetchedBoxes);
     } catch (err) {
       toast.error("Failed to load recurring data");
     } finally {
@@ -62,6 +66,7 @@ export default function RecurringPage() {
 
   const incomeRules = rules.filter((r) => r.kind === "INCOME");
   const expenseRules = rules.filter((r) => r.kind === "EXPENSE");
+  const boxRules = rules.filter((r) => r.kind === "BOX");
 
   return (
     <ContentLayout title="Recurring">
@@ -73,7 +78,11 @@ export default function RecurringPage() {
           </p>
         </div>
         {!loading && (
-          <RecurringFormModal categories={categories} onSaved={load} />
+          <RecurringFormModal
+            categories={categories}
+            boxes={boxes}
+            onSaved={load}
+          />
         )}
       </div>
 
@@ -118,6 +127,7 @@ export default function RecurringPage() {
                         <RecurringFormModal
                           rule={r}
                           categories={categories}
+                          boxes={boxes}
                           onSaved={load}
                           trigger={
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -191,6 +201,7 @@ export default function RecurringPage() {
                         <RecurringFormModal
                           rule={r}
                           categories={categories}
+                          boxes={boxes}
                           onSaved={load}
                           trigger={
                             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -201,6 +212,73 @@ export default function RecurringPage() {
                         <ConfirmDialog
                           title="Delete this recurring expense?"
                           description="It will stop auto-posting each month. Past logs remain. This can't be undone."
+                          onConfirm={() => remove(r.id)}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Boxes Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span>📦</span> Boxes
+            </CardTitle>
+            <CardDescription>Auto-contributed each month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : boxRules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/20 rounded-lg border border-dashed">
+                <RefreshCw className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground max-w-[200px]">
+                  No recurring box contributions yet. Automate a savings goal!
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y border rounded-lg">
+                {boxRules.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          📦 {r.boxName || "Box"}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          Day {r.dayOfMonth} {r.note ? `· ${r.note}` : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-500">
+                        +₹{r.amount.toLocaleString("en-IN")}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <RecurringFormModal
+                          rule={r}
+                          categories={categories}
+                          boxes={boxes}
+                          onSaved={load}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          }
+                        />
+                        <ConfirmDialog
+                          title="Delete this recurring contribution?"
+                          description="It will stop auto-posting each month. Past entries remain. This can't be undone."
                           onConfirm={() => remove(r.id)}
                           trigger={
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">

@@ -17,6 +17,7 @@ export class PrismaRecurringRuleRepository implements IRecurringRuleRepository {
         dayOfMonth: data.dayOfMonth,
         bucket: data.bucket ?? null,
         categoryId: data.categoryId ?? null,
+        boxId: data.boxId ?? null,
         note: data.note ?? null,
       },
     });

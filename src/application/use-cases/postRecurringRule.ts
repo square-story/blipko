@@ -3,6 +3,7 @@ import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRu
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
+import { IBoxRepository } from "../../domain/repositories/IBoxRepository";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { BUCKET_META, formatMoney, sanitizeMd } from "./budgetMath";
 
@@ -11,6 +12,7 @@ export interface PostRecurringRuleDeps {
   expenseRepository: IExpenseRepository;
   incomeRepository: IIncomeRepository;
   categoryRepository: ICategoryRepository;
+  boxRepository: IBoxRepository;
   runTransaction: RunInTransaction;
 }
 
@@ -25,7 +27,7 @@ export async function postRecurringRule(
   deps: PostRecurringRuleDeps,
   rule: RecurringRule,
   monthKey: string,
-): Promise<string> {
+): Promise<string | null> {
   const amount = Number(rule.amount);
   const rawText = `[recurring] ${rule.note ?? rule.kind.toLowerCase()}`;
 
@@ -47,6 +49,31 @@ export async function postRecurringRule(
     });
     const label = rule.note ? ` (${sanitizeMd(rule.note)})` : "";
     summary = `income ${formatMoney(amount)}${label}`;
+  } else if (rule.kind === "BOX") {
+    const box = rule.boxId
+      ? await deps.boxRepository.findByIdForUser(rule.boxId, rule.userId)
+      : null;
+    if (!box) {
+      // The linked box was removed; mark posted so we stop retrying, post nothing.
+      await deps.recurringRuleRepository.markPosted(rule.id, monthKey);
+      return null;
+    }
+    await deps.runTransaction(async (tx) => {
+      await deps.boxRepository.addEntry(
+        {
+          boxId: box.id,
+          userId: rule.userId,
+          amount,
+          direction: "IN",
+          source: "MANUAL",
+          note: rule.note ?? undefined,
+          rawText,
+        },
+        tx,
+      );
+      await deps.recurringRuleRepository.markPosted(rule.id, monthKey, tx);
+    });
+    summary = `${formatMoney(amount)} → 📦 ${sanitizeMd(box.name)}${rule.note ? ` (${sanitizeMd(rule.note)})` : ""}`;
   } else {
     const bucket = rule.bucket ?? "NEEDS";
     // Read the category name up front; only the writes need to be atomic.

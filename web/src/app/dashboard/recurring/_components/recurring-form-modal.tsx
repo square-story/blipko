@@ -41,11 +41,13 @@ import {
 } from "@/lib/validations/recurring";
 import { toast } from "@/lib/toast";
 import type { CategoryStat } from "@/lib/actions/categories";
+import type { BoxView } from "@/lib/actions/boxes";
 import { CategoryCombobox } from "@/components/category-combobox";
 
 interface RecurringFormModalProps {
   rule?: RecurringRuleView;
   categories: CategoryStat[];
+  boxes: BoxView[];
   onSaved: () => void;
   trigger?: React.ReactNode;
 }
@@ -53,6 +55,7 @@ interface RecurringFormModalProps {
 export function RecurringFormModal({
   rule,
   categories,
+  boxes,
   onSaved,
   trigger,
 }: RecurringFormModalProps) {
@@ -68,6 +71,7 @@ export function RecurringFormModal({
       dayOfMonth: rule?.dayOfMonth ?? 1,
       bucket: rule?.bucket ?? "NEEDS",
       categoryId: rule?.categoryId ?? undefined,
+      boxId: rule?.boxId ?? undefined,
       note: rule?.note ?? "",
     },
   });
@@ -82,6 +86,7 @@ export function RecurringFormModal({
         dayOfMonth: rule?.dayOfMonth ?? 1,
         bucket: rule?.bucket ?? "NEEDS",
         categoryId: rule?.categoryId ?? undefined,
+        boxId: rule?.boxId ?? undefined,
         note: rule?.note ?? "",
       });
     }
@@ -149,6 +154,7 @@ export function RecurringFormModal({
                       <SelectContent>
                         <SelectItem value="EXPENSE">Expense</SelectItem>
                         <SelectItem value="INCOME">Income</SelectItem>
+                        <SelectItem value="BOX">Box</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -234,6 +240,34 @@ export function RecurringFormModal({
                           <SelectItem value="NEEDS">Needs</SelectItem>
                           <SelectItem value="WANTS">Wants</SelectItem>
                           <SelectItem value="SAVINGS">Savings</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {kind === "BOX" && (
+                <FormField
+                  control={form.control}
+                  name="boxId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Box</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a box" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {boxes.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.icon ? `${b.icon} ` : ""}
+                              {b.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />

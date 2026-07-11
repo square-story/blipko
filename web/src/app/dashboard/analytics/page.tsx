@@ -1,5 +1,6 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getAnalyticsData } from "@/lib/actions/analytics";
+import { getBoxesContributionTrend } from "@/lib/actions/boxes";
 import {
     Card,
     CardContent,
@@ -10,6 +11,7 @@ import {
 import { RoundedPieChart } from "@/components/ui/rounded-pie-chart";
 import { BucketTrendChart } from "../_components/income-expense-chart";
 import { IncomeExpenseTrendChart } from "../_components/income-expense-trend-chart";
+import { BoxesTrendChart } from "../_components/boxes-trend-chart";
 import { AnimatedNumber } from "@/components/animated-number";
 import { formatMoney } from "@/lib/budget";
 
@@ -24,6 +26,8 @@ export default async function Page() {
         netThisMonth,
         currency,
     } = await getAnalyticsData(6);
+
+    const boxesTrend = await getBoxesContributionTrend(6);
 
     const currencyFormat = {
         style: "currency" as const,
@@ -85,6 +89,9 @@ export default async function Page() {
 
                 {/* Monthly bucket trend */}
                 <BucketTrendChart data={monthlyTrend} />
+
+                {/* Box contributions trend */}
+                <BoxesTrendChart data={boxesTrend} />
 
                 {/* Category pie + top categories */}
                 <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">

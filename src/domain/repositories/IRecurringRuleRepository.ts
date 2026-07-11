@@ -8,6 +8,7 @@ export interface CreateRecurringRuleDTO {
   dayOfMonth: number;
   bucket?: Bucket | undefined;
   categoryId?: string | undefined;
+  boxId?: string | undefined;
   note?: string | undefined;
 }
 

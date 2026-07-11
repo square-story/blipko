@@ -4,7 +4,9 @@ import { getBudgetOverview } from "@/lib/actions/budget";
 import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
 import { getNeedsReviewExpenses } from "@/lib/actions/expenses";
 import { getCategories } from "@/lib/actions/categories";
+import { getBoxes } from "@/lib/actions/boxes";
 import { NeedsReviewInbox } from "./_components/needs-review-inbox";
+import { BoxesSummaryCard } from "./_components/boxes-summary-card";
 import { ConnectTelegramBanner } from "@/components/connect-telegram-banner";
 import {
     Stat,
@@ -60,9 +62,10 @@ async function OverviewSection({
     const needsReviewPromise = getNeedsReviewExpenses();
     const categoriesPromise = getCategories();
 
-    const [needsReview, categories] = await Promise.all([
+    const [needsReview, categories, boxes] = await Promise.all([
         needsReviewPromise,
-        categoriesPromise
+        categoriesPromise,
+        getBoxes(),
     ]);
 
     const currencyFormat = {
@@ -300,6 +303,11 @@ async function OverviewSection({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Boxes summary */}
+            {boxes.length > 0 && (
+                <BoxesSummaryCard boxes={boxes} currency={currency} />
+            )}
         </>
     );
 }

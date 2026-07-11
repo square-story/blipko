@@ -7,6 +7,7 @@ import { IRecurringRuleRepository } from "../../../domain/repositories/IRecurrin
 import { IExpenseRepository } from "../../../domain/repositories/IExpenseRepository";
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
+import { IBoxRepository } from "../../../domain/repositories/IBoxRepository";
 import { RunInTransaction } from "../../../domain/repositories/UnitOfWork";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { postRecurringRule } from "../postRecurringRule";
@@ -22,6 +23,7 @@ export class RecurringConfirmProcessor implements MessageProcessor {
     private readonly categoryRepository: ICategoryRepository,
     private readonly messageService: IMessagingPlatform,
     private readonly runTransaction: RunInTransaction,
+    private readonly boxRepository: IBoxRepository,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -52,12 +54,18 @@ export class RecurringConfirmProcessor implements MessageProcessor {
           expenseRepository: this.expenseRepository,
           incomeRepository: this.incomeRepository,
           categoryRepository: this.categoryRepository,
+          boxRepository: this.boxRepository,
           runTransaction: this.runTransaction,
         },
         rule,
         monthKey,
       );
-      return this.reply(platformUserId, `✅ Added for this month: ${summary}.`);
+      return this.reply(
+        platformUserId,
+        summary
+          ? `✅ Added for this month: ${summary}.`
+          : "That item couldn't be added.",
+      );
     }
 
     // "No": mark posted for this month so the daily cron doesn't add it anyway;

@@ -30,6 +30,7 @@ export async function divertExpenseToLinkedBox(
         source: "LINKED",
         note: args.note,
         date: args.date,
+        sourceExpenseId: args.expenseId,
       },
     }),
     prisma.expense.update({

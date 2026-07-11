@@ -4,6 +4,7 @@ import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
+import { IBoxRepository } from "../../domain/repositories/IBoxRepository";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { postRecurringRule } from "./postRecurringRule";
@@ -28,6 +29,7 @@ export class PostRecurringChargesUseCase {
     private readonly categoryRepository: ICategoryRepository,
     private readonly messageService: IMessagingPlatform,
     private readonly runTransaction: RunInTransaction,
+    private readonly boxRepository: IBoxRepository,
   ) {}
 
   // Runs each active rule against its owner's local date/hour. `now` and `force`
@@ -82,15 +84,19 @@ export class PostRecurringChargesUseCase {
         expenseRepository: this.expenseRepository,
         incomeRepository: this.incomeRepository,
         categoryRepository: this.categoryRepository,
+        boxRepository: this.boxRepository,
         runTransaction: this.runTransaction,
       },
       rule,
       monthKey,
     );
+    if (!summary) return; // nothing posted (e.g. the linked box was removed)
 
+    // Box contributions aren't reversible via "undo" (it targets expenses/income).
+    const undoHint = rule.kind === "BOX" ? "" : ' — reply "undo" to remove.';
     await this.messageService.sendMessage({
       to: telegramId,
-      body: `📌 Auto-logged ${summary} — reply "undo" to remove.`,
+      body: `📌 Auto-logged ${summary}${undoHint}`,
     });
   }
 }

@@ -109,6 +109,7 @@ export class ProcessIncomingMessageUseCase {
         categoryRepository,
         messageService,
         runTransaction,
+        boxRepository,
       ),
       new ConnectAccountProcessor(messageService, webAppUrl),
       new SettingsProcessor(userRepository, messageService),

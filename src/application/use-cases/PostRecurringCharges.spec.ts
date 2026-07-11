@@ -8,6 +8,7 @@ describe("PostRecurringCharges", () => {
   let userRepository: any;
   let categoryRepository: any;
   let messageService: any;
+  let boxRepository: any;
   let useCase: PostRecurringChargesUseCase;
 
   const expenseRule = {
@@ -38,6 +39,10 @@ describe("PostRecurringCharges", () => {
       findById: vi.fn().mockResolvedValue({ id: "c1", name: "Rent" }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    boxRepository = {
+      findByIdForUser: vi.fn().mockResolvedValue({ id: "b1", name: "NY Trip" }),
+      addEntry: vi.fn().mockResolvedValue({ id: "be1" }),
+    };
     useCase = new PostRecurringChargesUseCase(
       recurringRuleRepository,
       expenseRepository,
@@ -46,6 +51,7 @@ describe("PostRecurringCharges", () => {
       categoryRepository,
       messageService,
       async (fn: any) => fn({}),
+      boxRepository,
     );
   });
 
@@ -69,6 +75,45 @@ describe("PostRecurringCharges", () => {
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Auto-logged",
     );
+  });
+
+  it("posts a due box contribution as an IN entry, notifies without undo hint", async () => {
+    recurringRuleRepository.findAllActive.mockResolvedValue([
+      {
+        id: "rr2",
+        userId: "u1",
+        kind: "BOX",
+        amount: 5000,
+        dayOfMonth: 1,
+        boxId: "b1",
+        note: "trip",
+      },
+    ]);
+
+    const { posted } = await useCase.execute(
+      new Date(Date.UTC(2026, 5, 15, 12)),
+      true,
+    );
+
+    expect(posted).toBe(1);
+    expect(boxRepository.addEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        boxId: "b1",
+        userId: "u1",
+        amount: 5000,
+        direction: "IN",
+        source: "MANUAL",
+      }),
+      expect.anything(),
+    );
+    expect(recurringRuleRepository.markPosted).toHaveBeenCalledWith(
+      "rr2",
+      "2026-06",
+      expect.anything(),
+    );
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("📦 NY Trip");
+    expect(body).not.toContain("undo");
   });
 
   it("skips a rule before its due day", async () => {

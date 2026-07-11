@@ -11,12 +11,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { deleteBoxEntry, type BoxEntryView } from "@/lib/actions/boxes";
+import {
+  deleteBoxEntry,
+  moveBoxEntryBackToBudget,
+  type BoxEntryView,
+} from "@/lib/actions/boxes";
 import { toast } from "@/lib/toast";
 
 export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moveBackOpen, setMoveBackOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   const onDelete = () => {
@@ -31,6 +36,18 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
     });
   };
 
+  const onMoveBack = () => {
+    startTransition(async () => {
+      const res = await moveBoxEntryBackToBudget(entry.id);
+      if (!res.success) {
+        toast.error(res.error ?? "Failed to move back");
+        return;
+      }
+      toast.success("Moved back to budget");
+      router.refresh();
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -41,6 +58,11 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {entry.movedFrom && (
+            <DropdownMenuItem onSelect={() => setMoveBackOpen(true)}>
+              Move back to budget
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             className="text-red-600 focus:text-red-600"
             onSelect={() => setDeleteOpen(true)}
@@ -49,6 +71,14 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ConfirmDialog
+        open={moveBackOpen}
+        onOpenChange={setMoveBackOpen}
+        onConfirm={onMoveBack}
+        title="Move back to budget?"
+        description="This restores the original transaction to your budget and removes this box entry."
+      />
 
       <ConfirmDialog
         open={deleteOpen}

@@ -17,6 +17,8 @@ export type RecurringRuleView = {
   bucket: Bucket | null;
   categoryId: string | null;
   categoryName: string | null;
+  boxId: string | null;
+  boxName: string | null;
   note: string | null;
 };
 
@@ -26,7 +28,10 @@ export async function getRecurringRules(): Promise<RecurringRuleView[]> {
 
   const rules = await prisma.recurringRule.findMany({
     where: { userId: session.user.id, isActive: true },
-    include: { category: { select: { name: true } } },
+    include: {
+      category: { select: { name: true } },
+      box: { select: { name: true } },
+    },
     orderBy: [{ kind: "asc" }, { dayOfMonth: "asc" }],
   });
 
@@ -38,6 +43,8 @@ export async function getRecurringRules(): Promise<RecurringRuleView[]> {
     bucket: r.bucket,
     categoryId: r.categoryId,
     categoryName: r.category?.name ?? null,
+    boxId: r.boxId,
+    boxName: r.box?.name ?? null,
     note: r.note,
   }));
 }
@@ -60,6 +67,7 @@ export async function createRecurringRule(
 
   let bucket: Bucket | null = null;
   let categoryId: string | null = null;
+  let boxId: string | null = null;
 
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
@@ -72,6 +80,13 @@ export async function createRecurringRule(
         bucket = existing.bucket;
       }
     }
+  } else if (data.kind === "BOX") {
+    if (!data.boxId) return { success: false, error: "Pick a box" };
+    const box = await prisma.box.findFirst({
+      where: { id: data.boxId, userId, isArchived: false },
+    });
+    if (!box) return { success: false, error: "Box not found" };
+    boxId = box.id;
   }
 
   await prisma.recurringRule.create({
@@ -82,6 +97,7 @@ export async function createRecurringRule(
       dayOfMonth: data.dayOfMonth,
       bucket,
       categoryId,
+      boxId,
       note: data.note ?? null,
     },
   });
@@ -123,6 +139,7 @@ export async function updateRecurringRule(
 
   let bucket: Bucket | null = null;
   let categoryId: string | null = null;
+  let boxId: string | null = null;
 
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
@@ -135,6 +152,13 @@ export async function updateRecurringRule(
         bucket = existing.bucket;
       }
     }
+  } else if (data.kind === "BOX") {
+    if (!data.boxId) return { success: false, error: "Pick a box" };
+    const box = await prisma.box.findFirst({
+      where: { id: data.boxId, userId, isArchived: false },
+    });
+    if (!box) return { success: false, error: "Box not found" };
+    boxId = box.id;
   }
 
   await prisma.recurringRule.updateMany({
@@ -145,6 +169,7 @@ export async function updateRecurringRule(
       dayOfMonth: data.dayOfMonth,
       bucket,
       categoryId,
+      boxId,
       note: data.note ?? null,
     },
   });

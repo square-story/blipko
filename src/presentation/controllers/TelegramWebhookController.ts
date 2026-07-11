@@ -322,6 +322,7 @@ export const postRecurringCharges = new PostRecurringChargesUseCase(
   categoryRepository,
   messageService,
   runInTransaction,
+  boxRepository,
 );
 
 export const sendCycleReport = new SendCycleReportUseCase(

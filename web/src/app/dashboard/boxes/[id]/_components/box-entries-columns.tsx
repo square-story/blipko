@@ -82,8 +82,13 @@ export const boxEntriesColumns: ColumnDef<BoxEntryView>[] = [
       <DataTableColumnHeader column={column} label="Source" />
     ),
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">
+      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
         {row.getValue("source") === "LINKED" ? "🔗 Linked" : "Manual"}
+        {row.original.movedFrom && (
+          <Badge variant="outline" className="font-normal">
+            from budget
+          </Badge>
+        )}
       </span>
     ),
     enableSorting: false,
