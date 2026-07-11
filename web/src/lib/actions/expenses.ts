@@ -8,6 +8,7 @@ import {
   expenseEditSchema,
   type ExpenseEditInput,
 } from "@/lib/validations/expense";
+import { divertExpenseToLinkedBox } from "@/lib/box-transfer";
 
 export type ExpenseData = {
   id: string;
@@ -263,15 +264,32 @@ export async function assignExpenseCategory(
   });
   if (!category) return { success: false, message: "Category not found" };
 
-  await prisma.expense.update({
-    where: { id: expenseId },
-    data: { categoryId: category.id, bucket: category.bucket, confidence: 1.0 },
+  // If the category feeds a box, transfer the transaction into that box
+  // instead of tagging it (mirrors the bot's diversion).
+  const transfer = await divertExpenseToLinkedBox(session.user.id, {
+    expenseId,
+    categoryId: category.id,
+    amount: Number(expense.amount),
+    note: expense.note,
+    date: expense.date,
   });
+
+  if (!transfer.transferred) {
+    await prisma.expense.update({
+      where: { id: expenseId },
+      data: {
+        categoryId: category.id,
+        bucket: category.bucket,
+        confidence: 1.0,
+      },
+    });
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/categories");
   revalidatePath("/dashboard/analytics");
-  return { success: true };
+  revalidatePath("/dashboard/boxes");
+  return { success: true, movedToBox: transfer.boxName };
 }
 
 export async function updateExpense(id: string, input: ExpenseEditInput) {
@@ -300,6 +318,24 @@ export async function updateExpense(id: string, input: ExpenseEditInput) {
       where: { id: categoryId, userId: session.user.id },
     });
     if (!category) return { success: false, message: "Category not found" };
+
+    // Category feeds a box → transfer the (edited) transaction into it.
+    const transfer = await divertExpenseToLinkedBox(session.user.id, {
+      expenseId: id,
+      categoryId: category.id,
+      amount,
+      note: note || null,
+      date,
+    });
+    if (transfer.transferred) {
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/expenses");
+      revalidatePath("/dashboard/categories");
+      revalidatePath("/dashboard/analytics");
+      revalidatePath("/dashboard/boxes");
+      return { success: true, movedToBox: transfer.boxName };
+    }
+
     categoryUpdate = { categoryId: category.id, bucket: category.bucket };
   } else {
     categoryUpdate = { categoryId: null };
@@ -314,5 +350,5 @@ export async function updateExpense(id: string, input: ExpenseEditInput) {
   revalidatePath("/dashboard/expenses");
   revalidatePath("/dashboard/categories");
   revalidatePath("/dashboard/analytics");
-  return { success: true };
+  return { success: true, movedToBox: undefined as string | undefined };
 }

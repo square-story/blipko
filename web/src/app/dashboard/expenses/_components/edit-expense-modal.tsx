@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-import { Bucket } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,13 +24,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalHeader,
@@ -45,10 +37,8 @@ import {
   type ExpenseEditInput,
 } from "@/lib/validations/expense";
 import type { CategoryStat } from "@/lib/actions/categories";
-import { BUCKET_META } from "@/lib/budget";
+import { CategoryCombobox } from "@/components/category-combobox";
 import { toast } from "@/lib/toast";
-
-const NONE = "__none__";
 
 interface EditExpenseModalProps {
   expense: ExpenseData;
@@ -88,10 +78,6 @@ export function EditExpenseModal({
     }
   }, [open, expense, form]);
 
-  const leaves = categories.filter(
-    (c) => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null,
-  );
-
   const onSubmit = (data: ExpenseEditInput) => {
     startTransition(async () => {
       const res = await updateExpense(expense.id, data);
@@ -99,7 +85,9 @@ export function EditExpenseModal({
         toast.error(res.message ?? "Failed to update expense");
         return;
       }
-      toast.success("Expense updated");
+      toast.success(
+        res.movedToBox ? `Moved to "${res.movedToBox}"` : "Expense updated",
+      );
       onOpenChange(false);
       router.refresh();
     });
@@ -182,26 +170,11 @@ export function EditExpenseModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select
-                      value={field.value || NONE}
-                      onValueChange={(val) =>
-                        field.onChange(val === NONE ? undefined : val)
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={NONE}>None</SelectItem>
-                        {leaves.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {BUCKET_META[c.bucket as Bucket].emoji} {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <CategoryCombobox
+                      categories={categories}
+                      value={field.value}
+                      onChange={(id) => field.onChange(id)}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

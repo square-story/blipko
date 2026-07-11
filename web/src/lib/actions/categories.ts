@@ -251,6 +251,57 @@ export async function createCategory(
   return { success: true };
 }
 
+// Create a leaf category on the fly (from the CategoryCombobox) and return the
+// full CategoryStat so the caller can select it immediately without a refetch.
+export async function createInlineCategory(
+  name: string,
+  bucket: Bucket,
+  icon?: string | null,
+): Promise<{ success: boolean; message?: string; category?: CategoryStat }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const parsedName = nameSchema.safeParse(name);
+  const parsedBucket = bucketSchema.safeParse(bucket);
+  if (!parsedName.success || !parsedBucket.success)
+    return { success: false, message: "Invalid category" };
+
+  const resolvedIcon =
+    icon != null ? (iconSchema.safeParse(icon).data ?? null) : null;
+
+  const existing = await prisma.category.findFirst({
+    where: { userId: session.user.id, name: parsedName.data },
+  });
+  if (existing)
+    return { success: false, message: "A category with that name exists" };
+
+  const created = await prisma.category.create({
+    data: {
+      name: parsedName.data,
+      bucket: parsedBucket.data,
+      userId: session.user.id,
+      icon: resolvedIcon,
+    },
+  });
+
+  revalidatePath("/dashboard/categories");
+  return {
+    success: true,
+    category: {
+      id: created.id,
+      name: created.name,
+      bucket: created.bucket,
+      isSystem: false,
+      isGroup: false,
+      parentId: null,
+      monthlyBudget: null,
+      budgetLocked: false,
+      icon: created.icon,
+      spend: 0,
+    },
+  };
+}
+
 export async function setCategoryBudget(
   id: string,
   monthlyBudget: number | null,

@@ -15,13 +15,6 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ResponsiveModal,
   ResponsiveModalContent,
   ResponsiveModalHeader,
@@ -31,15 +24,12 @@ import {
   ResponsiveModalTrigger,
 } from "@/components/ui/responsive-modal";
 import { Plus } from "lucide-react";
-import { Bucket } from "@prisma/client";
 import { EmojiPickerField } from "@/components/emoji-picker-field";
+import { CategoryCombobox } from "@/components/category-combobox";
 import { createBox, updateBox, type BoxView } from "@/lib/actions/boxes";
 import { boxSchema, type BoxInput } from "@/lib/validations/box";
-import { BUCKET_META } from "@/lib/budget";
 import { toast } from "@/lib/toast";
 import type { CategoryStat } from "@/lib/actions/categories";
-
-const NONE = "__none__";
 
 interface BoxFormModalProps {
   box?: BoxView;
@@ -86,9 +76,6 @@ export function BoxFormModal({ box, categories, onSaved, trigger }: BoxFormModal
     });
   };
 
-  const leaves = categories.filter(
-    (c) => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null,
-  );
 
   return (
     <ResponsiveModal open={open} onOpenChange={setOpen}>
@@ -197,26 +184,12 @@ export function BoxFormModal({ box, categories, onSaved, trigger }: BoxFormModal
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Linked category (Optional)</FormLabel>
-                  <Select
-                    value={field.value || NONE}
-                    onValueChange={(val) =>
-                      field.onChange(val === NONE ? undefined : val)
-                    }
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="None" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NONE}>None</SelectItem>
-                      {leaves.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {BUCKET_META[c.bucket as Bucket].emoji} {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <CategoryCombobox
+                    categories={categories}
+                    value={field.value}
+                    onChange={(id) => field.onChange(id)}
+                    placeholder="None"
+                  />
                   <FormDescription>
                     Spending you log to this category flows into the box instead
                     of your budget.

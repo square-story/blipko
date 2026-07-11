@@ -4,11 +4,11 @@ import { useState, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BUCKET_META, formatMoney } from "@/lib/budget";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatMoney } from "@/lib/budget";
 import { assignExpenseCategory } from "@/lib/actions/expenses";
+import { CategoryCombobox } from "@/components/category-combobox";
 import { toast } from "@/lib/toast";
-import { Check, CheckCircle2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { CategoryStat } from "@/lib/actions/categories";
 
 interface NeedsReviewInboxProps {
@@ -36,15 +36,15 @@ export function NeedsReviewInbox({ expenses, categories, currency }: NeedsReview
     startTransition(async () => {
       const res = await assignExpenseCategory(expenseId, categoryId);
       if (res.success) {
-        toast.success("Transaction reassigned");
+        toast.success(
+          res.movedToBox ? `Moved to "${res.movedToBox}"` : "Transaction reassigned",
+        );
         setItems(prev => prev.filter(e => e.id !== expenseId));
       } else {
         toast.error(res.message || "Failed to reassign");
       }
     });
   };
-
-  const leaves = categories.filter(c => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null);
 
   return (
     <Card className="border-amber-500/50 bg-amber-500/5 shadow-md mb-6">
@@ -81,21 +81,16 @@ export function NeedsReviewInbox({ expenses, categories, currency }: NeedsReview
                 </span>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Select
+                <CategoryCombobox
+                  categories={categories}
+                  allowNone={false}
+                  placeholder="Reassign…"
                   disabled={isPending}
-                  onValueChange={(val) => handleAssign(e.id, val)}
-                >
-                  <SelectTrigger className="w-full sm:w-[180px] h-8 text-xs">
-                    <SelectValue placeholder="Reassign..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leaves.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id} className="text-xs">
-                        {BUCKET_META[cat.bucket].emoji} {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  triggerClassName="w-full sm:w-[200px] h-8 text-xs"
+                  onChange={(id) => {
+                    if (id) handleAssign(e.id, id);
+                  }}
+                />
               </div>
             </div>
           ))}

@@ -30,7 +30,6 @@ import {
   ResponsiveModalTrigger,
 } from "@/components/ui/responsive-modal";
 import { Plus, Edit } from "lucide-react";
-import { Bucket } from "@prisma/client";
 import {
   createRecurringRule,
   updateRecurringRule,
@@ -40,9 +39,9 @@ import {
   recurringRuleSchema,
   type RecurringRuleInput,
 } from "@/lib/validations/recurring";
-import { BUCKETS, BUCKET_META } from "@/lib/budget";
 import { toast } from "@/lib/toast";
 import type { CategoryStat } from "@/lib/actions/categories";
+import { CategoryCombobox } from "@/components/category-combobox";
 
 interface RecurringFormModalProps {
   rule?: RecurringRuleView;
@@ -111,7 +110,6 @@ export function RecurringFormModal({
     });
   };
 
-  const leaves = categories.filter((c) => !c.isGroup || c.spend > 0 || c.monthlyBudget !== null);
 
   return (
     <ResponsiveModal open={open} onOpenChange={setOpen}>
@@ -204,30 +202,15 @@ export function RecurringFormModal({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Category (Optional)</FormLabel>
-                      <Select
-                        onValueChange={(val) => {
-                          field.onChange(val);
-                          // Auto-set the bucket if they pick a category
-                          const cat = leaves.find((c) => c.id === val);
-                          if (cat) {
-                            form.setValue("bucket", cat.bucket as Bucket);
-                          }
+                      <CategoryCombobox
+                        categories={categories}
+                        value={field.value}
+                        onChange={(id, category) => {
+                          field.onChange(id);
+                          // Adopt the picked category's bucket.
+                          if (category) form.setValue("bucket", category.bucket);
                         }}
-                        defaultValue={field.value || undefined}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {leaves.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {BUCKET_META[c.bucket as Bucket].emoji} {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
