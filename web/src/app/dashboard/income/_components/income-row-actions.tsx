@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteIncome, type IncomeData } from "@/lib/actions/income";
 import { toast } from "@/lib/toast";
 import { EditIncomeModal } from "./edit-income-modal";
+import { MoveToBoxModal } from "@/app/dashboard/_components/move-to-box-modal";
 
 interface IncomeRowActionsProps {
   income: IncomeData;
@@ -23,6 +24,7 @@ interface IncomeRowActionsProps {
 export function IncomeRowActions({ income }: IncomeRowActionsProps) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -51,6 +53,9 @@ export function IncomeRowActions({ income }: IncomeRowActionsProps) {
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>
             Edit
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setMoveOpen(true)}>
+            Move to box…
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-red-600 focus:text-red-600"
@@ -65,6 +70,15 @@ export function IncomeRowActions({ income }: IncomeRowActionsProps) {
         income={income}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      <MoveToBoxModal
+        kind="income"
+        transactionId={income.id}
+        amount={income.amount}
+        note={income.note}
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
       />
 
       <ConfirmDialog

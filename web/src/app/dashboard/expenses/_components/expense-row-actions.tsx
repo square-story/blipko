@@ -16,6 +16,7 @@ import { deleteExpenses, type ExpenseData } from "@/lib/actions/expenses";
 import type { CategoryStat } from "@/lib/actions/categories";
 import { toast } from "@/lib/toast";
 import { EditExpenseModal } from "./edit-expense-modal";
+import { MoveToBoxModal } from "@/app/dashboard/_components/move-to-box-modal";
 
 interface ExpenseRowActionsProps {
   expense: ExpenseData;
@@ -25,6 +26,7 @@ interface ExpenseRowActionsProps {
 export function ExpenseRowActions({ expense, categories }: ExpenseRowActionsProps) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [, startTransition] = useTransition();
 
@@ -53,6 +55,9 @@ export function ExpenseRowActions({ expense, categories }: ExpenseRowActionsProp
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>
             Edit
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setMoveOpen(true)}>
+            Move to box…
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-red-600 focus:text-red-600"
@@ -68,6 +73,15 @@ export function ExpenseRowActions({ expense, categories }: ExpenseRowActionsProp
         categories={categories}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      <MoveToBoxModal
+        kind="expense"
+        transactionId={expense.id}
+        amount={expense.amount}
+        note={expense.note}
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
       />
 
       <ConfirmDialog

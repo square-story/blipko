@@ -435,6 +435,93 @@ export async function spendFromBox(boxId: string, input: BoxEntryInput) {
   return addEntry(boxId, "OUT", input);
 }
 
+// Move an existing budget transaction into a box: write a BoxEntry and
+// soft-delete the source transaction, atomically — mirroring
+// divertExpenseToLinkedBox but for an explicitly chosen box. Expense → OUT
+// (spend drawn from the box), income → IN (contribution). targetReachedAt is
+// left to the box cron sweep (same as addEntry).
+async function moveTransactionToBox(
+  kind: "expense" | "income",
+  transactionId: string,
+  boxId: string,
+  note?: string,
+): Promise<{ success: boolean; error?: string; boxName?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const userId = session.user.id;
+
+  if (!transactionId || !boxId)
+    return { success: false, error: "Missing transaction or box" };
+
+  const box = await prisma.box.findFirst({
+    where: { id: boxId, userId, isArchived: false },
+  });
+  if (!box) return { success: false, error: "Box not found" };
+
+  const tx =
+    kind === "expense"
+      ? await prisma.expense.findFirst({
+          where: { id: transactionId, userId, isDeleted: false },
+        })
+      : await prisma.income.findFirst({
+          where: { id: transactionId, userId, isDeleted: false },
+        });
+  if (!tx)
+    return { success: false, error: "Transaction not found or already moved" };
+
+  const softDelete =
+    kind === "expense"
+      ? prisma.expense.update({
+          where: { id: transactionId },
+          data: { isDeleted: true, deletedAt: new Date() },
+        })
+      : prisma.income.update({
+          where: { id: transactionId },
+          data: { isDeleted: true, deletedAt: new Date() },
+        });
+
+  await prisma.$transaction([
+    prisma.boxEntry.create({
+      data: {
+        boxId: box.id,
+        userId,
+        amount: tx.amount,
+        direction: kind === "expense" ? "OUT" : "IN",
+        source: "MANUAL",
+        note: note ?? tx.note,
+        date: tx.date,
+      },
+    }),
+    softDelete,
+  ]);
+
+  revalidatePath("/dashboard");
+  revalidatePath(
+    kind === "expense" ? "/dashboard/expenses" : "/dashboard/income",
+  );
+  revalidatePath("/dashboard/boxes");
+  revalidatePath("/dashboard/analytics");
+  revalidatePath("/dashboard/categories");
+
+  return { success: true, boxName: box.name };
+}
+
+export async function moveExpenseToBox(
+  expenseId: string,
+  boxId: string,
+  note?: string,
+) {
+  return moveTransactionToBox("expense", expenseId, boxId, note);
+}
+
+export async function moveIncomeToBox(
+  incomeId: string,
+  boxId: string,
+  note?: string,
+) {
+  return moveTransactionToBox("income", incomeId, boxId, note);
+}
+
 export async function deleteBoxEntry(
   id: string,
 ): Promise<{ success: boolean }> {
