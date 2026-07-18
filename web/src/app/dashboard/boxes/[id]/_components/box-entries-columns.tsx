@@ -84,11 +84,15 @@ export const boxEntriesColumns: ColumnDef<BoxEntryView>[] = [
     cell: ({ row }) => (
       <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
         {row.getValue("source") === "LINKED" ? "🔗 Linked" : "Manual"}
-        {row.original.movedFrom && (
+        {row.original.isTracking ? (
+          <Badge variant="outline" className="font-normal">
+            tracked · in budget
+          </Badge>
+        ) : row.original.movedFrom ? (
           <Badge variant="outline" className="font-normal">
             from budget
           </Badge>
-        )}
+        ) : null}
       </span>
     ),
     enableSorting: false,

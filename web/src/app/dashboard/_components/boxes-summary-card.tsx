@@ -33,9 +33,13 @@ export function BoxesSummaryCard({
       <CardContent>
         <div className="space-y-4">
           {shown.map((b) => {
+            // Progress includes tracked budget spend; the headline stays balance.
             const pct =
               b.targetAmount && b.targetAmount > 0
-                ? Math.min(100, Math.round((b.balance / b.targetAmount) * 100))
+                ? Math.min(
+                    100,
+                    Math.round(((b.balance + b.tracked) / b.targetAmount) * 100),
+                  )
                 : null;
             return (
               <div key={b.id} className="space-y-1.5">

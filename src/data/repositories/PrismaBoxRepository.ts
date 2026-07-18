@@ -47,13 +47,14 @@ export class PrismaBoxRepository implements IBoxRepository {
     });
   }
 
-  // Σ IN − Σ OUT over a set of boxes' non-deleted entries.
+  // Σ IN − Σ OUT over a set of boxes' non-deleted MONEY entries. Tracking
+  // entries are excluded — they advance goal progress but hold no money.
   private async balanceMap(boxIds: string[]): Promise<Map<string, number>> {
     const map = new Map<string, number>();
     if (boxIds.length === 0) return map;
     const groups = await this.prisma.boxEntry.groupBy({
       by: ["boxId", "direction"],
-      where: { boxId: { in: boxIds }, isDeleted: false },
+      where: { boxId: { in: boxIds }, isDeleted: false, isTracking: false },
       _sum: { amount: true },
     });
     for (const g of groups) {

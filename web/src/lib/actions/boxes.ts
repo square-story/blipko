@@ -22,6 +22,9 @@ export type BoxView = {
   categoryId: string | null;
   categoryName: string | null;
   balance: number;
+  // Σ of "tracking" entries — budget money advancing this goal, counted toward
+  // progress but NOT part of the money balance.
+  tracked: number;
 };
 
 export type BoxEntryView = {
@@ -34,6 +37,9 @@ export type BoxEntryView = {
   // Set when this entry was created by moving a budget transaction here, so it
   // can be moved back. Null for direct/bot entries.
   movedFrom: "expense" | "income" | null;
+  // A tracking link: the source transaction is still live in the budget; this
+  // entry counts toward goal progress but not the money balance.
+  isTracking: boolean;
 };
 
 export type BoxEntryFilters = {
@@ -44,13 +50,14 @@ export type BoxEntryFilters = {
   to?: string; // epoch ms
 };
 
-// Σ IN − Σ OUT per box, over non-deleted entries.
+// Σ IN − Σ OUT per box, over non-deleted MONEY entries (tracking entries are
+// excluded — they don't represent money held in the box).
 async function balanceMap(boxIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (boxIds.length === 0) return map;
   const groups = await prisma.boxEntry.groupBy({
     by: ["boxId", "direction"],
-    where: { boxId: { in: boxIds }, isDeleted: false },
+    where: { boxId: { in: boxIds }, isDeleted: false, isTracking: false },
     _sum: { amount: true },
   });
   for (const g of groups) {
@@ -60,11 +67,27 @@ async function balanceMap(boxIds: string[]): Promise<Map<string, number>> {
   return map;
 }
 
+// Σ of tracking entries per box — budget money advancing the goal (progress),
+// separate from the money balance.
+async function trackedMap(boxIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (boxIds.length === 0) return map;
+  const groups = await prisma.boxEntry.groupBy({
+    by: ["boxId"],
+    where: { boxId: { in: boxIds }, isDeleted: false, isTracking: true },
+    _sum: { amount: true },
+  });
+  for (const g of groups) {
+    map.set(g.boxId, Number(g._sum.amount ?? 0));
+  }
+  return map;
+}
+
 type BoxRow = Prisma.BoxGetPayload<{
   include: { category: { select: { name: true } } };
 }>;
 
-function toBoxView(b: BoxRow, balance: number): BoxView {
+function toBoxView(b: BoxRow, balance: number, tracked: number): BoxView {
   return {
     id: b.id,
     name: b.name,
@@ -76,6 +99,7 @@ function toBoxView(b: BoxRow, balance: number): BoxView {
     categoryId: b.categoryId,
     categoryName: b.category?.name ?? null,
     balance,
+    tracked,
   };
 }
 
@@ -88,9 +112,15 @@ export async function getBoxes(archived = false): Promise<BoxView[]> {
     include: { category: { select: { name: true } } },
     orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
   });
-  const balances = await balanceMap(boxes.map((b) => b.id));
+  const boxIds = boxes.map((b) => b.id);
+  const [balances, tracked] = await Promise.all([
+    balanceMap(boxIds),
+    trackedMap(boxIds),
+  ]);
 
-  return boxes.map((b) => toBoxView(b, balances.get(b.id) ?? 0));
+  return boxes.map((b) =>
+    toBoxView(b, balances.get(b.id) ?? 0, tracked.get(b.id) ?? 0),
+  );
 }
 
 // Single box (any archive state), scoped to the user — for the detail page.
@@ -103,8 +133,11 @@ export async function getBox(boxId: string): Promise<BoxView | null> {
     include: { category: { select: { name: true } } },
   });
   if (!box) return null;
-  const balances = await balanceMap([box.id]);
-  return toBoxView(box, balances.get(box.id) ?? 0);
+  const [balances, tracked] = await Promise.all([
+    balanceMap([box.id]),
+    trackedMap([box.id]),
+  ]);
+  return toBoxView(box, balances.get(box.id) ?? 0, tracked.get(box.id) ?? 0);
 }
 
 function buildEntriesWhere(
@@ -209,6 +242,7 @@ export async function getBoxEntries({
         : e.sourceIncomeId
           ? "income"
           : null,
+      isTracking: e.isTracking,
     }));
     return { success: true, data, total, pageCount: Math.ceil(total / limit) };
   } catch (error) {
@@ -251,6 +285,7 @@ export async function getBoxContributionTrend(
       boxId,
       userId: session.user.id,
       isDeleted: false,
+      isTracking: false,
       date: { gte: start },
     },
     select: { amount: true, direction: true, date: true },
@@ -290,7 +325,12 @@ export async function getBoxesContributionTrend(
   }
 
   const entries = await prisma.boxEntry.findMany({
-    where: { userId: session.user.id, isDeleted: false, date: { gte: start } },
+    where: {
+      userId: session.user.id,
+      isDeleted: false,
+      isTracking: false,
+      date: { gte: start },
+    },
     select: { amount: true, direction: true, date: true },
   });
 
@@ -568,6 +608,125 @@ export async function moveIncomeToBox(
   note?: string,
 ) {
   return moveTransactionToBox("income", incomeId, boxId, note);
+}
+
+// Track a budget transaction against a box WITHOUT moving it: the transaction
+// stays live in the budget and this entry counts toward goal progress but is
+// excluded from the money balance. Expense → OUT, income → IN (for display).
+// One active tracking link per transaction.
+async function trackTransactionToBox(
+  kind: "expense" | "income",
+  transactionId: string,
+  boxId: string,
+  note?: string,
+): Promise<{ success: boolean; error?: string; boxName?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  const userId = session.user.id;
+
+  if (!transactionId || !boxId)
+    return { success: false, error: "Missing transaction or box" };
+
+  const box = await prisma.box.findFirst({
+    where: { id: boxId, userId, isArchived: false },
+  });
+  if (!box) return { success: false, error: "Box not found" };
+
+  const tx =
+    kind === "expense"
+      ? await prisma.expense.findFirst({
+          where: { id: transactionId, userId, isDeleted: false },
+        })
+      : await prisma.income.findFirst({
+          where: { id: transactionId, userId, isDeleted: false },
+        });
+  if (!tx) return { success: false, error: "Transaction not found" };
+
+  // At most one active tracking link per transaction (any box).
+  const existing = await prisma.boxEntry.findFirst({
+    where: {
+      userId,
+      isDeleted: false,
+      isTracking: true,
+      ...(kind === "expense"
+        ? { sourceExpenseId: transactionId }
+        : { sourceIncomeId: transactionId }),
+    },
+  });
+  if (existing)
+    return {
+      success: false,
+      error: "This transaction is already tracked in a box",
+    };
+
+  await prisma.boxEntry.create({
+    data: {
+      boxId: box.id,
+      userId,
+      amount: tx.amount,
+      direction: kind === "expense" ? "OUT" : "IN",
+      source: "MANUAL",
+      isTracking: true,
+      note: note ?? tx.note,
+      date: tx.date,
+      sourceExpenseId: kind === "expense" ? transactionId : null,
+      sourceIncomeId: kind === "income" ? transactionId : null,
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath(
+    kind === "expense" ? "/dashboard/expenses" : "/dashboard/income",
+  );
+  revalidatePath("/dashboard/boxes");
+  revalidatePath("/dashboard/analytics");
+
+  return { success: true, boxName: box.name };
+}
+
+export async function trackExpenseInBox(
+  expenseId: string,
+  boxId: string,
+  note?: string,
+) {
+  return trackTransactionToBox("expense", expenseId, boxId, note);
+}
+
+export async function trackIncomeInBox(
+  incomeId: string,
+  boxId: string,
+  note?: string,
+) {
+  return trackTransactionToBox("income", incomeId, boxId, note);
+}
+
+// Remove a tracking link: soft-delete the tracking entry. The source
+// transaction was never moved, so there is nothing to restore.
+export async function untrackBoxEntry(
+  entryId: string,
+): Promise<{ success: boolean; error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+
+  const entry = await prisma.boxEntry.findFirst({
+    where: {
+      id: entryId,
+      userId: session.user.id,
+      isDeleted: false,
+      isTracking: true,
+    },
+  });
+  if (!entry) return { success: false, error: "Tracking entry not found" };
+
+  await prisma.boxEntry.update({
+    where: { id: entryId },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/boxes");
+  revalidatePath("/dashboard/analytics");
+  return { success: true };
 }
 
 // Reverse a "move to box": restore the source transaction to the budget and

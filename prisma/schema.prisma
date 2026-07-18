@@ -335,6 +335,11 @@ model BoxEntry {
   sourceExpenseId String?
   sourceIncomeId  String?
 
+  // A "tracking" link: the source transaction stays LIVE in the budget and this
+  // entry counts toward goal progress but is EXCLUDED from the money balance
+  // (Σ IN − Σ OUT). Distinct from a "move", which soft-deletes the transaction.
+  isTracking Boolean @default(false)
+
   date DateTime @default(now())
 
   isDeleted Boolean   @default(false)

@@ -25,10 +25,15 @@ import {
   getBoxes,
   moveExpenseToBox,
   moveIncomeToBox,
+  trackExpenseInBox,
+  trackIncomeInBox,
   type BoxView,
 } from "@/lib/actions/boxes";
 import { formatMoney } from "@/lib/budget";
+import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+
+type Mode = "move" | "track";
 
 interface MoveToBoxModalProps {
   kind: "expense" | "income";
@@ -52,6 +57,7 @@ export function MoveToBoxModal({
   const [boxes, setBoxes] = useState<BoxView[] | null>(null);
   const [boxId, setBoxId] = useState("");
   const [noteText, setNoteText] = useState(note ?? "");
+  const [mode, setMode] = useState<Mode>("move");
 
   // Fetch active boxes whenever the modal opens (async-only setState).
   useEffect(() => {
@@ -70,6 +76,7 @@ export function MoveToBoxModal({
     if (!next) {
       setBoxId("");
       setNoteText(note ?? "");
+      setMode("move");
     }
     onOpenChange(next);
   };
@@ -82,14 +89,22 @@ export function MoveToBoxModal({
     const trimmed = noteText.trim() || undefined;
     startTransition(async () => {
       const res =
-        kind === "expense"
-          ? await moveExpenseToBox(transactionId, boxId, trimmed)
-          : await moveIncomeToBox(transactionId, boxId, trimmed);
+        mode === "move"
+          ? kind === "expense"
+            ? await moveExpenseToBox(transactionId, boxId, trimmed)
+            : await moveIncomeToBox(transactionId, boxId, trimmed)
+          : kind === "expense"
+            ? await trackExpenseInBox(transactionId, boxId, trimmed)
+            : await trackIncomeInBox(transactionId, boxId, trimmed);
       if (!res.success) {
-        toast.error(res.error ?? "Failed to move");
+        toast.error(res.error ?? "Failed to save");
         return;
       }
-      toast.success(`Moved to "${res.boxName}"`);
+      toast.success(
+        mode === "move"
+          ? `Moved to "${res.boxName}"`
+          : `Tracked in "${res.boxName}"`,
+      );
       handleOpenChange(false);
       router.refresh();
     });
@@ -101,14 +116,54 @@ export function MoveToBoxModal({
     <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
       <ResponsiveModalContent>
         <ResponsiveModalHeader>
-          <ResponsiveModalTitle>Move to box</ResponsiveModalTitle>
+          <ResponsiveModalTitle>Move or track</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            Moving {formatMoney(amount)} out of your budget and into a box.
-            {kind === "expense"
-              ? " Recorded as a withdrawal (OUT)."
-              : " Recorded as a contribution (IN)."}
+            {mode === "move"
+              ? `Moving ${formatMoney(amount)} out of your budget and into a box.`
+              : `Tracking ${formatMoney(amount)} against a box — it stays in your budget and counts toward the goal.`}
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
+
+        <div className="grid grid-cols-2 gap-2 rounded-lg border p-1">
+          <Button
+            type="button"
+            variant={mode === "move" ? "default" : "ghost"}
+            size="sm"
+            className={cn("h-auto flex-col items-start gap-0.5 py-2 text-left")}
+            onClick={() => setMode("move")}
+          >
+            <span className="text-sm font-medium">Move</span>
+            <span
+              className={cn(
+                "text-[11px] font-normal",
+                mode === "move"
+                  ? "text-primary-foreground/80"
+                  : "text-muted-foreground",
+              )}
+            >
+              Removes from budget
+            </span>
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "track" ? "default" : "ghost"}
+            size="sm"
+            className={cn("h-auto flex-col items-start gap-0.5 py-2 text-left")}
+            onClick={() => setMode("track")}
+          >
+            <span className="text-sm font-medium">Track</span>
+            <span
+              className={cn(
+                "text-[11px] font-normal",
+                mode === "track"
+                  ? "text-primary-foreground/80"
+                  : "text-muted-foreground",
+              )}
+            >
+              Stays in budget
+            </span>
+          </Button>
+        </div>
 
         {boxes === null ? (
           <p className="text-sm text-muted-foreground">Loading boxes…</p>
@@ -146,7 +201,7 @@ export function MoveToBoxModal({
               <Input
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                placeholder="reason for moving"
+                placeholder="optional note"
               />
             </div>
           </div>
@@ -158,7 +213,7 @@ export function MoveToBoxModal({
             disabled={isPending || !hasBoxes || !boxId}
             className="w-full sm:w-auto"
           >
-            Move
+            {mode === "move" ? "Move" : "Track"}
           </Button>
         </ResponsiveModalFooter>
       </ResponsiveModalContent>

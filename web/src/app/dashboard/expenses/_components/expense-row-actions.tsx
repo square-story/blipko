@@ -56,7 +56,7 @@ export function ExpenseRowActions({ expense, categories }: ExpenseRowActionsProp
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setMoveOpen(true)}>
-            Move to box…
+            Move / track to box…
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

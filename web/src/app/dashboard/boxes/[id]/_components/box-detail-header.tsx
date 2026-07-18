@@ -18,9 +18,12 @@ export function BoxDetailHeader({ box }: { box: BoxView }) {
 
   const hasTarget = box.targetAmount != null && box.targetAmount > 0;
   const target = box.targetAmount ?? 0;
-  const reached = hasTarget && box.balance >= target;
-  const pct = hasTarget ? (box.balance / target) * 100 : 0;
-  const remaining = target - box.balance;
+  // Progress toward the goal includes tracked budget spend; the money balance
+  // shown as the headline number does not.
+  const progress = box.balance + box.tracked;
+  const reached = hasTarget && progress >= target;
+  const pct = hasTarget ? (progress / target) * 100 : 0;
+  const remaining = target - progress;
   const ringColor = reached
     ? "text-emerald-500 dark:text-emerald-400"
     : "text-primary";
@@ -64,6 +67,11 @@ export function BoxDetailHeader({ box }: { box: BoxView }) {
                 : `${money(remaining)} to go · target ${money(target)}`
               : "Open fund"}
           </div>
+          {box.tracked > 0 && (
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              incl. {money(box.tracked)} tracked from budget
+            </div>
+          )}
         </div>
       </div>
 

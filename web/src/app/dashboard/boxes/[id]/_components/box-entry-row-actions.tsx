@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   deleteBoxEntry,
   moveBoxEntryBackToBudget,
+  untrackBoxEntry,
   type BoxEntryView,
 } from "@/lib/actions/boxes";
 import { toast } from "@/lib/toast";
@@ -22,6 +23,7 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moveBackOpen, setMoveBackOpen] = useState(false);
+  const [untrackOpen, setUntrackOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   const onDelete = () => {
@@ -48,6 +50,18 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
     });
   };
 
+  const onUntrack = () => {
+    startTransition(async () => {
+      const res = await untrackBoxEntry(entry.id);
+      if (!res.success) {
+        toast.error(res.error ?? "Failed to remove tracking link");
+        return;
+      }
+      toast.success("Tracking link removed");
+      router.refresh();
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -58,10 +72,16 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {entry.movedFrom && (
-            <DropdownMenuItem onSelect={() => setMoveBackOpen(true)}>
-              Move back to budget
+          {entry.isTracking ? (
+            <DropdownMenuItem onSelect={() => setUntrackOpen(true)}>
+              Remove tracking link
             </DropdownMenuItem>
+          ) : (
+            entry.movedFrom && (
+              <DropdownMenuItem onSelect={() => setMoveBackOpen(true)}>
+                Move back to budget
+              </DropdownMenuItem>
+            )
           )}
           <DropdownMenuItem
             className="text-red-600 focus:text-red-600"
@@ -78,6 +98,14 @@ export function BoxEntryRowActions({ entry }: { entry: BoxEntryView }) {
         onConfirm={onMoveBack}
         title="Move back to budget?"
         description="This restores the original transaction to your budget and removes this box entry."
+      />
+
+      <ConfirmDialog
+        open={untrackOpen}
+        onOpenChange={setUntrackOpen}
+        onConfirm={onUntrack}
+        title="Remove tracking link?"
+        description="This stops the transaction from counting toward this goal. The transaction stays in your budget, untouched."
       />
 
       <ConfirmDialog

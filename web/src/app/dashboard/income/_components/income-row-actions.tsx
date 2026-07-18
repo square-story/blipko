@@ -54,7 +54,7 @@ export function IncomeRowActions({ income }: IncomeRowActionsProps) {
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setMoveOpen(true)}>
-            Move to box…
+            Move / track to box…
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
