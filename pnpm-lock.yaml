@@ -180,6 +180,9 @@ importers:
       frimousse:
         specifier: ^0.3.0
         version: 0.3.0(react@19.2.0)(typescript@5.9.3)
+      html-to-image:
+        specifier: ^1.11.13
+        version: 1.11.13
       immer:
         specifier: ^11.0.1
         version: 11.0.1
@@ -3254,6 +3257,9 @@ packages:
 
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
+
+  html-to-image@1.11.13:
+    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
@@ -7902,6 +7908,8 @@ snapshots:
   hermes-parser@0.25.1:
     dependencies:
       hermes-estree: 0.25.1
+
+  html-to-image@1.11.13: {}
 
   http-errors@2.0.1:
     dependencies:

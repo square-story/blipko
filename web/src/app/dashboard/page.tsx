@@ -5,7 +5,9 @@ import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
 import { getNeedsReviewExpenses } from "@/lib/actions/expenses";
 import { getCategories } from "@/lib/actions/categories";
 import { getBoxes } from "@/lib/actions/boxes";
+import { getWrappedStats } from "@/lib/actions/wrapped";
 import { NeedsReviewInbox } from "./_components/needs-review-inbox";
+import { WrappedLauncher } from "./_components/wrapped-launcher";
 import { BoxesSummaryCard } from "./_components/boxes-summary-card";
 import { ConnectTelegramBanner } from "@/components/connect-telegram-banner";
 import {
@@ -62,10 +64,11 @@ async function OverviewSection({
     const needsReviewPromise = getNeedsReviewExpenses();
     const categoriesPromise = getCategories();
 
-    const [needsReview, categories, boxes] = await Promise.all([
+    const [needsReview, categories, boxes, wrapped] = await Promise.all([
         needsReviewPromise,
         categoriesPromise,
         getBoxes(),
+        getWrappedStats(),
     ]);
 
     const currencyFormat = {
@@ -78,8 +81,9 @@ async function OverviewSection({
         <>
             {!hasOnboarded && <Onboarding taxonomy={taxonomy} />}
             {hasOnboarded && <ConnectTelegramBanner />}
+            {hasOnboarded && <WrappedLauncher stats={wrapped} />}
 
-            <NeedsReviewInbox 
+            <NeedsReviewInbox
                 expenses={needsReview} 
                 categories={categories} 
                 currency={currency} 
