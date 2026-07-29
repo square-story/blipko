@@ -26,9 +26,9 @@ interface BucketTrendChartProps {
 }
 
 const chartConfig = {
-    NEEDS: { label: BUCKET_META.NEEDS.label, color: "hsl(var(--chart-1))" },
-    WANTS: { label: BUCKET_META.WANTS.label, color: "hsl(var(--chart-2))" },
-    SAVINGS: { label: BUCKET_META.SAVINGS.label, color: "hsl(var(--chart-3))" },
+    NEEDS: { label: BUCKET_META.NEEDS.label, color: "var(--chart-needs)" },
+    WANTS: { label: BUCKET_META.WANTS.label, color: "var(--chart-wants)" },
+    SAVINGS: { label: BUCKET_META.SAVINGS.label, color: "var(--chart-savings)" },
 } satisfies ChartConfig;
 
 export function BucketTrendChart({ data }: BucketTrendChartProps) {
@@ -50,9 +50,9 @@ export function BucketTrendChart({ data }: BucketTrendChartProps) {
                         />
                         <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
                         <Legend />
-                        <Bar dataKey="NEEDS" fill="#829496" radius={4} />
-                        <Bar dataKey="WANTS" fill="#dba19b" radius={4} />
-                        <Bar dataKey="SAVINGS" fill="#a3b18a" radius={4} />
+                        <Bar dataKey="NEEDS" fill="var(--color-NEEDS)" radius={4} />
+                        <Bar dataKey="WANTS" fill="var(--color-WANTS)" radius={4} />
+                        <Bar dataKey="SAVINGS" fill="var(--color-SAVINGS)" radius={4} />
                     </BarChart>
                 </ChartContainer>
             </CardContent>

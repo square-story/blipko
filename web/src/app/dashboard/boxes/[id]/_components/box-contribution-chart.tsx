@@ -20,8 +20,8 @@ interface BoxContributionChartProps {
 }
 
 const chartConfig = {
-  in: { label: "Added", color: "hsl(var(--chart-3))" },
-  out: { label: "Spent", color: "hsl(var(--chart-2))" },
+  in: { label: "Added", color: "var(--chart-positive)" },
+  out: { label: "Spent", color: "var(--chart-negative)" },
 } satisfies ChartConfig;
 
 export function BoxContributionChart({ data }: BoxContributionChartProps) {
@@ -46,8 +46,8 @@ export function BoxContributionChart({ data }: BoxContributionChartProps) {
               />
               <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
               <Legend />
-              <Bar dataKey="in" name="Added" fill="#a3b18a" radius={4} />
-              <Bar dataKey="out" name="Spent" fill="#dba19b" radius={4} />
+              <Bar dataKey="in" name="Added" fill="var(--color-in)" radius={4} />
+              <Bar dataKey="out" name="Spent" fill="var(--color-out)" radius={4} />
             </BarChart>
           </ChartContainer>
         ) : (

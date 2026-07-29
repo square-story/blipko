@@ -25,8 +25,8 @@ interface IncomeExpenseTrendChartProps {
 }
 
 const chartConfig = {
-  income: { label: "Income", color: "hsl(var(--chart-3))" },
-  spend: { label: "Spending", color: "hsl(var(--chart-2))" },
+  income: { label: "Income", color: "var(--chart-positive)" },
+  spend: { label: "Spending", color: "var(--chart-negative)" },
 } satisfies ChartConfig;
 
 export function IncomeExpenseTrendChart({ data }: IncomeExpenseTrendChartProps) {
@@ -50,8 +50,8 @@ export function IncomeExpenseTrendChart({ data }: IncomeExpenseTrendChartProps) 
             />
             <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
             <Legend />
-            <Bar dataKey="income" name="Income" fill="#a3b18a" radius={4} />
-            <Bar dataKey="spend" name="Spending" fill="#dba19b" radius={4} />
+            <Bar dataKey="income" name="Income" fill="var(--color-income)" radius={4} />
+            <Bar dataKey="spend" name="Spending" fill="var(--color-spend)" radius={4} />
           </BarChart>
         </ChartContainer>
       </CardContent>
