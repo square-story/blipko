@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Bucket } from "@prisma/client";
 import {
   currentBudgetPeriod,
+  periodDayInfo,
   previousCycles,
   median,
   allocateByWeight,
@@ -530,4 +531,177 @@ export async function deleteCategory(
 
   revalidatePath("/dashboard/categories");
   return { success: true };
+}
+
+export type CategoryDetail = CategoryStat & {
+  periodLabel: string;
+  periodStart: Date;
+  periodEnd: Date; // exclusive
+  day: number;
+  daysInPeriod: number;
+  remainingDays: number;
+  txnCount: number;
+  avgTxn: number;
+  largest: { amount: number; note: string | null; date: Date } | null;
+  prevSpend: number; // previous complete cycle
+  deltaPct: number | null; // null when there is nothing to compare against
+  topNotes: { note: string; count: number; total: number }[];
+  currency: string;
+  locale: string;
+};
+
+// Everything the per-category detail page needs about one leaf category, scoped
+// to the current payday cycle so the numbers match the cards on /categories.
+export async function getCategoryDetail(
+  id: string,
+): Promise<CategoryDetail | null> {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  const userId = session.user.id;
+
+  const cat = await ownedCategory(id, userId);
+  // Groups hold no expenses of their own — only leaves get a detail page.
+  if (!cat || cat.isGroup) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { payday: true, currency: true, locale: true },
+  });
+  const payday = user?.payday ?? 1;
+  const { start, end } = currentBudgetPeriod(payday);
+  const { day, daysInPeriod, remainingDays } = periodDayInfo(payday);
+  const prev = previousCycles(payday, 1)[0];
+
+  const [rows, prevAgg] = await Promise.all([
+    prisma.expense.findMany({
+      where: {
+        userId,
+        categoryId: id,
+        isDeleted: false,
+        date: { gte: start, lt: end },
+      },
+      select: { amount: true, note: true, date: true },
+      orderBy: { amount: "desc" },
+    }),
+    prisma.expense.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        categoryId: id,
+        isDeleted: false,
+        date: { gte: prev.start, lt: prev.end },
+      },
+    }),
+  ]);
+
+  // One pass over the cycle's rows covers spend, count, average and the notes
+  // histogram. Notes are freeform from Telegram, so they're keyed case- and
+  // whitespace-insensitively ("Bigbasket weekly" and "bigbasket weekly" are one).
+  let spend = 0;
+  const notes = new Map<
+    string,
+    { note: string; count: number; total: number }
+  >();
+  for (const r of rows) {
+    const amount = Number(r.amount);
+    spend += amount;
+    const raw = r.note?.trim();
+    if (!raw) continue;
+    const hit = notes.get(raw.toLowerCase());
+    if (hit) {
+      hit.count += 1;
+      hit.total += amount;
+    } else {
+      notes.set(raw.toLowerCase(), { note: raw, count: 1, total: amount });
+    }
+  }
+
+  const prevSpend = Number(prevAgg._sum.amount ?? 0);
+  const locale = user?.locale ?? "en-IN";
+  const fmt = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+  });
+
+  return {
+    id: cat.id,
+    name: cat.name,
+    bucket: cat.bucket,
+    isSystem: cat.userId === null,
+    isGroup: cat.isGroup,
+    parentId: cat.parentId,
+    monthlyBudget:
+      cat.monthlyBudget === null ? null : Number(cat.monthlyBudget),
+    budgetLocked: cat.budgetLocked,
+    icon: cat.icon,
+    spend,
+    periodLabel: `${fmt.format(start)} – ${fmt.format(new Date(end.getTime() - 86400000))}`,
+    periodStart: start,
+    periodEnd: end,
+    day,
+    daysInPeriod,
+    remainingDays,
+    txnCount: rows.length,
+    avgTxn: rows.length > 0 ? spend / rows.length : 0,
+    // Rows are ordered by amount, so the first one is the biggest hit.
+    largest: rows[0]
+      ? {
+          amount: Number(rows[0].amount),
+          note: rows[0].note,
+          date: rows[0].date,
+        }
+      : null,
+    prevSpend,
+    deltaPct: prevSpend > 0 ? ((spend - prevSpend) / prevSpend) * 100 : null,
+    // Only repeats are interesting — a list of unique notes is just the table again.
+    topNotes: [...notes.values()]
+      .filter((n) => n.count > 1)
+      .sort((a, b) => b.count - a.count || b.total - a.total)
+      .slice(0, 5),
+    currency: user?.currency ?? "INR",
+    locale,
+  };
+}
+
+// One category's spend per budget cycle, oldest first, with the current partial
+// cycle as the last point. Mirrors getBoxContributionTrend in boxes.ts.
+export async function getCategorySpendTrend(
+  id: string,
+  cycles: number = 6,
+): Promise<{ label: string; spend: number }[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+  const userId = session.user.id;
+
+  const n = Math.min(Math.max(Math.floor(cycles) || 6, 1), 24);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { payday: true, locale: true },
+  });
+  const payday = user?.payday ?? 1;
+  const windows = [
+    ...previousCycles(payday, n - 1).reverse(),
+    currentBudgetPeriod(payday),
+  ];
+
+  const rows = await prisma.expense.findMany({
+    where: {
+      userId,
+      categoryId: id,
+      isDeleted: false,
+      date: { gte: windows[0].start, lt: windows[windows.length - 1].end },
+    },
+    select: { amount: true, date: true },
+  });
+
+  const fmt = new Intl.DateTimeFormat(user?.locale ?? "en-IN", {
+    month: "short",
+    year: "2-digit",
+  });
+  const series = windows.map((w) => ({ label: fmt.format(w.start), spend: 0 }));
+  for (const r of rows) {
+    const i = windows.findIndex((w) => r.date >= w.start && r.date < w.end);
+    if (i >= 0) series[i].spend += Number(r.amount);
+  }
+  return series;
 }

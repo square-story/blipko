@@ -22,6 +22,10 @@ interface ExpenseTableProps {
     total: number;
     categoryOptions: { label: string; value: string }[];
     categories: CategoryStat[];
+    // Pins the table to one category (the /categories/[id] detail page). The
+    // category is then fixed context, not a filter: it stays out of the URL and
+    // its column is hidden, but exports stay scoped to it.
+    lockedCategoryId?: string;
 }
 
 export function ExpenseTable({
@@ -29,6 +33,7 @@ export function ExpenseTable({
     pageCount,
     categoryOptions,
     categories,
+    lockedCategoryId,
 }: ExpenseTableProps) {
     const columns = React.useMemo(
         () => getExpenseColumns(categories),
@@ -72,7 +77,7 @@ export function ExpenseTable({
     const columnFilters = React.useMemo<ColumnFiltersState>(() => {
         const filters: ColumnFiltersState = [];
         if (bucket) filters.push({ id: "bucket", value: bucket.split(".") });
-        if (categoryId)
+        if (categoryId && !lockedCategoryId)
             filters.push({ id: "categoryName", value: categoryId.split(".") });
         if (from || to) {
             filters.push({
@@ -81,7 +86,7 @@ export function ExpenseTable({
             });
         }
         return filters;
-    }, [bucket, categoryId, from, to]);
+    }, [bucket, categoryId, from, to, lockedCategoryId]);
 
     // Derive table sorting state
     const sorting: SortingState = React.useMemo(() => {
@@ -112,11 +117,13 @@ export function ExpenseTable({
             setBucket(null);
         }
 
-        const categoryFilter = newFilters.find((f) => f.id === "categoryName");
-        if (categoryFilter && Array.isArray(categoryFilter.value)) {
-            setCategoryId(categoryFilter.value.join("."));
-        } else {
-            setCategoryId(null);
+        if (!lockedCategoryId) {
+            const categoryFilter = newFilters.find((f) => f.id === "categoryName");
+            if (categoryFilter && Array.isArray(categoryFilter.value)) {
+                setCategoryId(categoryFilter.value.join("."));
+            } else {
+                setCategoryId(null);
+            }
         }
 
         const dateFilter = newFilters.find((f) => f.id === "date");
@@ -138,7 +145,7 @@ export function ExpenseTable({
     const currentFilters: ExpenseFilters = {
         search: search || undefined,
         bucket: bucket || undefined,
-        categoryId: categoryId || undefined,
+        categoryId: lockedCategoryId ?? categoryId ?? undefined,
         from: from || undefined,
         to: to || undefined,
     };
@@ -147,6 +154,10 @@ export function ExpenseTable({
         data,
         columns,
         getCoreRowModel: getCoreRowModel(),
+        // Every row shares the pinned category, so the column carries no signal.
+        initialState: lockedCategoryId
+            ? { columnVisibility: { categoryName: false } }
+            : undefined,
         manualPagination: true,
         manualSorting: true,
         manualFiltering: true,

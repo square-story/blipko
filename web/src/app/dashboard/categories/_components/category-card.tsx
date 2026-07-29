@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -114,7 +115,10 @@ export function CategoryCard({
   return (
     <>
       <div className="relative flex items-center justify-between p-5 rounded-2xl bg-card border shadow-sm overflow-hidden group hover:border-border/80 transition-colors">
-        <div className="flex items-center gap-4 min-w-0">
+        <Link
+          href={`/dashboard/categories/${cat.id}`}
+          className="flex items-center gap-4 min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/50 shrink-0">
             <motion.span
               key={displayIcon}
@@ -129,7 +133,7 @@ export function CategoryCard({
           
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground truncate">{cat.name}</span>
+              <span className="text-sm font-medium text-muted-foreground truncate group-hover:text-foreground transition-colors">{cat.name}</span>
               {cat.budgetLocked && (
                 <Lock className="w-3 h-3 text-muted-foreground/50" />
               )}
@@ -152,8 +156,8 @@ export function CategoryCard({
                </div>
             )}
           </div>
-        </div>
-        
+        </Link>
+
         <div className="flex items-center gap-3 shrink-0">
           <CircularProgress 
             value={pct} 
