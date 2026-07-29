@@ -62,6 +62,7 @@ export function ExpenseTableToolbar<TData>({
                         label: BUCKET_META[b].label,
                         value: b,
                     }))}
+                    multiple
                 />
             )}
             {table.getColumn("categoryName") && categoryOptions.length > 0 && (
@@ -69,6 +70,7 @@ export function ExpenseTableToolbar<TData>({
                     column={table.getColumn("categoryName")}
                     title="Category"
                     options={categoryOptions}
+                    multiple
                 />
             )}
             {table.getColumn("date") && (

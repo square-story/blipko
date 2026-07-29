@@ -121,6 +121,7 @@ export default async function CategoryDetailPage({
             data={expenses.data}
             pageCount={expenses.pageCount}
             total={expenses.total}
+            totalAmount={expenses.totalAmount}
             categoryOptions={[]}
             categories={categories}
             lockedCategoryId={id}

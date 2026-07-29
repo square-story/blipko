@@ -70,6 +70,7 @@ export async function getIncome({
       message: "Unauthorized",
       data: [] as IncomeData[],
       total: 0,
+      totalAmount: 0,
       pageCount: 0,
     };
   }
@@ -94,8 +95,9 @@ export async function getIncome({
   const where = buildWhere(session.user.id, { search, from, to });
 
   try {
-    const [total, incomes] = await Promise.all([
+    const [total, amountAgg, incomes] = await Promise.all([
       prisma.income.count({ where }),
+      prisma.income.aggregate({ where, _sum: { amount: true } }),
       prisma.income.findMany({ where, orderBy, skip, take: limit }),
     ]);
 
@@ -107,7 +109,13 @@ export async function getIncome({
       date: i.date,
     }));
 
-    return { success: true, data, total, pageCount: Math.ceil(total / limit) };
+    return {
+      success: true,
+      data,
+      total,
+      totalAmount: Number(amountAgg._sum.amount ?? 0),
+      pageCount: Math.ceil(total / limit),
+    };
   } catch (error) {
     console.error("Error fetching income:", error);
     return {
@@ -115,6 +123,7 @@ export async function getIncome({
       message: "Failed to fetch income",
       data: [] as IncomeData[],
       total: 0,
+      totalAmount: 0,
       pageCount: 0,
     };
   }

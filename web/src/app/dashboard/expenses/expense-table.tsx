@@ -15,11 +15,13 @@ import { DataTable } from "@/components/data-table/data-table";
 import { getExpenseColumns } from "./_components/columns";
 import { ExpenseTableToolbar } from "./_components/expense-table-toolbar";
 import { ExpenseTableFloatingBar } from "./_components/expense-table-floating-bar";
+import { DataTableAmountTotals } from "@/components/data-table/data-table-amount-totals";
 
 interface ExpenseTableProps {
     data: ExpenseData[];
     pageCount: number;
     total: number;
+    totalAmount: number;
     categoryOptions: { label: string; value: string }[];
     categories: CategoryStat[];
     // Pins the table to one category (the /categories/[id] detail page). The
@@ -31,6 +33,8 @@ interface ExpenseTableProps {
 export function ExpenseTable({
     data,
     pageCount,
+    total,
+    totalAmount,
     categoryOptions,
     categories,
     lockedCategoryId,
@@ -110,6 +114,9 @@ export function ExpenseTable({
         const newFilters =
             typeof updater === "function" ? updater(columnFilters) : updater;
 
+        // The filtered set changes size, so the current page can fall out of range.
+        setPage(1);
+
         const bucketFilter = newFilters.find((f) => f.id === "bucket");
         if (bucketFilter && Array.isArray(bucketFilter.value)) {
             setBucket(bucketFilter.value.join("."));
@@ -186,10 +193,19 @@ export function ExpenseTable({
         },
     });
 
+    const pageTotal = data.reduce((sum, e) => sum + e.amount, 0);
+
     return (
         <DataTable
             table={table}
             actionBar={<ExpenseTableFloatingBar table={table} />}
+            paginationInfo={
+                <DataTableAmountTotals
+                    pageTotal={pageTotal}
+                    total={total}
+                    totalAmount={totalAmount}
+                />
+            }
         >
             <ExpenseTableToolbar table={table} categoryOptions={categoryOptions} filters={currentFilters} />
         </DataTable>

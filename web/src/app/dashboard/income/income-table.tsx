@@ -14,14 +14,21 @@ import { DataTable } from "@/components/data-table/data-table";
 import { columns } from "./_components/columns";
 import { IncomeTableToolbar } from "./_components/income-table-toolbar";
 import { IncomeTableFloatingBar } from "./_components/income-table-floating-bar";
+import { DataTableAmountTotals } from "@/components/data-table/data-table-amount-totals";
 
 interface IncomeTableProps {
   data: IncomeData[];
   pageCount: number;
   total: number;
+  totalAmount: number;
 }
 
-export function IncomeTable({ data, pageCount }: IncomeTableProps) {
+export function IncomeTable({
+  data,
+  pageCount,
+  total,
+  totalAmount,
+}: IncomeTableProps) {
   const [page, setPage] = useQueryState(
     "page",
     parseAsInteger.withDefault(1).withOptions({ shallow: false }),
@@ -78,6 +85,10 @@ export function IncomeTable({ data, pageCount }: IncomeTableProps) {
   const onColumnFiltersChange = (updater: Updater<ColumnFiltersState>) => {
     const newFilters =
       typeof updater === "function" ? updater(columnFilters) : updater;
+
+    // The filtered set changes size, so the current page can fall out of range.
+    setPage(1);
+
     const dateFilter = newFilters.find((f) => f.id === "date");
     if (dateFilter && Array.isArray(dateFilter.value)) {
       const [start, end] = dateFilter.value as (number | undefined)[];
@@ -126,8 +137,20 @@ export function IncomeTable({ data, pageCount }: IncomeTableProps) {
     },
   });
 
+  const pageTotal = data.reduce((sum, i) => sum + i.amount, 0);
+
   return (
-    <DataTable table={table} actionBar={<IncomeTableFloatingBar table={table} />}>
+    <DataTable
+      table={table}
+      actionBar={<IncomeTableFloatingBar table={table} />}
+      paginationInfo={
+        <DataTableAmountTotals
+          pageTotal={pageTotal}
+          total={total}
+          totalAmount={totalAmount}
+        />
+      }
+    >
       <IncomeTableToolbar table={table} filters={currentFilters} />
     </DataTable>
   );

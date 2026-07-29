@@ -23,7 +23,7 @@ export default async function Page({ searchParams }: PageProps) {
   const from = params.from || "";
   const to = params.to || "";
 
-  const { data, total, pageCount } = await getIncome({
+  const { data, total, totalAmount, pageCount } = await getIncome({
     page,
     limit,
     search,
@@ -36,7 +36,12 @@ export default async function Page({ searchParams }: PageProps) {
     <ContentLayout title="Transactions">
       <div className="space-y-4">
         <TransactionsTabs />
-        <IncomeTable data={data} pageCount={pageCount} total={total} />
+        <IncomeTable
+          data={data}
+          pageCount={pageCount}
+          total={total}
+          totalAmount={totalAmount}
+        />
       </div>
     </ContentLayout>
   );

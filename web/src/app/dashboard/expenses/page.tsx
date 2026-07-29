@@ -28,7 +28,7 @@ export default async function Page({ searchParams }: PageProps) {
     const from = params.from || "";
     const to = params.to || "";
 
-    const [{ data, total, pageCount }, categories] = await Promise.all([
+    const [{ data, total, totalAmount, pageCount }, categories] = await Promise.all([
         getExpenses({ page, limit, search, sort, bucket, categoryId, from, to }),
         getCategories(),
     ]);
@@ -46,6 +46,7 @@ export default async function Page({ searchParams }: PageProps) {
                     data={data}
                     pageCount={pageCount}
                     total={total}
+                    totalAmount={totalAmount}
                     categoryOptions={categoryOptions}
                     categories={categories}
                 />

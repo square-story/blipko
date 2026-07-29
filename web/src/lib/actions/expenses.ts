@@ -89,6 +89,7 @@ export async function getExpenses({
       message: "Unauthorized",
       data: [] as ExpenseData[],
       total: 0,
+      totalAmount: 0,
       pageCount: 0,
     };
   }
@@ -119,8 +120,9 @@ export async function getExpenses({
   });
 
   try {
-    const [total, expenses] = await Promise.all([
+    const [total, amountAgg, expenses] = await Promise.all([
       prisma.expense.count({ where }),
+      prisma.expense.aggregate({ where, _sum: { amount: true } }),
       prisma.expense.findMany({
         where,
         include: { category: { select: { name: true } } },
@@ -145,6 +147,7 @@ export async function getExpenses({
       success: true,
       data,
       total,
+      totalAmount: Number(amountAgg._sum.amount ?? 0),
       pageCount: Math.ceil(total / limit),
     };
   } catch (error) {
@@ -154,6 +157,7 @@ export async function getExpenses({
       message: "Failed to fetch expenses",
       data: [] as ExpenseData[],
       total: 0,
+      totalAmount: 0,
       pageCount: 0,
     };
   }

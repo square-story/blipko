@@ -12,6 +12,7 @@ import {
 import { toast } from "@/lib/toast";
 import { ExpenseData, deleteExpenses } from "@/lib/actions/expenses";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { formatMoney } from "@/lib/budget";
 
 interface ExpenseTableFloatingBarProps {
     table: Table<ExpenseData>;
@@ -38,9 +39,16 @@ export function ExpenseTableFloatingBar({
         });
     }, [table]);
 
+    const selectedTotal = table
+        .getFilteredSelectedRowModel()
+        .rows.reduce((sum, row) => sum + row.original.amount, 0);
+
     return (
         <DataTableActionBar table={table}>
             <DataTableActionBarSelection table={table} />
+            <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+                {formatMoney(selectedTotal)}
+            </span>
             <DataTableActionBarAction
                 onClick={() => setConfirmOpen(true)}
                 isPending={isPending}
