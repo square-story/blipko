@@ -106,7 +106,7 @@ export const HomeContent = ({ session, latestChangelog, userCount }: HomeContent
         <div className="mx-auto mt-16 relative">
           <div className="absolute -inset-1 rounded-xl bg-linear-to-r from-primary to-blue-600 opacity-20 blur-xl"></div>
           <Image
-            src="/screenshot03.png"
+            src="/blipko.dashboard.overview.landing.main.webp"
             loading="eager"
             decoding="async"
             alt="Blipko Dashboard"
@@ -202,28 +202,28 @@ const FEATURES = [
     title: "Ask, and it answers",
     body:
       "Send /status for what's left in each bucket and your safe daily spend, or /report for the cycle summary. Blipko can nudge you when a bucket crosses 80% — opt-in, and you pick the volume, from gentle to relentless.",
-    image: "/blipko.telegram.commands.png",
+    image: "/blipko.telegram.landing.main.png",
     alt: "Blipko replying to bot commands inside a Telegram chat",
   },
   {
     title: "Budgets per category, not just per bucket",
     body:
       "Wants covers both your coffee habit and your gym membership. Split it up, pin the budgets you don't want touched, and let Blipko suggest the rest from how you've actually been spending.",
-    image: "/blipko.dashboard.category.section.png",
+    image: "/blipko.category.landing.main.png",
     alt: "Per-category budgets with spend pacing on the Blipko dashboard",
   },
   {
     title: "Rent shouldn't need retyping",
     body:
       "Set a bill once and it posts on its due date every month, income included. Your budget window runs payday to payday, so a salary on the 25th doesn't get split across two months.",
-    image: "/blipko.recurring.overview.png",
+    image: "/blipko.dashboard.recurring.landing.main.png",
     alt: "Recurring bills and income listed on the Blipko dashboard",
   },
   {
     title: "Know what's coming in, not just going out",
     body:
       "Income is tracked alongside spending, so the budget reflects what you actually earned this cycle rather than an assumption. See income against spend and your net at a glance.",
-    image: "/blipko.income.analytics.png",
+    image: "/blipko.dashboard.recurring.landing.main.png",
     alt: "Income versus spending analytics on the Blipko dashboard",
   },
 ] as const;
