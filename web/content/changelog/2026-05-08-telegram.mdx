@@ -1,0 +1,33 @@
+export const meta = {
+  slug: "blipko-moves-to-telegram",
+  title: "Blipko moves to Telegram",
+  date: "2026-05-08",
+  summary:
+    "Blipko now lives in Telegram — no app to install, and your web account links to the bot in one tap.",
+  tags: ["Feature"],
+};
+
+<Img
+  src="/blipko.telegram.profile.png"
+  alt="The Blipko dashboard showing bucket budgets and recent spending"
+  width={1200}
+  height={800}
+  caption="Blipko on telegram. Just say /start"
+/>
+
+Blipko started life on WhatsApp. It now lives in **Telegram**, which means no
+business-API gatekeeping, instant slash commands, and a chat that opens on every
+device you already own.
+
+- **Log spends by chatting.** Send `chai 30` and it's recorded. Malayalam,
+  Manglish and English all work, by text or by voice note.
+- **Slash commands** for the things you do often — `/help` to see everything.
+- **One-tap account linking.** Open the dashboard, tap Connect, and the bot
+  opens already signed in as you. No copying codes between screens.
+
+### Also in this release
+
+- A Kerala-first landing page, written for people budgeting in rupees.
+- Deployed on Railway, so the bot answers immediately instead of cold-starting.
+- Security pass across both the bot and the web app: ownership checks on every
+  record, timing-safe token comparison, and escaped Telegram markdown.

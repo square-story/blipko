@@ -81,6 +81,11 @@ model User {
   isEarlyAdopter Boolean @default(true)
   hasOnboarded   Boolean @default(false)
 
+  // Last time the user opened the in-app changelog panel. Entries dated after
+  // this are "unseen". Null = never opened, in which case createdAt is the
+  // cutoff so new signups aren't nagged about releases predating their account.
+  changelogSeenAt DateTime?
+
   // Onboarding wizard state (null once DONE) + a draft of in-progress choices
   // (captured income, toggled category groups) across button presses.
   onboardingStep  String?

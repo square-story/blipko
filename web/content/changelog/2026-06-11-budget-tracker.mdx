@@ -1,0 +1,56 @@
+export const meta = {
+  slug: "now-a-budget-tracker",
+  title: "Blipko is a budget tracker now",
+  date: "2026-06-11",
+  summary:
+    "Every spend lands in a 50/30/20 bucket, and Blipko tells you what's left before you overspend.",
+  tags: ["Feature"],
+};
+
+Tracking what you spent is only half of it. The question people actually ask is
+_can I afford this?_ — so Blipko now runs a real budget behind every message.
+
+Every expense is sorted into one of three buckets:
+
+- **Needs** — rent, groceries, bills. Target 50% of income.
+- **Wants** — eating out, subscriptions, that impulse buy. Target 30%.
+- **Savings** — what you keep. Target 20%.
+
+<Img
+  src="/blipko.dashboard.category.section.png"
+  alt="The Blipko dashboard showing bucket budgets and recent spending"
+  width={1200}
+  height={800}
+  caption="Blipko dashboard category section showing how they keep in the budget"
+/>
+
+### New commands
+
+- **`/status`** — where each bucket stands and how much you can safely spend per
+  day for the rest of the cycle.
+- **`/report`** — a monthly summary of where the money went.
+- **Undo** — got a number wrong? Undo the last entry from the chat.
+
+<Img
+  src="/blipko.telegram.commands.png"
+  alt="The Blipko dashboard showing bucket budgets and recent spending"
+  width={1200}
+  height={800}
+  caption="Blipko commands rows"
+/>
+
+### Nudges, at your chosen volume
+
+Blipko can warn you as a bucket fills up. You pick the dosage — **off**,
+**gentle**, **aggressive**, or **relentless** — so it's a nudge, not nagging.
+
+<Callout variant="info">
+  Nudges default to **off**. Turn them on from the bot's settings whenever you
+  want them.
+</Callout>
+
+### Fixed
+
+- Linking a Telegram account to an existing web login now merges the two
+  instead of creating a second account, so bot expenses show up in the
+  dashboard straight away.

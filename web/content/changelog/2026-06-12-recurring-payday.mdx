@@ -1,0 +1,43 @@
+export const meta = {
+  slug: "recurring-bills-and-payday-budgeting",
+  title: "Recurring bills, and a budget that starts on payday",
+  date: "2026-06-12",
+  summary:
+    "Set a bill once and Blipko posts it every month — and your budget cycle now runs payday to payday.",
+  tags: ["Feature", "Improvement"],
+};
+
+Rent doesn't need retyping every month, and your money doesn't reset on the 1st
+if you're paid on the 25th.
+
+<Img
+  src="/blipko.recurring.overview.png"
+  alt="The Blipko dashboard showing bucket budgets and recent spending"
+  width={1200}
+  height={800}
+  caption="Your buckets, how full they are, and what's safe to spend today."
+/>
+
+### Recurring rules
+
+Tell the bot `rent 12000 every month` and it becomes a rule. From then on Blipko
+posts it on the due date and tells you it did. Works for income too, so your
+salary lands automatically.
+
+Manage them all from **Dashboard → Recurring**: pause one, change the amount, or
+delete it.
+
+### Your budget follows your payday
+
+Set your payday and the whole budget cycle moves with it. Paid on the 25th? Your
+cycle runs the 25th to the 24th, and `/status` paces your daily spend against
+_that_ window instead of the calendar month. Payday on the 1st behaves exactly
+as before.
+
+### Income, properly tracked
+
+- Income is now first-class: log it by chat, and see it in
+  **Transactions → Income**.
+- Analytics gained an **income vs spending** view with your net for the cycle.
+- Your budget tracks actual income rather than assuming your expected salary —
+  floored at the expected figure, so a slow month doesn't shrink your budget.

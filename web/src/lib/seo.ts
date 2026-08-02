@@ -5,7 +5,7 @@ export const siteConfig = {
   shortName: "Blipko",
   description:
     "Know where your salary goes. Track spending on Telegram in Malayalam, Manglish, or English — by text or voice. Blipko auto-sorts every spend into a 50/30/20 budget and shows what's left. Built for Kerala.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.app",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.lol",
   ogImage: "/opengraph-image.png",
   keywords: [
     "budget tracker Malayalam",
@@ -41,20 +41,32 @@ export function constructMetadata({
   canonical = "",
   noIndex = false,
   keywords = siteConfig.keywords,
+  ogType = "website",
+  publishedTime,
 }: {
   title?: string;
   description?: string;
-  image?: string;
+  /**
+   * Pass `null` to omit og:image/twitter:image entirely, which lets a
+   * file-convention `opengraph-image.tsx` take effect — explicit metadata
+   * always beats the file convention in Next's merge.
+   */
+  image?: string | null;
   canonical?: string;
   noIndex?: boolean;
   keywords?: string[];
+  ogType?: "website" | "article";
+  publishedTime?: string;
 } = {}): Metadata {
   const canonicalUrl = canonical
     ? `${siteConfig.url}${canonical}`
     : siteConfig.url;
-  const imageUrl = image.startsWith("http")
-    ? image
-    : `${siteConfig.url}${image}`;
+  const imageUrl =
+    image === null
+      ? null
+      : image.startsWith("http")
+        ? image
+        : `${siteConfig.url}${image}`;
 
   return {
     metadataBase: new URL(siteConfig.url),
@@ -85,21 +97,26 @@ export function constructMetadata({
 
     // Open Graph
     openGraph: {
-      type: "website",
+      type: ogType,
       locale: "en_US",
       url: canonicalUrl,
       title,
       description,
       siteName: siteConfig.name,
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: title,
-          type: "image/png",
-        },
-      ],
+      ...(ogType === "article" && publishedTime ? { publishedTime } : {}),
+      ...(imageUrl
+        ? {
+            images: [
+              {
+                url: imageUrl,
+                width: 1200,
+                height: 630,
+                alt: title,
+                type: "image/png",
+              },
+            ],
+          }
+        : {}),
     },
 
     // Twitter
@@ -107,7 +124,7 @@ export function constructMetadata({
       card: "summary_large_image",
       title,
       description,
-      images: [imageUrl],
+      ...(imageUrl ? { images: [imageUrl] } : {}),
       creator: "@SadikBuilds",
       site: "@SadikBuilds",
     },
@@ -206,6 +223,94 @@ export function generateFAQSchema(
         text: faq.answer,
       },
     })),
+  };
+}
+
+export function generateArticleSchema({
+  title,
+  description,
+  slug,
+  datePublished,
+  image,
+}: {
+  title: string;
+  description: string;
+  slug: string;
+  datePublished: string;
+  image?: string;
+}) {
+  const url = `${siteConfig.url}/changelog/${slug}`;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: title,
+    description,
+    datePublished,
+    dateModified: datePublished,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    image: image ?? `${siteConfig.url}${siteConfig.ogImage}`,
+    author: {
+      "@type": "Organization",
+      name: siteConfig.creator,
+      url: siteConfig.url,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.publisher,
+      url: siteConfig.url,
+      logo: {
+        "@type": "ImageObject",
+        url: `${siteConfig.url}/Square.png`,
+      },
+    },
+    isPartOf: {
+      "@type": "WebSite",
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+  };
+}
+
+export function generateBreadcrumbSchema(
+  items: { name: string; path: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: `${siteConfig.url}${item.path}`,
+    })),
+  };
+}
+
+export function generateChangelogCollectionSchema(
+  entries: { slug: string; title: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${siteConfig.name} changelog`,
+    description: `Every ${siteConfig.name} release — new features, improvements and fixes.`,
+    url: `${siteConfig.url}/changelog`,
+    isPartOf: {
+      "@type": "WebSite",
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: entries.map((entry, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: entry.title,
+        url: `${siteConfig.url}/changelog/${entry.slug}`,
+      })),
+    },
   };
 }
 

@@ -40,6 +40,9 @@ export const Header = () => {
               <Button asChild className="rounded-full" size="sm" variant="ghost">
                 <Link href="/faq">FAQ</Link>
               </Button>
+              <Button asChild className="rounded-full" size="sm" variant="ghost">
+                <Link href="/changelog">Changelog</Link>
+              </Button>
               <Button asChild className="rounded-full" size="sm">
                 <Link href="/#features">Features</Link>
               </Button>

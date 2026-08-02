@@ -17,6 +17,8 @@ export function Footer() {
       <span className="flex py-2" />
       <div className="mx-auto mb-8 flex flex-col items-center justify-center text-center text-sm gap-3">
         <div className="flex items-center gap-3 text-muted-foreground">
+          <Link href="/changelog" className="hover:text-foreground transition-colors">Changelog</Link>
+          <span>·</span>
           <Link href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
           <span>·</span>
           <Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>

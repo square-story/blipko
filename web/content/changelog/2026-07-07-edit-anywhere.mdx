@@ -1,0 +1,79 @@
+export const meta = {
+  slug: "edit-anything-from-anywhere",
+  title: "Edit anything, from anywhere",
+  date: "2026-07-07",
+  summary:
+    "Fix a wrong amount from the chat or the dashboard, log several spends in one message, and see your budget on every confirmation.",
+  tags: ["Improvement", "Feature"],
+};
+
+Undo was the only correction Blipko understood. Now you can fix things properly,
+from whichever surface you happen to be on.
+
+
+<Img
+  src="/blipko.telegram.chat.edit.and.delete.buttons.png"
+  alt="The Blipko dashboard showing bucket budgets and recent spending"
+  width={1200}
+  height={800}
+  caption="Edit and delete from Telegram, with a confirmation step so nothing
+  vanishes by accident."
+/>
+
+<Img
+  src="/blipko.dashboard.transactions.edit.delete.png"
+  alt="The blipko dashboard transactions page is showing the inline transaction edit and delete Feature"
+  width={1200}
+  height={800}
+  caption="Edit and delete from the dashboard, inline in the transaction tables."
+/>
+
+<Img
+  src="/blipko.telegram.several.transaction.png"
+  alt="The Blipko telegram is showing the several transactions in on message"
+  width={1200}
+  height={800}
+  caption="Several spends in one message."
+/>
+
+<Img
+  src="/blipko.telegram.negative.amount.fix.png"
+  alt="The Blipko dashboard showing bucket budgets and recent spending"
+  width={1200}
+  height={800}
+  caption="Negative amounts are normalized rather than corrupting your totals."
+/>
+
+### Every confirmation shows your budget
+
+When Blipko records a spend it now replies with the category budget _and_ the
+bucket budget it landed in — so you learn where you stand without asking.
+
+### Scheduling that respects your timezone
+
+Nudges, reports and recurring charges all fire against your own timezone, which
+you can change in **Account settings**. No more 3am reminders.
+
+<Img
+  src="/blipko.timezone.preferences.setting.png"
+  alt="Account settings, organised into sections with modal editing"
+  width={1200}
+  height={800}
+  caption="Account settings, reorganised into sections."
+/>
+
+### Also new
+
+- **Connect Telegram by QR** — scan it from your phone instead of typing.
+  The dashboard detects the connection and moves on by itself.
+- **Category emojis**, picked from a proper emoji picker.
+- A **FAQ page**, and a marketing navbar that goes somewhere.
+- Interaction sounds across the dashboard, off by default, with a toggle in
+  settings.
+
+### Fixed
+
+- The transaction date filter works in range mode.
+- Beating your savings target is celebrated instead of flagged red.
+- The Recent Expenses card is usable on a phone.
+- Motion respects `prefers-reduced-motion` throughout.

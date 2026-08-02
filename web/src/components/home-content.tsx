@@ -5,14 +5,16 @@ import { CheckCircle2 } from "lucide-react";
 import type { Session } from "next-auth";
 import { AvatarGroup, AvatarGroupTooltip, AvatarGroupTooltipArrow } from "@/components/animate-ui/primitives/animate/avatar-group";
 import { signInWithGoogle } from "@/actions/auth";
+import { formatDate } from "@/lib/format";
 import { MetalFx } from "metal-fx";
 import Image from "next/image";
 
 interface HomeContentProps {
   session: Session | null;
+  latestChangelog: { slug: string; date: string } | null;
 }
 
-export const HomeContent = ({ session }: HomeContentProps) => {
+export const HomeContent = ({ session, latestChangelog }: HomeContentProps) => {
   return (
     <main className="relative min-h-screen overflow-hidden bg-background">
       {/* Background glow effects */}
@@ -25,9 +27,19 @@ export const HomeContent = ({ session }: HomeContentProps) => {
         <div>
           <p className="text-xs relative font-semibold uppercase tracking-wide text-muted-foreground">
             Blipko for Telegram is here
-            <a href="#_" className="relative text-foreground ml-2 hover:underline">
+            <Link href="/changelog" className="relative text-foreground ml-2 hover:underline">
               <span className="absolute inset-0" aria-hidden="true"></span> See what’s new
-            </a>
+              {/* timeZone UTC: a bare YYYY-MM-DD is UTC midnight, so local
+                  formatting would show the previous day west of UTC.
+                  year: undefined drops the year — the eyebrow is tight. */}
+              {latestChangelog &&
+                ` · ${formatDate(latestChangelog.date, {
+                  timeZone: "UTC",
+                  month: "short",
+                  day: "numeric",
+                  year: undefined,
+                })}`}
+            </Link>
           </p>
           <h1 className="text-4xl md:text-5xl lg:text-6xl mt-8 font-bold tracking-tight text-foreground lg:text-balance leading-tight">
             Powerful tracking,<br />zero hassle.

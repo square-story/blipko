@@ -1,0 +1,54 @@
+export const meta = {
+  slug: "categories-you-control",
+  title: "Categories you control",
+  date: "2026-06-29",
+  summary:
+    "Pick your own categories during onboarding, pin the budgets you don't want touched, and let Blipko suggest the rest.",
+  tags: ["Feature", "Improvement"],
+};
+
+Buckets are a good default. But "Wants" covers both your coffee habit and your
+gym membership, and you probably want to see those separately.
+
+### Onboarding that sets you up properly
+
+A three-step wizard on the web: your income, the category groups that match how
+you actually live, and how loudly you want to be reminded. Blipko builds your
+taxonomy from that and you're tracking in under a minute.
+
+<Img
+  src="/blipko.onboarding.category.png"
+  alt="Category management with per-category budgets and spend pacing"
+  width={1200}
+  height={800}
+  caption="Per-category budgets, with pacing so you can see what's running hot."
+/>
+
+### Pin what matters, auto-balance the rest
+
+- **Pinned budgets** stay exactly where you put them. Rent is rent.
+- **Auto-balance** distributes what's left across everything unpinned,
+  weighted by how you've actually been spending — not evenly.
+- **Suggestions** come from your own history, so a new category starts with a
+  number that isn't a guess.
+
+<Callout variant="warning">
+  Auto-balance never drops a category below a minimum floor, and always asks
+  before it changes anything.
+</Callout>
+
+### `/report` compares cycles now
+
+Your end-of-cycle report shows deltas against the previous cycle — up or down,
+per bucket — and arrives on its own once the cycle closes.
+
+### Fixed
+
+- Group rows no longer show spend or budget of their own, so bucket totals
+  reconcile.
+- Uncategorized spend is visible instead of quietly missing from the total.
+- Early-cycle projections are suppressed until there's enough data to be
+  meaningful, rather than screaming about a single large Monday.
+- Savings is framed as a goal you're progressing toward, not a budget you're
+  breaching.
+- `/help` actually explains everything the bot can do.

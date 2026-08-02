@@ -1,3 +1,4 @@
+import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -21,4 +22,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// No remark/rehype plugins on purpose. Under Turbopack they must be passed as
+// strings, which @next/mdx resolves with require.resolve(p, { paths: [this.context] })
+// — and this.context is a webpack-only loader-context field. Changelog entries
+// carry their metadata as `export const meta`, so no frontmatter plugin is needed.
+const withMDX = createMDX({});
+
+export default withMDX(nextConfig);
