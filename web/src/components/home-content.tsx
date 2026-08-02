@@ -3,18 +3,25 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import type { Session } from "next-auth";
-import { AvatarGroup, AvatarGroupTooltip, AvatarGroupTooltipArrow } from "@/components/animate-ui/primitives/animate/avatar-group";
+import { AvatarGroup } from "@/components/animate-ui/primitives/animate/avatar-group";
 import { signInWithGoogle } from "@/actions/auth";
 import { formatDate } from "@/lib/format";
 import { MetalFx } from "metal-fx";
 import Image from "next/image";
 
+// Below this, the real number reads worse than saying nothing, so the whole
+// cluster is hidden. Avatars are generated art seeded by index — deliberately
+// not real users' profile photos, which we have no consent to publish.
+const SOCIAL_PROOF_MIN_USERS = 25;
+const AVATAR_SEEDS = ["ledger", "rupee", "budget", "payday"];
+
 interface HomeContentProps {
   session: Session | null;
   latestChangelog: { slug: string; date: string } | null;
+  userCount: number;
 }
 
-export const HomeContent = ({ session, latestChangelog }: HomeContentProps) => {
+export const HomeContent = ({ session, latestChangelog, userCount }: HomeContentProps) => {
   return (
     <main className="relative min-h-screen overflow-hidden bg-background">
       {/* Background glow effects */}
@@ -45,7 +52,7 @@ export const HomeContent = ({ session, latestChangelog }: HomeContentProps) => {
             Powerful tracking,<br />zero hassle.
           </h1>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl">
-            Log any spend in plain Malayalam, Manglish, or English — by text or voice. Blipko categorizes it instantly using the 50/30/20 rule.
+            Text your spending to a Telegram bot in Malayalam, Manglish, Hindi or English — or just send a voice note. Blipko sorts every rupee into a 50/30/20 budget and tells you what&apos;s left before you overspend.
           </p>
           <div className="flex flex-wrap mt-8 sm:items-center gap-6">
             {session?.user ? (
@@ -70,34 +77,29 @@ export const HomeContent = ({ session, latestChangelog }: HomeContentProps) => {
               </form>
             )}
 
-            <div className="flex flex-wrap items-center gap-3">
-              <AvatarGroup className="-space-x-3">
-                {[
-                  { seed: "Felix", name: "Felix" },
-                  { seed: "Aneka", name: "Aneka" },
-                  { seed: "Jack", name: "Jack" },
-                  { seed: "Jude", name: "Jude" },
-                ].map((avatar, idx) => (
-                  <div key={idx} className="relative">
+            {userCount >= SOCIAL_PROOF_MIN_USERS && (
+              <div className="flex flex-wrap items-center gap-3">
+                <AvatarGroup className="-space-x-3">
+                  {AVATAR_SEEDS.map((seed) => (
                     <Image
-                      src={`https://api.dicebear.com/10.x/glass/svg?seed=${avatar.seed}`}
-                      alt={avatar.name}
+                      key={seed}
+                      src={`https://api.dicebear.com/10.x/glass/svg?seed=${seed}`}
+                      alt=""
+                      aria-hidden="true"
                       className="inline-block object-cover object-center bg-muted rounded-full size-10 outline-2 outline-border border-2 border-background shadow-sm"
                       width={40}
                       height={40}
                     />
-                    <AvatarGroupTooltip>
-                      <AvatarGroupTooltipArrow />
-                      <p className="text-sm">{avatar.name}</p>
-                    </AvatarGroupTooltip>
-                  </div>
-                ))}
-              </AvatarGroup>
-              <div className="text-xs text-muted-foreground lg:items-center pl-2">
-                <span className="block">Trusted by users</span>
-                <span className="block">who value simplicity</span>
+                  ))}
+                </AvatarGroup>
+                <div className="text-xs text-muted-foreground lg:items-center pl-2">
+                  <span className="block">
+                    Trusted by {userCount.toLocaleString("en-IN")} people
+                  </span>
+                  <span className="block">tracking their spending</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -114,83 +116,114 @@ export const HomeContent = ({ session, latestChangelog }: HomeContentProps) => {
           />
         </div>
 
-        <div className="mt-20 gap-x-6 gap-y-14 lg:gap-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="flex flex-col justify-between h-full" id="features">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">
-                Works out of the box
-              </h3>
-              <p className="text-sm mt-3 text-muted-foreground leading-relaxed">
-                No apps to install, no new logins. Just open your Telegram chat and start typing. Blipko is instantly ready.
-              </p>
-            </div>
-            <ul role="list" className="mt-8 font-medium space-y-3 text-muted-foreground">
-              <li>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-primary" />
-                  <span className="text-sm"> Zero configuration hero </span>
+        {/* id lives on the section, not the first card — /#features anchors here */}
+        <section id="features" className="scroll-mt-24">
+          <div className="mt-20 gap-x-6 gap-y-14 lg:gap-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {PILLARS.map((pillar) => (
+              <div key={pillar.title} className="flex flex-col justify-between h-full">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {pillar.title}
+                  </h3>
+                  <p className="text-sm mt-3 text-muted-foreground leading-relaxed">
+                    {pillar.body}
+                  </p>
                 </div>
-              </li>
-              <li>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-primary" />
-                  <span className="text-sm"> Launch before lunch </span>
-                </div>
-              </li>
-            </ul>
+                <ul role="list" className="mt-8 font-medium space-y-3 text-muted-foreground">
+                  {pillar.bullets.map((bullet) => (
+                    <li key={bullet}>
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="size-5 text-primary shrink-0" />
+                        <span className="text-sm">{bullet}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
 
-          <div className="flex flex-col justify-between h-full">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">
-                Actually helpful features
-              </h3>
-              <p className="text-sm mt-3 text-muted-foreground leading-relaxed">
-                Log any spend in plain Malayalam, Manglish, or English — by text or voice. We categorize it instantly.
-              </p>
-            </div>
-            <ul role="list" className="mt-8 font-medium space-y-3 text-muted-foreground">
-              <li>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-primary" />
-                  <span className="text-sm"> Voice note parsing </span>
+          <div className="mt-28 space-y-24">
+            {FEATURES.map((feature, idx) => (
+              <div
+                key={feature.title}
+                className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16"
+              >
+                <div className={idx % 2 === 1 ? "lg:order-2" : undefined}>
+                  <h3 className="text-2xl font-semibold tracking-tight text-foreground text-balance">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-4 text-muted-foreground leading-relaxed">
+                    {feature.body}
+                  </p>
                 </div>
-              </li>
-              <li>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-primary" />
-                  <span className="text-sm"> 50/30/20 budgeting </span>
+                <div className={idx % 2 === 1 ? "lg:order-1" : undefined}>
+                  <Image
+                    src={feature.image}
+                    alt={feature.alt}
+                    width={1200}
+                    height={800}
+                    sizes="(min-width: 1024px) 36rem, 100vw"
+                    className="w-full h-auto rounded-xl border shadow-lg"
+                  />
                 </div>
-              </li>
-            </ul>
+              </div>
+            ))}
           </div>
-
-          <div className="flex flex-col justify-between h-full">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">
-                Plays nice with others
-              </h3>
-              <p className="text-sm mt-3 text-muted-foreground leading-relaxed">
-                See beautiful analytics in your dashboard, completely synced with your Telegram chat history.
-              </p>
-            </div>
-            <ul role="list" className="mt-8 font-medium space-y-3 text-muted-foreground">
-              <li>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-primary" />
-                  <span className="text-sm"> Real-time sync </span>
-                </div>
-              </li>
-              <li>
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-primary" />
-                  <span className="text-sm"> Beautiful dashboard </span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
+        </section>
       </div>
     </main>
   );
 };
+
+const PILLARS = [
+  {
+    title: "Just say it",
+    body:
+      "Send \"chai 30\" and it's logged. Type or speak in English, Hindi, Manglish or Malayalam — code-mixed is fine, because that's how people actually write.",
+    bullets: ["Text or voice notes", "Several spends in one message"],
+  },
+  {
+    title: "A budget that fits real life",
+    body:
+      "Every spend lands in Needs, Wants or Savings, and the cycle follows your payday instead of resetting on the 1st. Rent and subscriptions post themselves.",
+    bullets: ["50/30/20, fully adjustable", "Recurring bills and income"],
+  },
+  {
+    title: "See the whole picture",
+    body:
+      "The dashboard stays in sync with your chat. Filter your history, watch each category, and set money aside for goals you're actually saving towards.",
+    bullets: ["Analytics and CSV export", "Savings boxes with a ledger"],
+  },
+] as const;
+
+const FEATURES = [
+  {
+    title: "Ask, and it answers",
+    body:
+      "Send /status for what's left in each bucket and your safe daily spend, or /report for the cycle summary. Blipko can nudge you when a bucket crosses 80% — opt-in, and you pick the volume, from gentle to relentless.",
+    image: "/blipko.telegram.commands.png",
+    alt: "Blipko replying to bot commands inside a Telegram chat",
+  },
+  {
+    title: "Budgets per category, not just per bucket",
+    body:
+      "Wants covers both your coffee habit and your gym membership. Split it up, pin the budgets you don't want touched, and let Blipko suggest the rest from how you've actually been spending.",
+    image: "/blipko.dashboard.category.section.png",
+    alt: "Per-category budgets with spend pacing on the Blipko dashboard",
+  },
+  {
+    title: "Rent shouldn't need retyping",
+    body:
+      "Set a bill once and it posts on its due date every month, income included. Your budget window runs payday to payday, so a salary on the 25th doesn't get split across two months.",
+    image: "/blipko.recurring.overview.png",
+    alt: "Recurring bills and income listed on the Blipko dashboard",
+  },
+  {
+    title: "Know what's coming in, not just going out",
+    body:
+      "Income is tracked alongside spending, so the budget reflects what you actually earned this cycle rather than an assumption. See income against spend and your net at a glance.",
+    image: "/blipko.income.analytics.png",
+    alt: "Income versus spending analytics on the Blipko dashboard",
+  },
+] as const;

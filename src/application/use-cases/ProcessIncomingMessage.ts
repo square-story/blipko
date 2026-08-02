@@ -40,6 +40,7 @@ import { QueryProcessor } from "./processors/QueryProcessor";
 import { FallbackProcessor } from "./processors/FallbackProcessor";
 import { BoxProcessor } from "./processors/BoxProcessor";
 import { BoxCommandProcessor } from "./processors/BoxCommandProcessor";
+import { RecurringCommandProcessor } from "./processors/RecurringCommandProcessor";
 import { TransactionActionProcessor } from "./processors/TransactionActionProcessor";
 import { TransactionReplyProcessor } from "./processors/TransactionReplyProcessor";
 import { resolveByConfirmationMessage } from "./transactionActions";
@@ -127,6 +128,7 @@ export class ProcessIncomingMessageUseCase {
         messageService,
       ),
       new BoxCommandProcessor(boxRepository, messageService),
+      new RecurringCommandProcessor(recurringRuleRepository, messageService),
       new UndoProcessor(
         expenseRepository,
         categoryRepository,

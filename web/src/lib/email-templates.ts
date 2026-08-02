@@ -1,3 +1,5 @@
+import { siteConfig } from "./seo";
+
 export type EmailTemplateType = "prelaunch" | "launch" | "update";
 
 interface TemplateResult {
@@ -52,15 +54,9 @@ export function getPrelaunchTemplate(name: string): TemplateResult {
           <h2 style="margin: 0;">Blipko</h2>
         </div>
         <div style="${CONTENT_STYLES}">
-          <h1 style="font-size: 24px; margin-bottom: 20px;">Welcome to the Future of Bookkeeping, ${name}!</h1>
-          <p>Thank you for joining our early access waitlist. We're building the ultimate AI-powered fintech chatbot for WhatsApp, designed to make bookkeeping "Zero-UI" and effortless.</p>
-          
-          <div style="margin: 30px 0; text-align: center;">
-            <img src="https://placehold.co/600x300/png?text=Blipko+Dashboard+Preview" alt="Blipko Preview" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-          </div>
-
-          <p>You are now in line to be among the first to experience Blipko. We will notify you as soon as your spot opens up.</p>
-          <p>In the meantime, get ready to say goodbye to manual data entry!</p>
+          <h1 style="font-size: 24px; margin-bottom: 20px;">You're on the list, ${name}</h1>
+          <p>Thanks for joining Blipko's early access. Blipko is a budget tracker you use by chatting — text a Telegram bot what you spent, in Malayalam, Manglish, Hindi or English, and it sorts every rupee into a 50/30/20 budget.</p>
+          <p>We'll email you as soon as your spot opens up.</p>
         </div>
         <div style="${FOOTER_STYLES}">
           <p>&copy; ${new Date().getFullYear()} Blipko. All rights reserved.</p>
@@ -79,16 +75,12 @@ export function getLaunchTemplate(name: string): TemplateResult {
           <h2 style="margin: 0;">Blipko</h2>
         </div>
         <div style="${CONTENT_STYLES}">
-          <h1 style="font-size: 24px; margin-bottom: 20px;">The Wait is Over, ${name}!</h1>
-          <p>We are thrilled to announce that Blipko is now officially <strong>LIVE</strong>!</p>
-          <p>You can now start using Blipko on WhatsApp to manage your finances with just a text or a voice note.</p>
-
-          <div style="margin: 30px 0; text-align: center;">
-            <img src="https://placehold.co/600x300/png?text=Blipko+Live+Launch" alt="Blipko Live" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-          </div>
+          <h1 style="font-size: 24px; margin-bottom: 20px;">Welcome to Blipko, ${name}</h1>
+          <p>Your account is ready. Blipko lives in Telegram: send it <strong>&ldquo;chai 30&rdquo;</strong> and it's logged, categorised, and counted against your budget — by text or voice note, in Malayalam, Manglish, Hindi or English.</p>
+          <p>Open the dashboard to connect your Telegram account and set your monthly income. It takes about a minute.</p>
 
           <div style="text-align: center;">
-            <a href="https://blipko.com/login" style="${BUTTON_STYLES}">Get Started Now</a>
+            <a href="${siteConfig.url}/dashboard" style="${BUTTON_STYLES}">Open your dashboard</a>
           </div>
         </div>
         <div style="${FOOTER_STYLES}">
@@ -116,12 +108,8 @@ export function getUpdateTemplate(
           <h2 style="font-size: 18px; color: #333;">${updateTitle}</h2>
           <p>${updateBody}</p>
 
-          <div style="margin: 30px 0; text-align: center;">
-             <img src="https://placehold.co/600x300/png?text=New+Features" alt="Update Visual" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-          </div>
-
           <div style="text-align: center;">
-            <a href="https://blipko.com" style="${BUTTON_STYLES}">Check it Out</a>
+            <a href="${siteConfig.url}/changelog" style="${BUTTON_STYLES}">See what's new</a>
           </div>
         </div>
         <div style="${FOOTER_STYLES}">

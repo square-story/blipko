@@ -4,7 +4,7 @@ export const siteConfig = {
   name: "Blipko",
   shortName: "Blipko",
   description:
-    "Know where your salary goes. Track spending on Telegram in Malayalam, Manglish, or English — by text or voice. Blipko auto-sorts every spend into a 50/30/20 budget and shows what's left. Built for Kerala.",
+    "Know where your salary goes. Track spending on Telegram in Malayalam, Manglish, Hindi, or English — by text or voice. Blipko auto-sorts every spend into a 50/30/20 budget and shows what's left. Built for Kerala.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.lol",
   ogImage: "/opengraph-image.png",
   keywords: [
@@ -22,7 +22,7 @@ export const siteConfig = {
   authors: [
     {
       name: "Blipko",
-      url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.app",
+      url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://blipko.lol",
     },
   ],
   creator: "Blipko",
@@ -177,14 +177,8 @@ export function generateWebsiteSchema() {
     name: siteConfig.name,
     url: siteConfig.url,
     description: siteConfig.description,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${siteConfig.url}/?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
+    // No potentialAction/SearchAction: the site has no search. Declaring one
+    // tells Google about a capability that doesn't exist.
   };
 }
 
@@ -200,11 +194,11 @@ export function generateWebApplicationSchema() {
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "INR",
     },
     screenshot: [
-      `${siteConfig.url}/screenshot01.png`,
-      `${siteConfig.url}/screenshot02.png`,
+      `${siteConfig.url}/screenshot03.png`,
+      `${siteConfig.url}/blipko.dashboard.category.section.png`,
     ],
   };
 }
@@ -325,8 +319,8 @@ export function generateSoftwareApplicationSchema() {
     url: siteConfig.url,
     description: siteConfig.description,
     screenshot: [
-      `${siteConfig.url}/screenshot01.png`,
-      `${siteConfig.url}/screenshot02.png`,
+      `${siteConfig.url}/screenshot03.png`,
+      `${siteConfig.url}/blipko.dashboard.category.section.png`,
     ],
     image: `${siteConfig.url}/opengraph-image.png`,
     author: {
@@ -337,25 +331,30 @@ export function generateSoftwareApplicationSchema() {
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "INR",
       availability: "https://schema.org/InStock",
     },
-    softwareVersion: "1.0",
-    datePublished: "2025-01-01",
+    softwareVersion: "1.6",
+    // First public release — the Telegram launch. Earlier dates in this file
+    // were placeholders predating the product.
+    datePublished: "2026-05-08",
     license: "https://opensource.org/licenses/MIT",
-    requirementsUrl: `${siteConfig.url}`,
-    downloadUrl: `${siteConfig.url}`,
-    installUrl: `${siteConfig.url}`,
+    // No downloadUrl/installUrl: there is nothing to download or install.
     browserRequirements: "Requires JavaScript. Requires HTML5.",
     featureList: [
       "Telegram bot interface",
-      "Malayalam and Manglish voice notes",
+      "Malayalam, Manglish, Hindi and English input",
+      "Voice note transcription",
       "Automatic 50/30/20 budgeting",
+      "Payday-to-payday budget cycles",
+      "Per-category budgets",
+      "Recurring bills and income",
+      "Savings goal boxes",
       "Instant budget health check",
       "Overspend nudges",
       "AI-powered expense categorization",
       "Monthly reports",
-      "Web dashboard with analytics",
+      "Web dashboard with analytics and CSV export",
     ],
     keywords: siteConfig.keywords.join(", "),
   };

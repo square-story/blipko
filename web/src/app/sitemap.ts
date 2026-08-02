@@ -25,7 +25,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${siteConfig.url}/faq`,
-      lastModified: new Date("2026-05-16"),
+      lastModified: new Date("2026-08-02"),
       changeFrequency: "monthly",
       priority: 0.7,
     },
@@ -38,13 +38,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     {
       url: `${siteConfig.url}/privacy-policy`,
-      lastModified: new Date("2026-05-16"),
+      lastModified: new Date("2026-08-02"),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
       url: `${siteConfig.url}/terms`,
-      lastModified: new Date("2026-05-16"),
+      lastModified: new Date("2026-08-02"),
       changeFrequency: "monthly",
       priority: 0.5,
     },

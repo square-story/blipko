@@ -12,6 +12,7 @@ const sections = [
     { id: "data-privacy", title: "Data & Privacy", icon: Shield },
     { id: "disclaimer", title: "Disclaimer of Warranties", icon: Scale },
     { id: "liability", title: "Limitation of Liability", icon: Scale },
+    { id: "your-account", title: "Your Account", icon: User },
     { id: "governing-law", title: "Governing Law", icon: ArrowRight },
     { id: "contact", title: "Contact", icon: ArrowRight },
 ];
@@ -71,7 +72,7 @@ export default function TermsPage() {
                                 Blipko is currently in early access — features may change as the service evolves.
                             </p>
                             <div className="mt-8 text-sm text-muted-foreground">
-                                Last updated: May 16, 2026
+                                Effective: August 2, 2026 &middot; Last updated: August 2, 2026
                             </div>
                         </motion.div>
 
@@ -79,7 +80,7 @@ export default function TermsPage() {
                             <Section id="acceptance" title="Acceptance of Terms" delay={0.1}>
                                 <p>
                                     By accessing or using Blipko (the &ldquo;Service&rdquo;), including the Telegram bot and
-                                    web dashboard at blipko.app, you agree to be bound by these Terms of Service.
+                                    web dashboard at blipko.lol, you agree to be bound by these Terms of Service.
                                     If you do not agree, do not use the Service.
                                 </p>
                                 <p className="mt-4">
@@ -94,12 +95,13 @@ export default function TermsPage() {
                                     and a web dashboard. Core capabilities include:
                                 </p>
                                 <ul className="list-disc pl-6 space-y-2 mt-4 text-muted-foreground">
-                                    <li>Natural language expense logging in Malayalam, Manglish, Hindi, and English.</li>
+                                    <li>Natural language expense and income logging in English, Hindi, Hinglish, Malayalam, and Manglish.</li>
                                     <li>Voice-note transcription for hands-free entry using Sarvam AI.</li>
-                                    <li>Recurring dues management with automated Telegram reminders.</li>
-                                    <li>Multi-wallet support (Personal, Business, Savings, and custom wallets).</li>
-                                    <li>Family group expense tracking with invite-code-based membership.</li>
-                                    <li>Web dashboard with analytics, vendor management, and transaction history.</li>
+                                    <li>Automatic 50/30/20 budgeting with payday-to-payday cycles and per-category budgets.</li>
+                                    <li>Recurring bills and income that post automatically, with Telegram notifications.</li>
+                                    <li>Savings boxes for setting money aside towards a goal, with a reversible ledger.</li>
+                                    <li>Opt-in budget nudges at a reminder level you choose.</li>
+                                    <li>Web dashboard with analytics, transaction history, category breakdowns, and CSV export.</li>
                                 </ul>
                                 <p className="mt-4">
                                     The Service is provided &ldquo;as is&rdquo; during early access. Features listed on this page
@@ -147,7 +149,7 @@ export default function TermsPage() {
                                 <ul className="list-disc pl-6 space-y-2 mt-4 text-muted-foreground">
                                     <li>The Service will be uninterrupted, error-free, or secure at all times.</li>
                                     <li>AI-parsed transaction data will be 100% accurate — always verify important entries.</li>
-                                    <li>The Service will be free of bugs, viruses, or other harmful components.</li>
+                                    <li>Voice transcription will correctly capture what you said.</li>
                                 </ul>
                                 <p className="mt-4">
                                     Blipko is a personal finance <em>assistant</em>, not a licensed financial advisor.
@@ -163,9 +165,28 @@ export default function TermsPage() {
                                     to use the Service.
                                 </p>
                                 <p className="mt-4">
-                                    Our total liability to you for any claim arising out of or relating to
-                                    these terms or the Service shall not exceed the amount you paid us in the
-                                    12 months preceding the claim (if any).
+                                    Blipko is provided free of charge. To the maximum extent permitted by
+                                    applicable law, our total liability to you for any claim arising out of
+                                    or relating to these terms or the Service is limited to ₹1,000.
+                                </p>
+                            </Section>
+
+                            <Section id="your-account" title="Your Account" delay={0.65}>
+                                <p>
+                                    You must be at least 18 years old to use Blipko. The Service is not
+                                    intended for children, and we do not knowingly collect data from anyone
+                                    under 18. If you believe a minor has created an account, contact us and
+                                    we will delete it.
+                                </p>
+                                <p className="mt-4">
+                                    You can stop using the Service at any time — unlink the bot from the
+                                    dashboard, or simply stop messaging it. To have your account and all
+                                    associated data deleted, email us at{" "}
+                                    <a href="mailto:sadik.build@gmail.com" className="text-primary underline">
+                                        sadik.build@gmail.com
+                                    </a>{" "}
+                                    and we will action it within 30 days. You can export your transactions
+                                    as CSV from the dashboard before you go.
                                 </p>
                             </Section>
 
@@ -193,7 +214,8 @@ export default function TermsPage() {
                                     <Link href="/privacy-policy" className="text-primary underline">
                                         Privacy Policy
                                     </Link>{" "}
-                                    — grievances are acknowledged within 48 hours and resolved within 30 days.
+                                    — Blipko is run by one person, so we aim to acknowledge grievances within
+                                    a few working days and resolve them within 30 days.
                                 </p>
                             </Section>
                         </div>
