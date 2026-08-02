@@ -3,15 +3,35 @@ import { cloudinaryPosterUrl, cloudinaryVideoUrl } from "@/lib/cloudinary";
 import { MediaFallback } from "./media-fallback";
 
 type MdxVideoProps = {
-  /** Cloudinary public ID, e.g. "blipko/changelog/boxes.mp4" (extension optional). */
-  id: string;
+  /**
+   * Cloudinary public ID (e.g. "blipko/changelog/boxes.mp4"), an absolute
+   * https URL, or a path rooted in public/ (e.g. "/changelog/wrapped.mp4").
+   * Mirrors what <Img> accepts.
+   */
+  id?: string;
+  /** Alias for `id`, to match <Img>'s prop name. */
+  src?: string;
   /** Visible caption. Required — it doubles as the accessible description. */
   caption: string;
-  /** Seconds into the clip to grab the poster frame from. */
+  /** Seconds into the clip to grab the poster frame from (Cloudinary only). */
   posterOffset?: number;
+  /** Explicit poster image. Derived automatically for Cloudinary public IDs. */
+  poster?: string;
   /** WebVTT URL. Only needed when the clip has narration. */
   captions?: string;
 };
+
+const MIME: Record<string, string> = {
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  m4v: "video/mp4",
+};
+
+function mimeFor(url: string): string {
+  const ext = url.split("?")[0]!.split(".").pop()?.toLowerCase() ?? "";
+  return MIME[ext] ?? "video/mp4";
+}
 
 /**
  * A Server Component with zero client JS. `controls` rather than autoplay:
@@ -21,14 +41,29 @@ type MdxVideoProps = {
  */
 export function MdxVideo({
   id,
+  src,
   caption,
   posterOffset = 0,
+  poster,
   captions,
 }: MdxVideoProps) {
-  const mp4 = cloudinaryVideoUrl(id, "mp4");
-  const webm = cloudinaryVideoUrl(id, "webm");
+  const raw = id ?? src ?? "";
+  // Absolute URLs and public/ paths are already resolvable; anything else is a
+  // Cloudinary public ID we can transcode and derive a poster frame from.
+  const isDirect = raw.startsWith("http") || raw.startsWith("/");
 
-  if (!mp4) return <MediaFallback label={caption} />;
+  const sources = isDirect
+    ? [{ src: raw, type: mimeFor(raw) }]
+    : [
+        // webm first: browsers take the first they can play, and VP9 is smaller.
+        { src: cloudinaryVideoUrl(raw, "webm"), type: "video/webm" },
+        { src: cloudinaryVideoUrl(raw, "mp4"), type: "video/mp4" },
+      ].filter((s) => s.src);
+
+  if (sources.length === 0) return <MediaFallback label={caption} />;
+
+  const posterUrl =
+    poster ?? (isDirect ? undefined : cloudinaryPosterUrl(raw, posterOffset));
 
   return (
     <figure className="not-prose my-6 space-y-2">
@@ -39,12 +74,12 @@ export function MdxVideo({
         muted
         playsInline
         preload="metadata"
-        poster={cloudinaryPosterUrl(id, posterOffset) || undefined}
+        poster={posterUrl || undefined}
         aria-label={caption}
       >
-        {/* webm first: browsers take the first they can play, and VP9 is smaller. */}
-        <source src={webm} type="video/webm" />
-        <source src={mp4} type="video/mp4" />
+        {sources.map((source) => (
+          <source key={source.src} src={source.src} type={source.type} />
+        ))}
         {captions ? (
           <track kind="captions" srcLang="en" src={captions} default />
         ) : null}

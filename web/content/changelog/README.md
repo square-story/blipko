@@ -80,9 +80,9 @@ must.
 />
 
 <Video
-  id="blipko/changelog/boxes.mp4"
+  id="blipko/changelog/boxes.mp4"   {/* or src="https://…" or src="/changelog/clip.mp4" */}
   caption="Required — it's the accessible description too."
-  posterOffset={1.5}   {/* seconds; use if frame 0 is black */}
+  posterOffset={1.5}   {/* seconds; Cloudinary public IDs only */}
 />
 
 <Callout variant="info">Also: success, warning, error.</Callout>
@@ -91,6 +91,12 @@ must.
   Collapsed by default.
 </Details>
 ```
+
+Both `<Img>` and `<Video>` take either a **Cloudinary public ID**
+(`blipko/changelog/boxes.mp4`) or something already resolvable — an absolute
+`https://` URL, or a path in `public/` (`/screenshot03.png`). Public IDs get
+`f_auto,q_auto`, a webm alternate, and an auto-derived poster frame; direct URLs
+are used verbatim, so they work with no env var set.
 
 Pass real `width`/`height` on images (Cloudinary's media library shows them) so
 the browser reserves the right space and the page doesn't jump.
