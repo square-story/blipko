@@ -223,7 +223,7 @@ const FEATURES = [
     title: "Know what's coming in, not just going out",
     body:
       "Income is tracked alongside spending, so the budget reflects what you actually earned this cycle rather than an assumption. See income against spend and your net at a glance.",
-    image: "/blipko.dashboard.recurring.landing.main.png",
+    image: "/blipko.dashboard.category.overview.landing.main.webp",
     alt: "Income versus spending analytics on the Blipko dashboard",
   },
 ] as const;
