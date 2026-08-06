@@ -12,8 +12,14 @@ import {
   progressBar,
   sanitizeMd,
 } from "./budgetMath";
+import { zonedStartOfDayUtc } from "../../utils/time";
 
 const SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
+
+// Cycle boundaries are IST midnights, not the runner's local midnight — assert
+// against the instant so these pass in any TZ. Month is 1-based here.
+const ist = (y: number, m: number, d: number) =>
+  zonedStartOfDayUtc(y, m, d, "Asia/Kolkata");
 
 describe("budgetMath", () => {
   it("effective income floors at expected and grows with actual", () => {
@@ -61,38 +67,40 @@ describe("budgetMath", () => {
     // payday=1 → cycles are calendar months. On Jun 10, current cycle is June;
     // the prior complete cycles are May, then April.
     const cycles = previousCycles(1, 2, new Date(2026, 5, 10));
-    expect(cycles[0].start).toEqual(new Date(2026, 4, 1)); // May
-    expect(cycles[0].end).toEqual(new Date(2026, 5, 1));
-    expect(cycles[1].start).toEqual(new Date(2026, 3, 1)); // April
-    expect(cycles[1].end).toEqual(new Date(2026, 4, 1));
+    expect(cycles[0].start).toEqual(ist(2026, 5, 1)); // May
+    expect(cycles[0].end).toEqual(ist(2026, 6, 1));
+    expect(cycles[1].start).toEqual(ist(2026, 4, 1)); // April
+    expect(cycles[1].end).toEqual(ist(2026, 5, 1));
   });
 
   it("previousCycles handles a mid-month payday across month lengths", () => {
     // payday=25: on Jun 26 current cycle is Jun 25–Jul 25; just-ended is May 25–Jun 25.
     const [ended] = previousCycles(25, 1, new Date(2026, 5, 26));
-    expect(ended.start).toEqual(new Date(2026, 4, 25));
-    expect(ended.end).toEqual(new Date(2026, 5, 25));
+    expect(ended.start).toEqual(ist(2026, 5, 25));
+    expect(ended.end).toEqual(ist(2026, 6, 25));
   });
 
   it("payday=1 budget period equals the calendar month", () => {
     const { start, end } = currentBudgetPeriod(1, new Date(2026, 4, 10));
-    expect(start).toEqual(new Date(2026, 4, 1));
-    expect(end).toEqual(new Date(2026, 5, 1));
+    expect(start).toEqual(ist(2026, 5, 1));
+    expect(end).toEqual(ist(2026, 6, 1));
   });
 
   it("payday cycle spans payday→payday across the month boundary", () => {
     // June 12 with payday 25 → cycle is May 25 .. Jun 25
     const before = currentBudgetPeriod(25, new Date(2026, 5, 12));
-    expect(before.start).toEqual(new Date(2026, 4, 25));
-    expect(before.end).toEqual(new Date(2026, 5, 25));
+    expect(before.start).toEqual(ist(2026, 5, 25));
+    expect(before.end).toEqual(ist(2026, 6, 25));
     // June 26 with payday 25 → cycle is Jun 25 .. Jul 25
     const after = currentBudgetPeriod(25, new Date(2026, 5, 26));
-    expect(after.start).toEqual(new Date(2026, 5, 25));
-    expect(after.end).toEqual(new Date(2026, 6, 25));
+    expect(after.start).toEqual(ist(2026, 6, 25));
+    expect(after.end).toEqual(ist(2026, 7, 25));
   });
 
   it("periodDayInfo counts days within the cycle", () => {
-    const info = periodDayInfo(1, new Date(2026, 4, 10)); // May 10, payday 1
+    // May 10 IST, payday 1 — spelled with an offset so the day index doesn't
+    // shift on runners east of IST.
+    const info = periodDayInfo(1, new Date("2026-05-10T12:00:00+05:30"));
     expect(info.day).toBe(10);
     expect(info.daysInPeriod).toBe(31);
     expect(info.remainingDays).toBe(22); // 31 - 10 + 1
