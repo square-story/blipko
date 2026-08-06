@@ -1,6 +1,15 @@
 import { IAiParser, ParseContext } from "../../domain/services/IAiParser";
 import { ParsedBatch } from "../../domain/entities/ParsedData";
 import { withTimeout } from "../../utils/withTimeout";
+import { logger } from "../../utils/logger";
+
+const log = logger.child({ component: "ai" });
+
+// The logger JSON-stringifies its fields, and an Error serializes to `{}` —
+// which would hide the very Zod message that says what the provider got wrong.
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 // A slow/hung provider call must not block the webhook indefinitely.
 const PARSE_TIMEOUT_MS = 12_000;
@@ -22,10 +31,11 @@ export class FallbackAiParser implements IAiParser {
         "OpenAI parser",
       );
     } catch (error) {
-      console.warn(
-        "Primary AI parser (OpenAI) failed. Falling back to secondary (Gemini).",
-        error,
-      );
+      log.warn("primary parser failed, falling back", {
+        provider: "openai",
+        fallback: "gemini",
+        err: describeError(error),
+      });
       try {
         return await withTimeout(
           this.secondary.parseText(text, ctx),
@@ -33,10 +43,10 @@ export class FallbackAiParser implements IAiParser {
           "Gemini parser",
         );
       } catch (secondaryError) {
-        console.error(
-          "Secondary AI parser (Gemini) also failed.",
-          secondaryError,
-        );
+        log.error("secondary parser also failed", {
+          provider: "gemini",
+          err: describeError(secondaryError),
+        });
         // Both failed — return a safe, low-confidence UNKNOWN so the bot can
         // ask the user to try again rather than crashing.
         return {

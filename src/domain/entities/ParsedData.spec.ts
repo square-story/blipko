@@ -85,4 +85,14 @@ describe("ParsedBatchSchema", () => {
     const result = ParsedBatchSchema.safeParse({ transactions: [] });
     expect(result.success).toBe(false);
   });
+
+  it("rejects a bare transaction with no envelope", () => {
+    // What a schema-free provider returns when it copies a per-transaction
+    // example instead of the envelope.
+    const result = ParsedBatchSchema.safeParse({
+      intent: "QUERY",
+      confidence: 0.9,
+    });
+    expect(result.success).toBe(false);
+  });
 });
