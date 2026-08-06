@@ -6,6 +6,9 @@ import {
 } from "../../domain/entities/ParsedData";
 import { buildBudgetSystemPrompt } from "./budgetParserPrompt";
 import { env } from "../../config/env";
+import { logger } from "../../utils/logger";
+
+const log = logger.child({ component: "ai", provider: "gemini" });
 
 // Per-transaction structured-output schema enforced by Gemini.
 const transactionSchema: Schema = {
@@ -108,19 +111,13 @@ export class GeminiParser implements IAiParser {
     const today = new Date().toISOString().split("T")[0];
     const promptText = `[Today: ${today}]\n${text}`;
 
-    const historyContents = (ctx.history ?? []).map((h) => ({
-      role: h.role,
-      parts: [{ text: h.content }],
-    }));
-
     const response = await this.client.models.generateContent({
       model: this.modelName,
-      contents: [
-        ...historyContents,
-        { role: "user", parts: [{ text: promptText }] },
-      ],
+      // History lives inside the system instruction as a bounded data block,
+      // not as real model turns — see historyBlock.ts.
+      contents: [{ role: "user", parts: [{ text: promptText }] }],
       config: {
-        systemInstruction: buildBudgetSystemPrompt(ctx.categories),
+        systemInstruction: buildBudgetSystemPrompt(ctx.categories, ctx.history),
         responseMimeType: "application/json",
         responseSchema: budgetSchema,
         temperature: 0.1,
@@ -128,7 +125,7 @@ export class GeminiParser implements IAiParser {
     });
 
     const responseText = response?.text;
-    console.log("GeminiParser Response:", responseText);
+    log.debug("parser response", { responseText });
     if (!responseText) {
       throw new Error("GeminiParser: Empty response from AI.");
     }
