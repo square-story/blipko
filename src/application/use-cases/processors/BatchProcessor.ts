@@ -82,6 +82,8 @@ export class BatchProcessor implements MessageProcessor {
     }[] = [];
     let firstExpenseId: string | undefined;
     let recordedIncome = false;
+    // Counted, not flagged per line — a marker on every row would bury the summary.
+    let newCategories = 0;
 
     const deps = {
       expenseRepository: this.expenseRepository,
@@ -151,18 +153,22 @@ export class BatchProcessor implements MessageProcessor {
         continue;
       }
 
-      const { expense, categoryLabel } = await recordExpense(deps, {
-        user,
-        platformUserId,
-        amount: item.amount,
-        bucket,
-        rawText: textMessage,
-        confidence: item.confidence,
-        note: item.note,
-        categoryId: leaf?.id,
-        categoryName: leaf?.name ?? item.category,
-        batchId,
-      });
+      const { expense, categoryLabel, createdCategory } = await recordExpense(
+        deps,
+        {
+          user,
+          platformUserId,
+          amount: item.amount,
+          bucket,
+          rawText: textMessage,
+          confidence: item.confidence,
+          note: item.note,
+          categoryId: leaf?.id,
+          categoryName: leaf?.name ?? item.category,
+          batchId,
+        },
+      );
+      if (createdCategory) newCategories++;
       firstExpenseId ??= expense.id;
       const bucketSpent = await this.expenseRepository.sumByBucketForMonth(
         user.id,
@@ -205,6 +211,11 @@ export class BatchProcessor implements MessageProcessor {
 
     const parts: string[] = [];
     if (logged.length) parts.push(logged.join("\n"));
+    if (newCategories > 0) {
+      parts.push(
+        `   · ${newCategories} new categor${newCategories === 1 ? "y" : "ies"} — review in the dashboard`,
+      );
+    }
     if (budgetLine) parts.push(budgetLine);
     if (dropped > 0) {
       parts.push(

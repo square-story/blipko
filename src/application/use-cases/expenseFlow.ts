@@ -5,6 +5,7 @@ import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfig
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { txnCb } from "./txnCallback";
+import { normalizeCategoryName } from "./categoryName";
 import {
   BUCKET_META,
   bucketBudget,
@@ -100,19 +101,26 @@ export function buildBucketBudgetLine(
 // resolves to a group, it stays uncategorized (still lands in the right bucket).
 // Returns the category's own bucket too, so an edit can re-derive the bucket
 // from a changed category (create keeps its caller-supplied bucket).
+// `createdCategory` lets the caller tell the user a new category was invented.
 export async function resolveExpenseCategory(
   categoryRepository: ICategoryRepository,
   userId: string,
   bucket: Bucket,
-  name?: string | undefined,
+  rawName?: string | undefined,
 ): Promise<{
   categoryId?: string | undefined;
   categoryLabel: string;
   bucket: Bucket;
+  createdCategory: boolean;
 }> {
+  // An unusable name (blank, or a whole sentence) is treated as no category —
+  // the expense stays uncategorized rather than writing junk to the DB.
+  const name = normalizeCategoryName(rawName);
+
   let categoryId: string | undefined;
   let categoryLabel = name ?? "General";
   let resolvedBucket = bucket;
+  let createdCategory = false;
   if (name) {
     const existing = await categoryRepository.findByNameForUser(userId, name);
     if (existing && !existing.isGroup) {
@@ -125,9 +133,10 @@ export async function resolveExpenseCategory(
       const created = await categoryRepository.create({ userId, name, bucket });
       categoryId = created.id;
       categoryLabel = created.name;
+      createdCategory = true;
     }
   }
-  return { categoryId, categoryLabel, bucket: resolvedBucket };
+  return { categoryId, categoryLabel, bucket: resolvedBucket, createdCategory };
 }
 
 // Creates the expense and returns it plus the resolved category label. No
@@ -135,13 +144,18 @@ export async function resolveExpenseCategory(
 export async function recordExpense(
   deps: ExpenseFlowDeps,
   args: RecordExpenseArgs,
-): Promise<{ expense: Expense; categoryLabel: string }> {
+): Promise<{
+  expense: Expense;
+  categoryLabel: string;
+  createdCategory: boolean;
+}> {
   const { user, amount, bucket } = args;
 
   // Use a known leaf id when the caller already resolved one; otherwise
   // find-or-create by name (bucket stays the caller-supplied one).
   let categoryId = args.categoryId;
   let categoryLabel = args.categoryName ?? "General";
+  let createdCategory = false;
   if (!categoryId && args.categoryName) {
     const resolved = await resolveExpenseCategory(
       deps.categoryRepository,
@@ -151,6 +165,7 @@ export async function recordExpense(
     );
     categoryId = resolved.categoryId;
     categoryLabel = resolved.categoryLabel;
+    createdCategory = resolved.createdCategory;
   }
 
   const expense = await deps.expenseRepository.create({
@@ -166,8 +181,13 @@ export async function recordExpense(
     batchId: args.batchId,
   });
 
-  return { expense, categoryLabel };
+  return { expense, categoryLabel, createdCategory };
 }
+
+// Shown once when a spend invents a category, so the user can fix it while it's
+// still fresh instead of finding stray rows on the dashboard weeks later.
+export const NEW_CATEGORY_LINE =
+  "   · new category — rename or set a budget in the dashboard";
 
 // Creates the expense, sends the confirmation + remaining-budget line, and links
 // the confirmation message for later reply/undo. Shared by ExpenseProcessor
@@ -178,7 +198,10 @@ export async function recordExpenseAndReply(
 ): Promise<string> {
   const { user, amount, bucket } = args;
 
-  const { expense, categoryLabel } = await recordExpense(deps, args);
+  const { expense, categoryLabel, createdCategory } = await recordExpense(
+    deps,
+    args,
+  );
 
   const { start, end } = currentBudgetPeriod(user.payday);
 
@@ -226,6 +249,7 @@ export async function recordExpenseAndReply(
   const response = [
     buildExpenseLine(bucket, categoryLabel, amount),
     categoryLine,
+    createdCategory ? NEW_CATEGORY_LINE : null,
     buildBucketBudgetLine(bucket, remaining, budget, remainingDays),
   ]
     .filter(Boolean)
