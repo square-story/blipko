@@ -60,6 +60,7 @@ export class ReportProcessor implements MessageProcessor {
       loggedIncome,
     );
     const monthName = new Intl.DateTimeFormat("en-IN", {
+      timeZone: user.timezone,
       month: "long",
     }).format(start);
 

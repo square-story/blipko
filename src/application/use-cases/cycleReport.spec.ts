@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { buildCycleReport } from "./cycleReport";
+import { zonedParts } from "../../utils/time";
 
 // payday=1 → calendar-month cycles. On Jun 10 the ended cycle is May, prior is April.
 const NOW = new Date(2026, 5, 10);
 const user = { id: "u1", monthlyIncome: 50000, payday: 1 };
 
-// Distinguish ended (May, month 4) from prior (April, month 3) by the range start.
-const isEnded = (start: Date) => start.getMonth() === 4;
+// Distinguish ended (May) from prior (April) by the range start. Read in IST —
+// the boundary is that zone's midnight, which is the prior month in UTC.
+const isEnded = (start: Date) => zonedParts(start, "Asia/Kolkata").month === 5;
 
 describe("buildCycleReport", () => {
   let expenseRepository: any;

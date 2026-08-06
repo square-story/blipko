@@ -36,12 +36,23 @@ export interface CycleReport {
   endedKey: string; // period key of the ended cycle — idempotency scope
 }
 
-// "May" for calendar-month cycles (payday=1), else "May 25 – Jun 25".
-function cycleLabel(start: Date, end: Date, payday: number): string {
+// "May" for calendar-month cycles (payday=1), else "May 25 – Jun 25". Formats in
+// `tz` — the boundaries are that zone's midnights, so the server's clock must not
+// decide which month they land in.
+function cycleLabel(
+  start: Date,
+  end: Date,
+  payday: number,
+  tz: string,
+): string {
   if (payday <= 1) {
-    return new Intl.DateTimeFormat("en-IN", { month: "long" }).format(start);
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: tz,
+      month: "long",
+    }).format(start);
   }
   const fmt = new Intl.DateTimeFormat("en-IN", {
+    timeZone: tz,
     month: "short",
     day: "numeric",
   });
@@ -189,7 +200,7 @@ export async function buildCycleReport(
   }
 
   const { up, down } = await movers(deps, user.id, ended, prior);
-  const label = cycleLabel(ended.start, ended.end, payday);
+  const label = cycleLabel(ended.start, ended.end, payday, tz);
   const net = endedIncome - totalSpent;
 
   // Headline: overall spend vs last cycle, framed for a decision.
