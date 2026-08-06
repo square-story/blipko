@@ -8,6 +8,8 @@ import { IRecurringRuleRepository } from "../../../domain/repositories/IRecurrin
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { BUCKET_META, formatMoney, sanitizeMd } from "../budgetMath";
+import { normalizeCategoryName } from "../categoryName";
+import { NEW_CATEGORY_LINE } from "../expenseFlow";
 
 const MAX_AMOUNT = 1_000_000_000;
 
@@ -63,23 +65,24 @@ export class RecurringSetupProcessor implements MessageProcessor {
     }
 
     // EXPENSE: resolve category; a known category's bucket is authoritative.
-    const matched = parsed.category
-      ? await this.categoryRepository.findByNameForUser(
-          user.id,
-          parsed.category,
-        )
+    // An unusable name is dropped rather than written to the DB.
+    const name = normalizeCategoryName(parsed.category);
+    const matched = name
+      ? await this.categoryRepository.findByNameForUser(user.id, name)
       : null;
     const bucket: Bucket = matched?.bucket ?? parsed.bucket ?? "NEEDS";
     let categoryId = matched?.id;
-    let categoryName = matched?.name ?? parsed.category;
-    if (!categoryId && parsed.category) {
+    let categoryName = matched?.name ?? name;
+    let createdCategory = false;
+    if (!categoryId && name) {
       const created = await this.categoryRepository.create({
         userId: user.id,
-        name: parsed.category,
+        name,
         bucket,
       });
       categoryId = created.id;
       categoryName = created.name;
+      createdCategory = true;
     }
 
     const rule = await this.recurringRuleRepository.create({
@@ -93,11 +96,12 @@ export class RecurringSetupProcessor implements MessageProcessor {
     });
 
     const where = categoryName ? ` · ${sanitizeMd(categoryName)}` : "";
+    const newCategory = createdCategory ? `\n${NEW_CATEGORY_LINE}` : "";
     return this.finish(
       platformUserId,
       rule.id,
       day,
-      `🔁 Recurring set: ${formatMoney(amount)} → ${BUCKET_META[bucket].label}${where} on day ${day} — I'll auto-log it each month.`,
+      `🔁 Recurring set: ${formatMoney(amount)} → ${BUCKET_META[bucket].label}${where} on day ${day} — I'll auto-log it each month.${newCategory}`,
     );
   }
 

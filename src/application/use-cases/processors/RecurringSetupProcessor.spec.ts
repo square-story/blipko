@@ -87,6 +87,57 @@ describe("RecurringSetupProcessor", () => {
     ]);
   });
 
+  it("flags a newly-invented category in the confirmation", async () => {
+    categoryRepository.create.mockResolvedValue({
+      id: "c9",
+      name: "Gym",
+      bucket: "WANTS",
+    });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "gym 1200 every month on 25th",
+      parsed: {
+        intent: "RECURRING",
+        recurringKind: "EXPENSE",
+        amount: 1200,
+        dayOfMonth: 25,
+        category: "Gym",
+        bucket: "WANTS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(categoryRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Gym", bucket: "WANTS" }),
+    );
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("new category");
+  });
+
+  it("drops an over-long category name instead of writing it", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "something 500 every month on 25th",
+      parsed: {
+        intent: "RECURRING",
+        recurringKind: "EXPENSE",
+        amount: 500,
+        dayOfMonth: 25,
+        category: "x".repeat(51),
+        bucket: "NEEDS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(categoryRepository.create).not.toHaveBeenCalled();
+    expect(recurringRuleRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 500, categoryId: undefined }),
+    );
+  });
+
   it("creates a recurring income with no prompt when the day is still ahead", async () => {
     await processor.process({
       user,

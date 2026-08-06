@@ -102,6 +102,82 @@ describe("ExpenseProcessor", () => {
     expect(parseLogRepository.create).not.toHaveBeenCalled();
   });
 
+  it("flags a newly-invented category in the reply", async () => {
+    categoryRepository.create.mockResolvedValue({
+      id: "c9",
+      name: "Biriyani",
+      isGroup: false,
+    });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "biriyani 250",
+      parsed: {
+        intent: "EXPENSE",
+        amount: 250,
+        category: "Biriyani",
+        bucket: "WANTS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(categoryRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Biriyani", bucket: "WANTS" }),
+    );
+    expect(messageService.sendInteractiveMessage.mock.calls[0][1]).toContain(
+      "new category",
+    );
+  });
+
+  it("stays quiet when the category already exists", async () => {
+    categoryRepository.findByNameForUser.mockResolvedValue({
+      id: "cF",
+      name: "Food",
+      isGroup: false,
+      bucket: "WANTS",
+    });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "dosa 60",
+      parsed: {
+        intent: "EXPENSE",
+        amount: 60,
+        category: "Food",
+        bucket: "WANTS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(categoryRepository.create).not.toHaveBeenCalled();
+    expect(
+      messageService.sendInteractiveMessage.mock.calls[0][1],
+    ).not.toContain("new category");
+  });
+
+  it("drops an over-long category name instead of writing it", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "paid 500",
+      parsed: {
+        intent: "EXPENSE",
+        amount: 500,
+        category: "x".repeat(51),
+        bucket: "NEEDS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(categoryRepository.create).not.toHaveBeenCalled();
+    // The expense still lands, just uncategorized in the parsed bucket.
+    expect(expenseRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 500, bucket: "NEEDS" }),
+    );
+  });
+
   it("rejects a NaN amount without writing anything", async () => {
     await processor.process({
       user,

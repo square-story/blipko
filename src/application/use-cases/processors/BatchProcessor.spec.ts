@@ -134,6 +134,82 @@ describe("BatchProcessor", () => {
     );
   });
 
+  it("counts invented categories in one footer instead of per line", async () => {
+    // "Food" exists; "Dosa" does not.
+    categoryRepository.findByNameForUser.mockImplementation(
+      async (_userId: string, name: string) =>
+        name === "Food"
+          ? { id: "cF", name: "Food", isGroup: false, bucket: "WANTS" }
+          : null,
+    );
+    categoryRepository.create.mockResolvedValue({
+      id: "c9",
+      name: "Dosa",
+      isGroup: false,
+    });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "chai 30, dosa 60",
+      parsedBatch: {
+        transactions: [
+          {
+            intent: "EXPENSE",
+            amount: 30,
+            category: "Food",
+            bucket: "WANTS",
+            confidence: 0.9,
+          },
+          {
+            intent: "EXPENSE",
+            amount: 60,
+            category: "Dosa",
+            bucket: "WANTS",
+            confidence: 0.9,
+          },
+        ],
+      },
+    } as any);
+
+    const summary = messageService.sendInteractiveMessage.mock.calls[0][1];
+    expect(categoryRepository.create).toHaveBeenCalledTimes(1);
+    expect(summary).toContain("1 new category");
+    expect(summary).not.toContain("new categories");
+    // One footer, not one marker per logged line.
+    expect(summary.match(/new categor/g)).toHaveLength(1);
+  });
+
+  it("pluralizes the new-category footer", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "dosa 60, idli 40",
+      parsedBatch: {
+        transactions: [
+          {
+            intent: "EXPENSE",
+            amount: 60,
+            category: "Dosa",
+            bucket: "WANTS",
+            confidence: 0.9,
+          },
+          {
+            intent: "EXPENSE",
+            amount: 40,
+            category: "Idli",
+            bucket: "WANTS",
+            confidence: 0.9,
+          },
+        ],
+      },
+    } as any);
+
+    expect(messageService.sendInteractiveMessage.mock.calls[0][1]).toContain(
+      "2 new categories",
+    );
+  });
+
   it("stages ambiguous expenses and asks in one grouped follow-up", async () => {
     await processor.process({
       user,
