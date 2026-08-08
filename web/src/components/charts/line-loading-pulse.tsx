@@ -1,6 +1,12 @@
 "use client";
 
-import { animate, motion, useMotionValue, useTransform } from "motion/react";
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "motion/react";
 import { useEffect, useId } from "react";
 import { chartCssVars, useChartStable } from "./chart-context";
 import type { ChartPhase } from "./chart-phase";
@@ -51,6 +57,7 @@ function useGrowExitClip(
   loopEpoch: number,
   onComplete?: () => void
 ) {
+  const prefersReducedMotion = useReducedMotion();
   const progress = useMotionValue(0);
   const paddedFullWidth = innerWidth + CLIP_PADDING * 2;
   const rightEdge = innerWidth + CLIP_PADDING;
@@ -95,6 +102,23 @@ function useGrowExitClip(
         onComplete: finish,
       });
     };
+
+    // Local addition: the registry checks prefers-reduced-motion in the sweep
+    // loading style but not in this one — and "pulse" is the default for both
+    // <Line> and <Area>, so the default loading animation ignored the setting
+    // entirely. Matches the patches in bar.tsx and pie-slice.tsx. Re-apply
+    // after a `shadcn add @bklit/line-chart` or `@bklit/area-chart`.
+    if (prefersReducedMotion) {
+      // 0.5 is the fully-grown clip: the skeleton line shows in full, still.
+      progress.set(0.5);
+      // The exit and enter handoffs must still report completion or the phase
+      // machine stalls mid-transition. The loop deliberately does not — it
+      // would re-arm every 280ms forever for no visible benefit.
+      if (mode !== "loop") {
+        finish();
+      }
+      return;
+    }
 
     if (mode === "loop") {
       progress.set(0);
@@ -145,7 +169,7 @@ function useGrowExitClip(
         controls?.stop();
       };
     }
-  }, [innerWidth, loopEpoch, mode, onComplete, progress]);
+  }, [innerWidth, loopEpoch, mode, onComplete, prefersReducedMotion, progress]);
 
   return { clipX, clipWidth };
 }

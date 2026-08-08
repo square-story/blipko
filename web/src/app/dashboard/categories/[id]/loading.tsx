@@ -1,5 +1,6 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartCardLoading } from "@/components/analytics/chart-skeleton";
 
 export default function Loading() {
   return (
@@ -11,7 +12,13 @@ export default function Loading() {
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
-        <Skeleton className="h-[380px] w-full rounded-2xl" />
+        {/* Matches the CategorySpendChart card this stands in for. */}
+        <ChartCardLoading
+          title="Spend over time"
+          description="This category per budget cycle"
+          variant="bars"
+          message="Loading this category's history…"
+        />
         <div className="space-y-3">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
