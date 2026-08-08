@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CircularProgress } from "@/components/ui/circular-progress";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import { TONE, type Tone } from "@/lib/chart-palette";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/budget";
@@ -13,7 +13,13 @@ import { BoxEntryModal } from "../../_components/box-entry-modal";
 
 const money = (n: number) => formatMoney(n);
 
-export function BoxDetailHeader({ box }: { box: BoxView }) {
+export function BoxDetailHeader({
+  box,
+  currency,
+}: {
+  box: BoxView;
+  currency?: string;
+}) {
   const router = useRouter();
   const refresh = () => router.refresh();
 
@@ -31,9 +37,21 @@ export function BoxDetailHeader({ box }: { box: BoxView }) {
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-card border shadow-sm p-5">
       <div className="flex items-center gap-4 min-w-0">
         {hasTarget ? (
-          <CircularProgress value={pct} size={64} strokeWidth={5} tone={tone} />
+          // No pace mark: a savings target has no cycle to be on track within,
+          // unlike a budget that resets each payday.
+          <BudgetGauge
+            pct={pct}
+            tone={tone === "primary" ? "neutral" : tone}
+            centerValue={progress}
+            label="saved"
+            currency={currency}
+            size={120}
+            ariaLabel={`${box.name} progress toward target`}
+          />
         ) : (
-          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 text-2xl shrink-0">
+          // Matches the gauge's footprint so the header does not reflow
+          // depending on whether a target is set.
+          <div className="flex items-center justify-center w-[120px] h-[120px] rounded-full bg-muted/50 text-3xl shrink-0">
             {box.icon || "📦"}
           </div>
         )}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CircularProgress } from "@/components/ui/circular-progress";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import { categoryPacing, BUCKET_META, formatMoney } from "@/lib/budget";
 import { TONE, type Tone } from "@/lib/chart-palette";
 import { cn } from "@/lib/utils";
@@ -60,9 +60,25 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-card border shadow-sm p-5">
         <div className="flex items-center gap-4 min-w-0">
           {hasLimit ? (
-            <CircularProgress value={pct} size={64} strokeWidth={5} tone={tone} />
+            <BudgetGauge
+              pct={pct}
+              tone={tone === "primary" ? "neutral" : tone}
+              pacePct={
+                detail.daysInPeriod > 0
+                  ? Math.min(100, (detail.day / detail.daysInPeriod) * 100)
+                  : undefined
+              }
+              centerValue={detail.spend}
+              label="spent"
+
+              currency={detail.currency}
+              size={120}
+              ariaLabel={`${detail.name} budget used`}
+            />
           ) : (
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 text-2xl shrink-0">
+            // Matches the gauge's footprint so the header does not reflow
+            // depending on whether a budget is set.
+            <div className="flex items-center justify-center w-[120px] h-[120px] rounded-full bg-muted/50 text-3xl shrink-0">
               {displayIcon}
             </div>
           )}

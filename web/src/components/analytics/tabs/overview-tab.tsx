@@ -7,6 +7,7 @@ import { ChartInsight } from "@/components/analytics/chart-insight";
 import { BurnDownChart } from "@/components/analytics/charts/burn-down-chart";
 import { BucketMixChart } from "@/components/analytics/charts/bucket-mix-chart";
 import { Meter } from "@/components/ui/meter";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import {
   Card,
   CardContent,
@@ -40,6 +41,13 @@ export async function OverviewTab({ range }: { range: number }) {
   const money = (n: number) => formatMoney(n, meta.currency, meta.locale);
   const cycle = meta.cycles[meta.cycles.length - 1];
   const noSpend = current.spend === 0 && current.income === 0;
+  // How far through the cycle we are — the "you should be about here" mark on
+  // each bucket gauge. Null on day 0 of a zero-length cycle, which can't happen
+  // in practice but would otherwise divide by zero.
+  const pacePct =
+    current.daysInPeriod > 0
+      ? Math.min(100, (current.day / current.daysInPeriod) * 100)
+      : null;
 
   return (
     <>
@@ -121,25 +129,33 @@ export async function OverviewTab({ range }: { range: number }) {
         <Card>
           <CardHeader>
             <CardTitle>Buckets</CardTitle>
-            <CardDescription>Where this cycle&apos;s budget stands</CardDescription>
+            <CardDescription>
+              {pacePct === null
+                ? "Where this cycle's budget stands"
+                : `Where this cycle's budget stands — the mark is day ${current.day} of ${current.daysInPeriod}`}
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="grid grid-cols-3 gap-2">
             {byBucket.map((b) => (
-              <Link key={b.bucket} href={b.href} className="block">
-                <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="font-medium">{b.label}</span>
-                  <span className="font-mono tabular-nums text-muted-foreground">
-                    {money(b.spent)}
-                    {b.budget !== null && ` / ${money(b.budget)}`}
-                  </span>
-                </div>
-                <Meter
-                  value={b.pct}
+              <Link
+                key={b.bucket}
+                href={b.href}
+                className="flex flex-col items-center gap-1 rounded-lg p-1 transition-colors hover:bg-muted/50"
+              >
+                <BudgetGauge
+                  pct={b.pct}
                   tone={b.budget === null ? "neutral" : toneForSpend(b.pct)}
-                  className="mt-2"
-                  animate
-                  label={`${b.label} budget used`}
+                  // No budget means nothing to pace against.
+                  pacePct={b.budget === null ? undefined : (pacePct ?? undefined)}
+                  centerValue={b.spent}
+                  label={b.label}
+                  currency={meta.currency}
+                  size={132}
+                  ariaLabel={`${b.label} budget used`}
                 />
+                <span className="text-center font-mono text-xs tabular-nums text-muted-foreground">
+                  {b.budget === null ? "no budget" : `of ${money(b.budget)}`}
+                </span>
               </Link>
             ))}
           </CardContent>

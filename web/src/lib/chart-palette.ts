@@ -86,6 +86,17 @@ export const TONE: Record<Tone, string> = {
   neutral: "text-muted-foreground",
 };
 
+// The CSS-colour form of TONE. SVG fills cannot take a Tailwind class, so a
+// gauge arc needs the raw var(). Not --chart-over-budget for the overspent
+// case: that token is a 12-16% alpha wash meant as a background band behind
+// cartesian charts, and as a notch fill it is all but invisible.
+export const TONE_FILL: Record<Tone, string> = {
+  positive: "var(--success-foreground)",
+  negative: "var(--error-foreground)",
+  caution: "var(--warning-foreground)",
+  neutral: "var(--muted-foreground)",
+};
+
 export const TONE_BG: Record<Tone, string> = {
   positive: "bg-success-foreground",
   negative: "bg-error-foreground",

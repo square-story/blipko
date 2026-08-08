@@ -56,7 +56,7 @@ export default async function BoxDetailPage({ params, searchParams }: PageProps)
       ]}
     >
       <div className="flex flex-col gap-6">
-        <BoxDetailHeader box={box} />
+        <BoxDetailHeader box={box} currency={settings.currency} />
         <ChartCard
           title="Contributions"
           description="Money added and taken out, per budget cycle"
