@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { BUCKET_META } from "@/lib/budget";
-import { Meter } from "@/components/ui/meter";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import { TONE } from "@/lib/chart-palette";
 import { CategoryCard } from "./category-card";
 import type {
@@ -24,7 +24,6 @@ interface BucketSectionProps {
   bucket: Bucket;
   overview: BucketOverview;
   categories: CategoryStat[];
-  groupNameById: Map<string, string>;
   suggestionById: Map<string, CategorySuggestion>;
   money: (n: number) => string;
   day: number;
@@ -95,10 +94,18 @@ export const BucketSection = ({
                 : `${money(remaining)} left`}
           </span>
         </div>
-        <Meter
-          value={pct}
+        <BudgetGauge
+          pct={pct}
           tone={over ? "negative" : "primary"}
-          label={`${meta.label} budget used`}
+          orientation="linear"
+          // The mark is where you'd be if you spent evenly. Hidden without a
+          // budget, since there is then nothing to pace against.
+          pacePct={
+            budget > 0 && daysInPeriod > 0
+              ? Math.min(100, (day / daysInPeriod) * 100)
+              : undefined
+          }
+          ariaLabel={`${meta.label} budget used`}
         />
         <p className="text-xs text-muted-foreground tabular-nums">
           {money(spent)} {isSavings ? "saved" : "spent"} of {money(budget)}
@@ -148,8 +155,8 @@ export const BucketSection = ({
         </div>
       )}
 
-      {/* Flat list of the bucket's categories; the group is a subtle tag per row,
-          not a sub-header (groups can span buckets, which made headers confusing). */}
+      {/* Flat list of the bucket's leaf categories. Groups never reach here —
+          page.tsx filters them out, and they can't hold a budget anyway. */}
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No categories in this bucket yet.

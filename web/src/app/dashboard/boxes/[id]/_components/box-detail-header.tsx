@@ -41,7 +41,7 @@ export function BoxDetailHeader({
           // unlike a budget that resets each payday.
           <BudgetGauge
             pct={pct}
-            tone={tone === "primary" ? "neutral" : tone}
+            tone={tone}
             centerValue={progress}
             label="saved"
             currency={currency}

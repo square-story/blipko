@@ -68,12 +68,6 @@ export default function CategoriesPage() {
   const daysInPeriod = overview?.daysInPeriod ?? 30;
   const remainingDays = overview?.remainingDays ?? 1;
 
-  const groupNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const c of categories) if (c.isGroup) m.set(c.id, c.name);
-    return m;
-  }, [categories]);
-
   // Only leaf categories are spendable/budgetable; group rows are organization
   // only and never render as categories.
   const leaves = useMemo(
@@ -192,7 +186,6 @@ export default function CategoriesPage() {
                       pct: ov?.pct ?? 0,
                     }}
                     categories={inBucket}
-                    groupNameById={groupNameById}
                     suggestionById={suggestionById}
                     money={money}
                     day={day}

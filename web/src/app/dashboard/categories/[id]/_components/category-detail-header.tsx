@@ -62,7 +62,7 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
           {hasLimit ? (
             <BudgetGauge
               pct={pct}
-              tone={tone === "primary" ? "neutral" : tone}
+              tone={tone}
               pacePct={
                 detail.daysInPeriod > 0
                   ? Math.min(100, (detail.day / detail.daysInPeriod) * 100)
