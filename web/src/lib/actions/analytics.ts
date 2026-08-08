@@ -11,7 +11,6 @@ import {
   DEFAULT_SPLIT,
   bucketBudget,
   categoryPacing,
-  currentMonthRange,
   effectiveMonthlyIncome,
   pctSpent,
   type BudgetSplit,
@@ -182,9 +181,19 @@ export interface CyclePacing {
 export type BurnDownRow = {
   day: number;
   dateLabel: string;
-  actual: number | null; // cumulative spend; null for days not yet reached
-  ideal: number | null; // straight-line pace; null without a budget
-  projected: number | null; // run-rate continuation, from today onward
+  /**
+   * One continuous series: real cumulative spend up to today, then the current
+   * run-rate extended to the end of the cycle. The chart renders the forecast
+   * half dashed rather than plotting it as a second line.
+   *
+   * Deliberately never null. bklit's Line maps a non-number to pixel y=0, so a
+   * gap would draw a spike to the top of the plot rather than a break.
+   */
+  spent: number;
+  /** Straight-line pace that lands exactly on budget. 0 when there is none. */
+  ideal: number;
+  /** Marks where the forecast starts, for dashing. */
+  isForecast: boolean;
 };
 
 export type BucketTrendRow = {
@@ -361,27 +370,30 @@ export async function getOverviewAnalytics(
     };
   });
 
-  // Burn-down: cumulative actual against a straight line, with the run-rate
-  // extended from today to the end of the cycle.
-  const idealPerDay = budget === null ? null : budget / current.days;
+  // Burn-down: cumulative actual to date, continuing as the current run-rate
+  // for the rest of the cycle.
+  const idealPerDay = budget === null ? 0 : budget / current.days;
   let running = 0;
   const burnDown: BurnDownRow[] = [];
   for (let d = 1; d <= current.days; d++) {
     const reached = d <= day;
     if (reached) running += spendByDay[d] ?? 0;
-    const dateLabel = zonedYmd(
-      new Date(current.start.getTime() + (d - 1) * 86_400_000),
-      ctx.timezone,
-    );
     burnDown.push({
       day: d,
-      dateLabel,
-      actual: reached ? running : null,
-      ideal: idealPerDay === null ? null : idealPerDay * d,
-      // Only drawn from today onward, so it reads as a forecast rather than a
-      // second history line.
-      projected:
-        !wholePacing.reliable || d < day ? null : wholePacing.dailyRate * d,
+      dateLabel: zonedYmd(
+        new Date(current.start.getTime() + (d - 1) * 86_400_000),
+        ctx.timezone,
+      ),
+      // Past days carry the real running total. Future days continue at the
+      // observed daily rate — flat once too little of the cycle has elapsed for
+      // that rate to mean anything, rather than projecting off two data points.
+      spent: reached
+        ? running
+        : wholePacing.reliable
+          ? wholePacing.dailyRate * d
+          : running,
+      ideal: idealPerDay * d,
+      isForecast: !reached,
     });
   }
 
@@ -654,8 +666,11 @@ export type CategoryMoverRow = {
   delta: number;
   deltaPct: number | null;
   direction: MoverDirection;
-  // Split so each side can carry its own fill; Bar takes a single colour, so a
-  // signed one-series diverging bar isn't expressible.
+  /**
+   * Magnitude of the change, split by direction so each side gets its own fill
+   * — Bar takes a single colour. Both are positive: a negative value produces a
+   * negative SVG rect width, which the browser rejects outright.
+   */
   increase: number;
   decrease: number;
   href: string | null;
@@ -778,7 +793,7 @@ export async function getCategoryAnalytics(
             deltaPct,
             direction,
             increase: delta > 0 ? delta : 0,
-            decrease: delta < 0 ? delta : 0,
+            decrease: delta < 0 ? Math.abs(delta) : 0,
             href:
               id === UNCATEGORIZED_ID
                 ? null
@@ -1067,134 +1082,5 @@ export async function getHabitAnalytics(
     insights: {
       weekday: weekdayInsight(rows, ctx.currency, ctx.locale),
     },
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Legacy
-//
-// Still consumed by the current analytics page. Removed once the tabbed page
-// lands; it buckets by server-local calendar month and labels with a hardcoded
-// "en-IN", which is what the actions above replace.
-// ---------------------------------------------------------------------------
-
-export async function getAnalyticsData(months: number = 6) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/");
-  }
-
-  months = Math.min(Math.max(1, Math.floor(months)), 24);
-
-  const userId = session.user.id;
-  const now = new Date();
-  const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { currency: true },
-  });
-  const currency = user?.currency ?? "INR";
-
-  const [expenses, incomes] = await Promise.all([
-    prisma.expense.findMany({
-      where: { userId, isDeleted: false, date: { gte: startDate } },
-      select: { date: true, amount: true, bucket: true },
-    }),
-    prisma.income.findMany({
-      where: { userId, isDeleted: false, date: { gte: startDate } },
-      select: { date: true, amount: true },
-    }),
-  ]);
-
-  type MonthEntry = {
-    month: string;
-    NEEDS: number;
-    WANTS: number;
-    SAVINGS: number;
-  };
-  const monthMap = new Map<string, MonthEntry>();
-  const incomeMap = new Map<string, number>();
-
-  for (let i = 0; i < months; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1) + i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("en-IN", {
-      month: "short",
-      year: "2-digit",
-    });
-    monthMap.set(key, { month: label, NEEDS: 0, WANTS: 0, SAVINGS: 0 });
-    incomeMap.set(key, 0);
-  }
-
-  for (const e of expenses) {
-    const key = `${e.date.getFullYear()}-${String(e.date.getMonth() + 1).padStart(2, "0")}`;
-    const entry = monthMap.get(key);
-    if (!entry) continue;
-    entry[e.bucket as Bucket] += Number(e.amount);
-  }
-
-  for (const i of incomes) {
-    const key = `${i.date.getFullYear()}-${String(i.date.getMonth() + 1).padStart(2, "0")}`;
-    if (incomeMap.has(key))
-      incomeMap.set(key, incomeMap.get(key)! + Number(i.amount));
-  }
-
-  const monthlyTrend = Array.from(monthMap.values());
-
-  const incomeExpenseTrend = Array.from(monthMap.entries()).map(([key, m]) => {
-    const spend = m.NEEDS + m.WANTS + m.SAVINGS;
-    const income = incomeMap.get(key) ?? 0;
-    return { month: m.month, income, spend, net: income - spend };
-  });
-
-  const { start, end } = currentMonthRange(now);
-  const categoryGroups = await prisma.expense.groupBy({
-    by: ["categoryId"],
-    _sum: { amount: true },
-    where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-  });
-
-  const categoryIds = categoryGroups
-    .map((g) => g.categoryId)
-    .filter((id): id is string => !!id);
-  const categories = categoryIds.length
-    ? await prisma.category.findMany({
-        where: { id: { in: categoryIds } },
-        select: { id: true, name: true },
-      })
-    : [];
-  const nameById = new Map(categories.map((c) => [c.id, c.name]));
-
-  const categoryBreakdown = categoryGroups
-    .map((g) => ({
-      name: g.categoryId
-        ? (nameById.get(g.categoryId) ?? "Uncategorized")
-        : "Uncategorized",
-      value: Number(g._sum.amount ?? 0),
-    }))
-    .filter((c) => c.value > 0)
-    .sort((a, b) => b.value - a.value);
-
-  const topCategories = categoryBreakdown.slice(0, 5);
-
-  const incomeAgg = await prisma.income.aggregate({
-    _sum: { amount: true },
-    where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-  });
-  const incomeThisMonth = Number(incomeAgg._sum.amount ?? 0);
-  const spentThisMonth = categoryBreakdown.reduce((s, c) => s + c.value, 0);
-  const netThisMonth = incomeThisMonth - spentThisMonth;
-
-  return {
-    monthlyTrend,
-    incomeExpenseTrend,
-    buckets: BUCKETS,
-    categoryBreakdown,
-    topCategories,
-    incomeThisMonth,
-    spentThisMonth,
-    netThisMonth,
-    currency,
   };
 }

@@ -309,49 +309,6 @@ export async function getBoxContributionTrend(
   return rows;
 }
 
-// Aggregate monthly IN vs OUT across ALL the user's boxes for the last `months`
-// — powers the analytics "box contributions" chart.
-export async function getBoxesContributionTrend(
-  months = 6,
-): Promise<{ month: string; in: number; out: number }[]> {
-  const session = await auth();
-  if (!session?.user?.id) return [];
-
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
-
-  const map = new Map<string, { month: string; in: number; out: number }>();
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    map.set(key, {
-      month: d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
-      in: 0,
-      out: 0,
-    });
-  }
-
-  const entries = await prisma.boxEntry.findMany({
-    where: {
-      userId: session.user.id,
-      isDeleted: false,
-      isTracking: false,
-      date: { gte: start },
-    },
-    select: { amount: true, direction: true, date: true },
-  });
-
-  for (const e of entries) {
-    const key = `${e.date.getFullYear()}-${e.date.getMonth()}`;
-    const row = map.get(key);
-    if (!row) continue;
-    if (e.direction === "IN") row.in += Number(e.amount);
-    else row.out += Number(e.amount);
-  }
-
-  return [...map.values()];
-}
-
 // Resolve an optional linked category: must be the user's own leaf category.
 async function resolveLinkedCategory(
   userId: string,
