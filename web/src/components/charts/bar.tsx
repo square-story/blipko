@@ -2,7 +2,7 @@
 
 import type { scaleBand } from "@visx/scale";
 import type { Transition } from "motion/react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { memo, useId, useMemo } from "react";
 import { barDepthAndRise, barDepthMaxDepth } from "./bar-depth-geometry";
 import {
@@ -181,7 +181,7 @@ const BarInner = memo(function BarInner({
   yAxisId,
   fill = chartCssVars.linePrimary,
   lineCap = "round",
-  animate = true,
+  animate: animateProp = true,
   animationType = "grow",
   fadedOpacity = 0.3,
   staggerDelay,
@@ -193,6 +193,13 @@ const BarInner = memo(function BarInner({
   bandWidth,
   barXAccessor,
 }: BarInnerProps) {
+  // Local addition: the registry does not check prefers-reduced-motion for the
+  // bar grow animation (only the line path and grid shimmer do). The rest of
+  // this app honours the setting, so bars must too. Re-apply after a
+  // `shadcn add @bklit/bar-chart`.
+  const prefersReducedMotion = useReducedMotion();
+  const animate = animateProp && !prefersReducedMotion;
+
   const {
     data,
     yScale: chartYScale,

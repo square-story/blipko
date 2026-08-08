@@ -1,7 +1,7 @@
 "use client";
 
 import { arc as arcGenerator } from "@visx/shape";
-import { motion, useSpring, useTransform } from "motion/react";
+import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { memo, useEffect } from "react";
 import { usePieHover, usePieStable } from "./pie-context";
 import { useEnterComplete } from "./use-enter-complete";
@@ -324,11 +324,16 @@ export const PieSlice = memo(function PieSlice({
   index,
   color: colorProp,
   fill: fillProp,
-  animate = true,
+  animate: animateProp = true,
   showGlow = true,
   hoverEffect = "translate",
   hoverOffset: hoverOffsetProp,
 }: PieSliceProps) {
+  // Local addition: the registry does not check prefers-reduced-motion for the
+  // slice sweep. Re-apply after a `shadcn add @bklit/pie-chart`.
+  const prefersReducedMotion = useReducedMotion();
+  const animate = animateProp && !prefersReducedMotion;
+
   const {
     arcs,
     innerRadius,
