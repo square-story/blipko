@@ -188,6 +188,17 @@
   --chart-crosshair: oklch(0.55 0 0);
   --chart-grid: oklch(0.9 0 0);
   --chart-brush-border: var(--chart-grid);
+
+  /* Directional fills for money in vs out. --chart-1..5 is a categorical ramp
+     with no green/red pair, and the semantic --success-foreground /
+     --error-foreground are tuned as text on a tinted chip — at the scale of a
+     full bar they read as stoplights. These carry the same hues at lower
+     chroma so a chart of them is legible rather than loud. */
+  --chart-flow-in: oklch(0.62 0.11 155);
+  --chart-flow-out: oklch(0.62 0.13 25);
+  /* Wash behind an exceeded budget. Strong enough to read as a zone, weak
+     enough that bars stay the subject. */
+  --chart-over-budget: oklch(0.62 0.13 25 / 0.12);
 }
 
 .dark {
@@ -247,6 +258,12 @@
   --chart-label: oklch(0.75 0 0);
   --chart-crosshair: oklch(0.55 0 0);
   --chart-grid: oklch(0.25 0 0);
+
+  /* Lifted for the dark canvas: the light-mode values sit too close to the
+     background to read as fills. */
+  --chart-flow-in: oklch(0.72 0.13 155);
+  --chart-flow-out: oklch(0.68 0.15 25);
+  --chart-over-budget: oklch(0.68 0.15 25 / 0.16);
 }
 
 @layer base {

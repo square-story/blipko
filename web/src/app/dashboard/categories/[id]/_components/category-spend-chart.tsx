@@ -1,95 +1,58 @@
-"use client";
+// Server wrapper: the card chrome, empty state and caption stay here so the
+// chart itself is pure composition and the only thing shipped to the client.
+// Path and export name are unchanged, so categories/[id]/page.tsx is untouched.
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ReferenceLine,
-  XAxis,
-} from "recharts";
 import type { Bucket } from "@prisma/client";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
+import { ChartCard } from "@/components/analytics/chart-card";
+import { CategorySpendBars } from "@/components/analytics/charts/category-spend-bars";
+import { deltaInsight } from "@/lib/insights";
 
 interface CategorySpendChartProps {
   data: { label: string; spend: number }[];
   bucket: Bucket;
   budget: number | null;
+  currency?: string;
+  locale?: string;
 }
-
-const BUCKET_COLOR: Record<Bucket, string> = {
-  NEEDS: "var(--chart-needs)",
-  WANTS: "var(--chart-wants)",
-  SAVINGS: "var(--chart-savings)",
-};
 
 export function CategorySpendChart({
   data,
   bucket,
   budget,
+  currency = "INR",
+  locale = "en-IN",
 }: CategorySpendChartProps) {
   const hasActivity = data.some((d) => d.spend > 0);
   const hasBudget = budget != null && budget > 0;
-  const chartConfig = {
-    spend: { label: "Spent", color: BUCKET_COLOR[bucket] },
-  } satisfies ChartConfig;
+
+  // Compare the two most recent cycles. SAVINGS inverts: spending toward the
+  // target is the goal, so more is better.
+  const current = data[data.length - 1]?.spend ?? 0;
+  const previous = data[data.length - 2]?.spend ?? 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Spend over time</CardTitle>
-        <CardDescription>
-          This category per budget cycle
-          {hasBudget ? " — dashed line is the monthly limit" : ""}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {hasActivity ? (
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
-            <BarChart accessibilityLayer data={data}>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-              />
-              <ChartTooltip
-                content={<ChartTooltipContent indicator="dashed" />}
-              />
-              {hasBudget && (
-                <ReferenceLine
-                  y={budget}
-                  stroke="currentColor"
-                  className="text-muted-foreground"
-                  strokeDasharray="4 4"
-                />
-              )}
-              <Bar
-                dataKey="spend"
-                name="Spent"
-                fill="var(--color-spend)"
-                radius={4}
-              />
-            </BarChart>
-          </ChartContainer>
-        ) : (
-          <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
-            No spend recorded yet in this category.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <ChartCard
+      title="Spend over time"
+      description={`This category per budget cycle${hasBudget ? " — the shaded band is over the monthly limit" : ""}`}
+      isEmpty={!hasActivity}
+      emptyLabel="No spend recorded yet in this category."
+      insight={deltaInsight({
+        label: "This category",
+        current,
+        previous,
+        currency,
+        locale,
+        higherIsWorse: bucket !== "SAVINGS",
+        materialFloor: previous * 0.02,
+      })}
+    >
+      <CategorySpendBars
+        data={data}
+        bucket={bucket}
+        budget={budget}
+        currency={currency}
+        locale={locale}
+      />
+    </ChartCard>
   );
 }

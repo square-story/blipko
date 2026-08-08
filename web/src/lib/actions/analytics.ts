@@ -179,15 +179,15 @@ export interface CyclePacing {
   reliable: boolean;
 }
 
-export interface BurnDownRow {
+export type BurnDownRow = {
   day: number;
   dateLabel: string;
   actual: number | null; // cumulative spend; null for days not yet reached
   ideal: number | null; // straight-line pace; null without a budget
   projected: number | null; // run-rate continuation, from today onward
-}
+};
 
-export interface BucketTrendRow {
+export type BucketTrendRow = {
   cycle: string;
   cycleKey: string;
   NEEDS: number;
@@ -196,7 +196,7 @@ export interface BucketTrendRow {
   total: number;
   perDay: number; // makes 28- and 31-day cycles comparable
   href: string;
-}
+};
 
 export interface BucketPacing extends CyclePacing {
   bucket: Bucket;
@@ -452,7 +452,7 @@ export async function getOverviewAnalytics(
 // Cashflow
 // ---------------------------------------------------------------------------
 
-export interface CashflowRow {
+export type CashflowRow = {
   cycle: string;
   cycleKey: string;
   income: number;
@@ -460,9 +460,9 @@ export interface CashflowRow {
   net: number;
   cumulative: number; // running total of net across the window
   href: string;
-}
+};
 
-export interface SavingsRow {
+export type SavingsRow = {
   cycle: string;
   cycleKey: string;
   income: number;
@@ -470,15 +470,15 @@ export interface SavingsRow {
   trueSaved: number; // SAVINGS-bucket spend + genuine box contributions
   unspentRatePct: number | null; // null when no income was logged
   trueSavingsRatePct: number | null;
-}
+};
 
-export interface BoxFlowRow {
+export type BoxFlowRow = {
   cycle: string;
   cycleKey: string;
   in: number;
   out: number;
   net: number;
-}
+};
 
 export interface CashflowAnalytics {
   meta: AnalyticsMeta;
@@ -636,17 +636,17 @@ export async function getCashflowAnalytics(
 // Categories
 // ---------------------------------------------------------------------------
 
-export interface CategorySliceRow {
+export type CategorySliceRow = {
   id: string;
   name: string;
   value: number;
   pct: number;
   href: string | null;
-}
+};
 
 export type MoverDirection = "up" | "down" | "new" | "stopped" | "flat";
 
-export interface CategoryMoverRow {
+export type CategoryMoverRow = {
   id: string;
   name: string;
   current: number;
@@ -659,7 +659,7 @@ export interface CategoryMoverRow {
   increase: number;
   decrease: number;
   href: string | null;
-}
+};
 
 export interface CategoryAnalytics {
   meta: AnalyticsMeta;
@@ -832,7 +832,7 @@ export interface CommitmentTotals {
   committedPct: number | null;
 }
 
-export interface ObligationRow {
+export type ObligationRow = {
   cycleDay: number; // 1-based day within the cycle
   dayOfMonth: number;
   dateLabel: string;
@@ -841,9 +841,9 @@ export interface ObligationRow {
   box: number;
   isPayday: boolean;
   isPast: boolean;
-}
+};
 
-export interface CommitmentRuleRow {
+export type CommitmentRuleRow = {
   id: string;
   kind: RecurringKind;
   label: string;
@@ -855,7 +855,7 @@ export interface CommitmentRuleRow {
   INCOME: number;
   EXPENSE: number;
   BOX: number;
-}
+};
 
 export interface CommitmentAnalytics {
   meta: AnalyticsMeta;
@@ -987,7 +987,7 @@ export async function getCommitmentAnalytics(): Promise<CommitmentAnalytics> {
 // Habits
 // ---------------------------------------------------------------------------
 
-export interface WeekdayRow {
+export type WeekdayRow = {
   weekday: string;
   weekdayIndex: number;
   total: number;
@@ -996,7 +996,7 @@ export interface WeekdayRow {
   NEEDS: number;
   WANTS: number;
   SAVINGS: number;
-}
+};
 
 export interface HabitAnalytics {
   meta: AnalyticsMeta;

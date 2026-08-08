@@ -90,6 +90,8 @@ export default async function CategoryDetailPage({
           data={trend}
           bucket={detail.bucket}
           budget={detail.monthlyBudget}
+          currency={detail.currency}
+          locale={detail.locale}
         />
         <CategoryTopNotes detail={detail} />
 

@@ -63,12 +63,17 @@ export const BUCKET_SERIES_CLASS: Record<Bucket, string> = {
 };
 
 // Direction, not category. --chart-1..5 is a categorical ramp with no green/red
-// pair in it, so money-in versus money-out reads through the semantic status
-// tokens instead. Used by income-vs-spend and the box in/out charts.
+// pair in it. These are dedicated fill tokens rather than the semantic
+// --success-foreground / --error-foreground: those are tuned as text on a
+// tinted chip, and at the scale of a full bar they read as stoplights.
+// Used by income-vs-spend and the box in/out charts.
 export const FLOW = {
-  in: "var(--success-foreground)",
-  out: "var(--error-foreground)",
+  in: "var(--chart-flow-in)",
+  out: "var(--chart-flow-out)",
 } as const;
+
+// Wash behind the region of a chart that is over budget.
+export const OVER_BUDGET_FILL = "var(--chart-over-budget)";
 
 export type Tone = "positive" | "negative" | "caution" | "neutral";
 
