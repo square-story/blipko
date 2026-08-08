@@ -113,8 +113,21 @@ export function toneForInsight(
 }
 
 // Percentage of budget spent -> the tone a meter or figure should carry.
+// Only correct for buckets you are trying NOT to exceed — see toneForBucket.
 export function toneForSpend(pct: number): Tone {
   if (pct >= 100) return "negative";
   if (pct >= 80) return "caution";
   return "positive";
+}
+
+// The same question, but bucket-aware.
+//
+// SAVINGS is a goal, not a cap: reaching or beating the target is the best
+// outcome there, so the spend thresholds invert. Running toneForSpend over a
+// savings bucket paints a met target red — which is what the analytics Overview
+// arcs did until this existed, and what every hand-rolled `isSavings` check
+// elsewhere in the app was quietly protecting against.
+export function toneForBucket(bucket: Bucket, pct: number): Tone | "primary" {
+  if (bucket === "SAVINGS") return pct >= 100 ? "positive" : "primary";
+  return toneForSpend(pct);
 }

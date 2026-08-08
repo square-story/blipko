@@ -22,7 +22,7 @@ import {
   StatValue,
 } from "@/components/ui/stat";
 import { formatMoney } from "@/lib/budget";
-import { TONE, seriesClass, toneForSpend } from "@/lib/chart-palette";
+import { TONE, seriesClass, toneForBucket } from "@/lib/chart-palette";
 import { expensesHref } from "@/lib/analytics/drilldown";
 import { cn } from "@/lib/utils";
 
@@ -144,7 +144,7 @@ export async function OverviewTab({ range }: { range: number }) {
               >
                 <BudgetGauge
                   pct={b.pct}
-                  tone={b.budget === null ? "neutral" : toneForSpend(b.pct)}
+                  tone={b.budget === null ? "neutral" : toneForBucket(b.bucket, b.pct)}
                   // No budget means nothing to pace against.
                   pacePct={b.budget === null ? undefined : (pacePct ?? undefined)}
                   centerValue={b.spent}

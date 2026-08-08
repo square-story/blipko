@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/budget";
-import { Meter } from "@/components/ui/meter";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import type { BoxView } from "@/lib/actions/boxes";
 
 // Read-only dashboard summary of the user's boxes (savings goals & funds).
@@ -35,12 +35,12 @@ export function BoxesSummaryCard({
         <div className="space-y-4">
           {shown.map((b) => {
             // Progress includes tracked budget spend; the headline stays balance.
+            // Not clamped: the gauge shows a beaten target as a full, tinted
+            // bar and reports the true figure, where the old Meter capped both
+            // the bar and what it announced at 100.
             const pct =
               b.targetAmount && b.targetAmount > 0
-                ? Math.min(
-                    100,
-                    Math.round(((b.balance + b.tracked) / b.targetAmount) * 100),
-                  )
+                ? ((b.balance + b.tracked) / b.targetAmount) * 100
                 : null;
             return (
               <Link
@@ -64,11 +64,14 @@ export function BoxesSummaryCard({
                   </div>
                 </div>
                 {pct != null && (
-                  <Meter
-                    value={pct}
-                    tone="positive"
-                    size="sm"
-                    label={`${b.name} progress`}
+                  // No pace mark: a savings target has no cycle to be on track
+                  // within, matching every other box surface.
+                  <BudgetGauge
+                    pct={pct}
+                    tone={pct >= 100 ? "positive" : "primary"}
+                    orientation="linear"
+                    thickness={8}
+                    ariaLabel={`${b.name} progress`}
                   />
                 )}
               </Link>

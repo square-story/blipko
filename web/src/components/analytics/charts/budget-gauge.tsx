@@ -12,11 +12,11 @@
 // you should be at 39%" is the whole story, and day/daysInPeriod is already on
 // every payload that reaches these surfaces.
 //
-// Takes a Tone rather than deriving one. The Buckets card thresholds on
-// percentage (toneForSpend, 80/100) while the category header thresholds on
-// pacing (overSpent / overPace && reliable); both are right for their own
-// question, and folding them together here would silently change what one of
-// them shows.
+// Takes a Tone rather than deriving one. The bucket surfaces threshold on
+// percentage (toneForBucket, 80/100 with savings inverted) while the category
+// surfaces threshold on pacing (overSpent / overPace && reliable); both are
+// right for their own question, and folding them together here would silently
+// change what one of them shows.
 
 import { Gauge } from "@/components/charts/gauge";
 import { TONE_FILL, type Tone } from "@/lib/chart-palette";
