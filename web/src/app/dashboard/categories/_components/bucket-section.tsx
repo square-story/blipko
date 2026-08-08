@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { BUCKET_META } from "@/lib/budget";
+import { Meter } from "@/components/ui/meter";
+import { TONE } from "@/lib/chart-palette";
 import { CategoryCard } from "./category-card";
 import type {
   CategoryStat,
@@ -78,10 +80,10 @@ export const BucketSection = ({
             className={cn(
               "text-sm font-medium tabular-nums",
               over
-                ? "text-red-600"
+                ? TONE.negative
                 : isSavings && remaining <= 0
-                  ? "text-emerald-600"
-                  : "text-muted-foreground",
+                  ? TONE.positive
+                  : TONE.neutral,
             )}
           >
             {isSavings
@@ -93,15 +95,11 @@ export const BucketSection = ({
                 : `${money(remaining)} left`}
           </span>
         </div>
-        <div className="h-2 w-full rounded-full bg-muted">
-          <div
-            className={cn(
-              "h-2 w-full origin-left rounded-full transition-transform duration-300 ease-out",
-              over ? "bg-red-500" : "bg-primary",
-            )}
-            style={{ transform: `scaleX(${Math.min(100, pct) / 100})` }}
-          />
-        </div>
+        <Meter
+          value={pct}
+          tone={over ? "negative" : "primary"}
+          label={`${meta.label} budget used`}
+        />
         <p className="text-xs text-muted-foreground tabular-nums">
           {money(spent)} {isSavings ? "saved" : "spent"} of {money(budget)}
           {budget > 0 &&
@@ -122,7 +120,7 @@ export const BucketSection = ({
         <div className="flex items-center justify-between gap-2 border-t pt-2 pb-3">
           <p className="text-xs tabular-nums text-muted-foreground">
             {money(allocated)} allocated ·{" "}
-            <span className={cn(overAllocated && "text-red-600")}>
+            <span className={cn(overAllocated && TONE.negative)}>
               {overAllocated
                 ? `${money(-unallocated)} over-allocated`
                 : `${money(unallocated)} unallocated`}

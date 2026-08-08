@@ -41,14 +41,16 @@ const statIndicatorVariants = cva(
         action:
           "size-8 cursor-pointer rounded-md transition-colors hover:bg-muted/50 [&_svg:not([class*='size-'])]:size-4",
       },
+      // Reads the semantic status tokens rather than raw Tailwind palettes, so
+      // an indicator matches the tone used on meters and insight captions.
       color: {
         default: "bg-muted text-muted-foreground",
         success:
-          "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
-        info: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+          "border-success-border bg-success text-success-foreground",
+        info: "border-info-border bg-info text-info-foreground",
         warning:
-          "border-orange-500/20 bg-orange-500/10 text-orange-600 dark:text-orange-400",
-        error: "border-destructive/20 bg-destructive/10 text-destructive",
+          "border-warning-border bg-warning text-warning-foreground",
+        error: "border-error-border bg-error text-error-foreground",
       },
     },
     defaultVariants: {
@@ -101,8 +103,8 @@ function StatTrend({
       className={cn(
         "inline-flex items-center gap-1 font-medium text-xs [&_svg:not([class*='size-'])]:size-3 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         {
-          "text-green-600 dark:text-green-400": trend === "up",
-          "text-red-600 dark:text-red-400": trend === "down",
+          "text-success-foreground": trend === "up",
+          "text-error-foreground": trend === "down",
           "text-muted-foreground": trend === "neutral" || !trend,
         },
         className,

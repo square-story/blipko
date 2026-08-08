@@ -14,6 +14,14 @@ import { IncomeExpenseTrendChart } from "../_components/income-expense-trend-cha
 import { BoxesTrendChart } from "../_components/boxes-trend-chart";
 import { AnimatedNumber } from "@/components/animated-number";
 import { formatMoney } from "@/lib/budget";
+import {
+    Stat,
+    StatDescription,
+    StatLabel,
+    StatValue,
+} from "@/components/ui/stat";
+import { Meter } from "@/components/ui/meter";
+import { TONE } from "@/lib/chart-palette";
 
 export default async function Page() {
     const {
@@ -40,48 +48,36 @@ export default async function Page() {
             <div className="flex flex-col gap-6 p-4 md:p-8 pt-6">
                 {/* Summary Stats */}
                 <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Income This Month</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">
-                                <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">money in this month</p>
-                        </CardContent>
-                    </Card>
+                    <Stat>
+                        <StatLabel>Income This Month</StatLabel>
+                        <StatValue className={TONE.positive}>
+                            <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
+                        </StatValue>
+                        <StatDescription>money in this month</StatDescription>
+                    </Stat>
 
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Spent This Month</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                <AnimatedNumber value={spentThisMonth} format={currencyFormat} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">across all categories</p>
-                        </CardContent>
-                    </Card>
+                    <Stat>
+                        <StatLabel>Spent This Month</StatLabel>
+                        <StatValue>
+                            <AnimatedNumber value={spentThisMonth} format={currencyFormat} />
+                        </StatValue>
+                        <StatDescription>across all categories</StatDescription>
+                    </Stat>
 
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Net This Month</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div
-                                className={`text-2xl font-bold ${netThisMonth >= 0 ? "text-green-600" : "text-red-600"}`}
-                            >
-                                <AnimatedNumber
-                                    value={netThisMonth}
-                                    format={{ ...currencyFormat, signDisplay: "always" }}
-                                />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {netThisMonth >= 0 ? "saved this month" : "over budget this month"}
-                            </p>
-                        </CardContent>
-                    </Card>
+                    <Stat>
+                        <StatLabel>Net This Month</StatLabel>
+                        <StatValue
+                            className={netThisMonth >= 0 ? TONE.positive : TONE.negative}
+                        >
+                            <AnimatedNumber
+                                value={netThisMonth}
+                                format={{ ...currencyFormat, signDisplay: "always" }}
+                            />
+                        </StatValue>
+                        <StatDescription>
+                            {netThisMonth >= 0 ? "saved this month" : "over budget this month"}
+                        </StatDescription>
+                    </Stat>
                 </div>
 
                 {/* Income vs spending trend */}
@@ -124,12 +120,7 @@ export default async function Page() {
                                                         {formatMoney(c.value, currency)}
                                                     </span>
                                                 </div>
-                                                <div className="h-2 w-full rounded-full bg-muted">
-                                                    <div
-                                                        className="h-2 rounded-full bg-primary"
-                                                        style={{ width: `${pct}%` }}
-                                                    />
-                                                </div>
+                                                <Meter value={pct} label={`${c.name} share`} />
                                             </div>
                                         );
                                     })}

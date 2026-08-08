@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getBudgetOverview } from "@/lib/actions/budget";
@@ -33,15 +33,8 @@ import Onboarding from "@/components/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wallet, TrendingDown, Scale, ArrowRight } from "lucide-react";
 import { BUCKET_META, formatMoney } from "@/lib/budget";
-
-const CATEGORY_COLORS = [
-    "bg-emerald-500 dark:bg-emerald-400",
-    "bg-amber-500 dark:bg-amber-400",
-    "bg-rose-500 dark:bg-rose-400",
-    "bg-blue-500 dark:bg-blue-400",
-    "bg-indigo-500 dark:bg-indigo-400",
-    "bg-purple-500 dark:bg-purple-400",
-];
+import { Meter, MeterStrip } from "@/components/ui/meter";
+import { TONE, seriesClass } from "@/lib/chart-palette";
 
 // Cards that navigate: the Link is the grid item, so it carries the reveal
 // animation and the hover/focus affordance.
@@ -184,7 +177,7 @@ async function OverviewSection({
                                             {meta.emoji} {meta.label}
                                         </span>
                                         <span
-                                            className={`text-sm font-medium ${overspent ? "text-destructive" : savingsWin ? "text-green-600" : "text-muted-foreground"}`}
+                                            className={`text-sm font-medium ${overspent ? "text-destructive" : savingsWin ? TONE.positive : "text-muted-foreground"}`}
                                         >
                                             {b.pct}%
                                         </span>
@@ -199,13 +192,13 @@ async function OverviewSection({
                                             / {formatMoney(b.budget, currency)}
                                         </span>
                                     </div>
-                                    <div className="h-2 w-full rounded-full bg-muted">
-                                        <div
-                                            className={`bar-fill h-2 w-full rounded-full ${overspent ? "bg-destructive" : savingsWin ? "bg-green-600" : "bg-primary"}`}
-                                            style={{ "--pct": barWidth / 100 } as CSSProperties}
-                                        />
-                                    </div>
-                                    <p className={`text-xs ${savingsWin ? "text-green-600" : "text-muted-foreground"}`}>
+                                    <Meter
+                                        value={barWidth}
+                                        tone={overspent ? "negative" : savingsWin ? "positive" : "primary"}
+                                        animate
+                                        label={`${meta.label} budget used`}
+                                    />
+                                    <p className={`text-xs ${savingsWin ? TONE.positive : "text-muted-foreground"}`}>
                                         {isSavings
                                             ? b.remaining < 0
                                                 ? `🎉 ${formatMoney(Math.abs(b.remaining), currency)} above target`
@@ -318,29 +311,23 @@ async function OverviewSection({
                                                 Category breakdown
                                             </p>
                                             {/* Every category gets a segment so the bar spans the full width. */}
-                                            <div className="mt-2 flex items-center gap-0.5">
-                                                {categoryBreakdown.map((c, index) => {
-                                                    const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
-                                                    const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-                                                    return (
-                                                        <div
-                                                            key={c.name}
-                                                            className={`${colorClass} h-1.5 rounded-xs`}
-                                                            style={{ width: `${pct}%` }}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
+                                            <MeterStrip
+                                                className="mt-2"
+                                                segments={categoryBreakdown.map((c, index) => ({
+                                                    label: c.name,
+                                                    value: totalSpent > 0 ? (c.value / totalSpent) * 100 : 0,
+                                                    className: seriesClass(index),
+                                                }))}
+                                            />
                                         </div>
 
                                         <ul role="list" className="mt-5 space-y-2">
                                             {categoryBreakdown.slice(0, 6).map((c, index) => {
                                                 const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
-                                                const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
                                                 return (
                                                     <li key={c.name} className="flex items-center gap-2 text-xs">
                                                         <span
-                                                            className={`${colorClass} size-2.5 rounded-xs`}
+                                                            className={`${seriesClass(index)} size-2.5 rounded-xs`}
                                                             aria-hidden="true"
                                                         />
                                                         <span className="text-foreground flex-1">{c.name}</span>

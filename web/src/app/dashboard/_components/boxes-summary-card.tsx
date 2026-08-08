@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatMoney } from "@/lib/budget";
+import { Meter } from "@/components/ui/meter";
 import type { BoxView } from "@/lib/actions/boxes";
 
 // Read-only dashboard summary of the user's boxes (savings goals & funds).
@@ -63,12 +64,12 @@ export function BoxesSummaryCard({
                   </div>
                 </div>
                 {pct != null && (
-                  <div className="h-1.5 w-full rounded-xs bg-muted">
-                    <div
-                      className="h-1.5 rounded-xs bg-emerald-500 dark:bg-emerald-400"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <Meter
+                    value={pct}
+                    tone="positive"
+                    size="sm"
+                    label={`${b.name} progress`}
+                  />
                 )}
               </Link>
             );

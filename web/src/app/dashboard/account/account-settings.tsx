@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { updateBudgetSettings } from "@/lib/actions/budget";
 import { BUCKET_META, CURRENCIES, DOSAGES } from "@/lib/budget";
+import { MeterStrip } from "@/components/ui/meter";
+import { BUCKET_SERIES_CLASS, TONE } from "@/lib/chart-palette";
 
 export type NotificationDosage = "OFF" | "GENTLE" | "AGGRESSIVE" | "RELENTLESS";
 
@@ -302,32 +304,32 @@ function BudgetRow({ initial }: { initial: BudgetSettings }) {
                         <Badge
                             variant={splitValid ? "outline" : "destructive"}
                             className={cn(
-                                splitValid && "border-green-600 text-green-600",
+                                splitValid && `border-success-border ${TONE.positive}`,
                             )}
                         >
                             {sum}%{splitValid ? "" : " · must total 100%"}
                         </Badge>
                     </div>
-                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                            className="bg-primary"
-                            style={{
-                                width: `${Math.max(0, Math.min(100, d.needs))}%`,
-                            }}
-                        />
-                        <div
-                            className="bg-primary/60"
-                            style={{
-                                width: `${Math.max(0, Math.min(100, d.wants))}%`,
-                            }}
-                        />
-                        <div
-                            className="bg-primary/30"
-                            style={{
-                                width: `${Math.max(0, Math.min(100, d.savings))}%`,
-                            }}
-                        />
-                    </div>
+                    <MeterStrip
+                        size="md"
+                        segments={[
+                            {
+                                label: BUCKET_META.NEEDS.label,
+                                value: d.needs,
+                                className: BUCKET_SERIES_CLASS.NEEDS,
+                            },
+                            {
+                                label: BUCKET_META.WANTS.label,
+                                value: d.wants,
+                                className: BUCKET_SERIES_CLASS.WANTS,
+                            },
+                            {
+                                label: BUCKET_META.SAVINGS.label,
+                                value: d.savings,
+                                className: BUCKET_SERIES_CLASS.SAVINGS,
+                            },
+                        ]}
+                    />
                     <div className="grid grid-cols-3 gap-3">
                         <SplitInput
                             label={`${BUCKET_META.NEEDS.emoji} ${BUCKET_META.NEEDS.label}`}
