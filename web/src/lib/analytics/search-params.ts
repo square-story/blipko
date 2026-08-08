@@ -19,6 +19,16 @@ export const ANALYTICS_TABS = [
 
 export type AnalyticsTab = (typeof ANALYTICS_TABS)[number];
 
+// Which tabs the cycle range actually reaches. Categories reads only the
+// current and previous cycle, Commitments only the current one — offering the
+// control there costs a server round trip and a loading flash to redraw
+// identical charts, which reads as a broken control rather than a no-op.
+export const RANGE_AWARE_TABS: readonly AnalyticsTab[] = [
+  "overview",
+  "cashflow",
+  "habits",
+];
+
 export const CYCLE_RANGES = [3, 6, 12] as const;
 export const DEFAULT_RANGE = 6;
 

@@ -687,17 +687,17 @@ export interface CategoryAnalytics {
   };
 }
 
-export async function getCategoryAnalytics(
-  cycles?: number,
-): Promise<CategoryAnalytics> {
+// Takes no range: every figure here is "this cycle" or "versus last cycle", so
+// two windows is all there is to ask for. It used to accept the page's range
+// and build up to twelve windows through zonedCycleWindows before discarding
+// all but the last two — the cycle control is hidden on this tab for the same
+// reason (see RANGE_AWARE_TABS).
+export async function getCategoryAnalytics(): Promise<CategoryAnalytics> {
   const ctx = await loadContext();
-  const requested = clampCycles(cycles);
-  const windows = windowsFor(ctx, requested);
+  const windows = windowsFor(ctx, 2);
   const current = windows[windows.length - 1]!;
   const previous = windows.length > 1 ? windows[windows.length - 2] : null;
 
-  // Only the two most recent cycles are needed. Scanning the whole requested
-  // range would read up to twelve cycles of rows to answer a two-cycle question.
   const scan = previous ? previous : current;
   const expenses = await prisma.expense.findMany({
     where: {
@@ -807,7 +807,7 @@ export async function getCategoryAnalytics(
   const biggest = movers[0] ?? null;
 
   return {
-    meta: toMeta(ctx, windows, requested),
+    meta: toMeta(ctx, windows, 2),
     breakdown,
     movers,
     hasPreviousCycle,

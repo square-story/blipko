@@ -61,14 +61,7 @@ async function OverviewSection({
         recentExpenses,
         categoryBreakdown,
         hasOnboarded,
-        day,
-        daysInPeriod,
     } = await overviewPromise;
-
-    // Where even spending would have put you by now — the mark on each bucket
-    // gauge. Already on the payload; it just was not being read.
-    const pacePct =
-        daysInPeriod > 0 ? Math.min(100, (day / daysInPeriod) * 100) : undefined;
 
     const taxonomy = hasOnboarded ? [] : await getOnboardingTaxonomy();
     const needsReviewPromise = getNeedsReviewExpenses();
@@ -196,7 +189,6 @@ async function OverviewSection({
                                     <BudgetGauge
                                         pct={b.pct}
                                         tone={tone}
-                                        pacePct={b.budget > 0 ? pacePct : undefined}
                                         centerValue={b.spent}
                                         label="spent"
                                         currency={currency}

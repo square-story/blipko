@@ -63,11 +63,6 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
             <BudgetGauge
               pct={pct}
               tone={tone}
-              pacePct={
-                detail.daysInPeriod > 0
-                  ? Math.min(100, (detail.day / detail.daysInPeriod) * 100)
-                  : undefined
-              }
               centerValue={detail.spend}
               label="spent"
 

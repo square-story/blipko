@@ -6,9 +6,9 @@ import { CategoryDonutChart } from "@/components/analytics/charts/category-donut
 import { CategoryMoversChart } from "@/components/analytics/charts/category-movers-chart";
 import { expensesHref } from "@/lib/analytics/drilldown";
 
-export async function CategoriesTab({ range }: { range: number }) {
+export async function CategoriesTab() {
   const { meta, breakdown, movers, hasPreviousCycle, insights } =
-    await getCategoryAnalytics(range);
+    await getCategoryAnalytics();
 
   const cycle = meta.cycles[meta.cycles.length - 1];
   const hasUncategorized = breakdown.some((b) => b.href === null);

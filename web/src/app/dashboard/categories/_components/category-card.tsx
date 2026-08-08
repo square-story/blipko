@@ -165,11 +165,6 @@ export function CategoryCard({
             <BudgetGauge
               pct={pct}
               tone={tone}
-              pacePct={
-                daysInPeriod > 0
-                  ? Math.min(100, (day / daysInPeriod) * 100)
-                  : undefined
-              }
               size={48}
               ariaLabel={`${cat.name} budget used`}
             />

@@ -16,6 +16,7 @@ import { useQueryState } from "nuqs";
 import {
   ANALYTICS_TABS,
   analyticsParams,
+  RANGE_AWARE_TABS,
   type AnalyticsTab,
 } from "@/lib/analytics/search-params";
 
@@ -53,7 +54,7 @@ export function AnalyticsTabs({
             </TabsTrigger>
           ))}
         </TabsList>
-        {action}
+        {RANGE_AWARE_TABS.includes(tab) ? action : null}
       </div>
 
       {ANALYTICS_TABS.map((t) => (

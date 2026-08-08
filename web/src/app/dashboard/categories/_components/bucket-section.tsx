@@ -98,13 +98,6 @@ export const BucketSection = ({
           pct={pct}
           tone={over ? "negative" : "primary"}
           orientation="linear"
-          // The mark is where you'd be if you spent evenly. Hidden without a
-          // budget, since there is then nothing to pace against.
-          pacePct={
-            budget > 0 && daysInPeriod > 0
-              ? Math.min(100, (day / daysInPeriod) * 100)
-              : undefined
-          }
           ariaLabel={`${meta.label} budget used`}
         />
         <p className="text-xs text-muted-foreground tabular-nums">

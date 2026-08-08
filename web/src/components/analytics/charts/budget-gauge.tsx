@@ -8,9 +8,11 @@
 // while the ring clamped the arc but printed the raw number, so an overspent
 // category showed a full ring reading "143%" — and had no aria at all.
 //
-// The pace mark is the point of it. "68% spent" says little; "68% spent, and
-// you should be at 39%" is the whole story, and day/daysInPeriod is already on
-// every payload that reaches these surfaces.
+// It shows one thing: spent against budget. A "where you should be by now"
+// pace notch lived here for a while, and it did not work — one recoloured notch
+// in a ring of forty identical ones reads as a hole in the track, not as a
+// datum. Pacing is better said in words, which the surrounding copy already
+// does ("day 8 of 31", "safe ₹420/day"). Don't reintroduce it as a mark.
 //
 // Takes a Tone rather than deriving one. The bucket surfaces threshold on
 // percentage (toneForBucket, 80/100 with savings inverted) while the category
@@ -36,8 +38,6 @@ export interface BudgetGaugeProps {
    * container, for the places that were a full-width Meter.
    */
   orientation?: "arc" | "linear";
-  /** Where you should be by now, 0-100. Omit to hide the mark. */
-  pacePct?: number;
   /** Centre statistic. Omit and the centre block does not render at all. */
   centerValue?: number;
   /** Caption under the centre value. */
@@ -68,7 +68,6 @@ export function BudgetGauge({
   pct,
   tone,
   orientation = "arc",
-  pacePct,
   centerValue,
   label,
   currency,
@@ -121,17 +120,6 @@ export function BudgetGauge({
         // caller's tone already says which way it reads.
         inactiveFill={over ? fill : "var(--border)"}
         inactiveFillOpacity={over ? 0.35 : 0.8}
-        markerValue={pacePct}
-        // The mark has to contrast with whatever it lands on, and that differs:
-        // behind the fill it sits on a saturated (or near-black) notch, ahead of
-        // it on the pale track. Punch it out in --background when it is inside
-        // the fill, draw it in --foreground when it is on the track. Both
-        // tokens invert, so this holds in dark mode too.
-        markerFill={
-          pacePct !== undefined && pacePct <= safePct
-            ? "var(--background)"
-            : "var(--foreground)"
-        }
         {...(isLinear
           ? { linearHeight: thickness, minWidth: 120 }
           : { width: size, height: size, minWidth: size })}

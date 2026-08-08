@@ -2,6 +2,7 @@
 
 import { getCashflowAnalytics } from "@/lib/actions/analytics";
 import { ChartCard } from "@/components/analytics/chart-card";
+import { CycleClampNote } from "@/components/analytics/cycle-clamp-note";
 import { IncomeVsSpendChart } from "@/components/analytics/charts/income-vs-spend-chart";
 import { CumulativeCashflowChart } from "@/components/analytics/charts/cumulative-cashflow-chart";
 import { SavingsRateChart } from "@/components/analytics/charts/savings-rate-chart";
@@ -92,6 +93,8 @@ export async function CashflowTab({ range }: { range: number }) {
           locale={meta.locale}
         />
       </ChartCard>
+
+      <CycleClampNote meta={meta} />
     </>
   );
 }

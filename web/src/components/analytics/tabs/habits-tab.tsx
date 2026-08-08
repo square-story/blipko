@@ -2,6 +2,7 @@
 
 import { getHabitAnalytics } from "@/lib/actions/analytics";
 import { ChartCard } from "@/components/analytics/chart-card";
+import { CycleClampNote } from "@/components/analytics/cycle-clamp-note";
 import { WeekdaySpendChart } from "@/components/analytics/charts/weekday-spend-chart";
 
 function hourLabel(hour: number): string {
@@ -39,6 +40,8 @@ export async function HabitsTab({ range }: { range: number }) {
           and can&apos;t be told apart from things you actually did.
         </p>
       )}
+
+      <CycleClampNote meta={meta} />
     </>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { getOverviewAnalytics } from "@/lib/actions/analytics";
 import { ChartCard } from "@/components/analytics/chart-card";
-import { ChartInsight } from "@/components/analytics/chart-insight";
+import { CycleClampNote } from "@/components/analytics/cycle-clamp-note";
 import { BurnDownChart } from "@/components/analytics/charts/burn-down-chart";
 import { BucketMixChart } from "@/components/analytics/charts/bucket-mix-chart";
 import { Meter } from "@/components/ui/meter";
@@ -41,13 +41,6 @@ export async function OverviewTab({ range }: { range: number }) {
   const money = (n: number) => formatMoney(n, meta.currency, meta.locale);
   const cycle = meta.cycles[meta.cycles.length - 1];
   const noSpend = current.spend === 0 && current.income === 0;
-  // How far through the cycle we are — the "you should be about here" mark on
-  // each bucket gauge. Null on day 0 of a zero-length cycle, which can't happen
-  // in practice but would otherwise divide by zero.
-  const pacePct =
-    current.daysInPeriod > 0
-      ? Math.min(100, (current.day / current.daysInPeriod) * 100)
-      : null;
 
   return (
     <>
@@ -129,11 +122,7 @@ export async function OverviewTab({ range }: { range: number }) {
         <Card>
           <CardHeader>
             <CardTitle>Buckets</CardTitle>
-            <CardDescription>
-              {pacePct === null
-                ? "Where this cycle's budget stands"
-                : `Where this cycle's budget stands — the mark is day ${current.day} of ${current.daysInPeriod}`}
-            </CardDescription>
+            <CardDescription>Where this cycle&apos;s budget stands</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-3 gap-2">
             {byBucket.map((b) => (
@@ -145,8 +134,6 @@ export async function OverviewTab({ range }: { range: number }) {
                 <BudgetGauge
                   pct={b.pct}
                   tone={b.budget === null ? "neutral" : toneForBucket(b.bucket, b.pct)}
-                  // No budget means nothing to pace against.
-                  pacePct={b.budget === null ? undefined : (pacePct ?? undefined)}
                   centerValue={b.spent}
                   label={b.label}
                   currency={meta.currency}
@@ -217,14 +204,7 @@ export async function OverviewTab({ range }: { range: number }) {
         />
       </ChartCard>
 
-      {meta.cyclesAvailable < meta.cyclesRequested && (
-        <ChartInsight
-          insight={{
-            text: `Only ${meta.cyclesAvailable} ${meta.cyclesAvailable === 1 ? "cycle" : "cycles"} of history so far — showing everything since you started.`,
-            tone: "neutral",
-          }}
-        />
-      )}
+      <CycleClampNote meta={meta} />
     </>
   );
 }

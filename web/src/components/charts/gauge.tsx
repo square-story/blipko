@@ -41,16 +41,6 @@ export interface GaugeProps {
   orientation?: GaugeOrientation;
   /** Fill level 0–100 */
   value: number;
-  /**
-   * Local addition: marks a single notch at this 0–100 position, whether or not
-   * it falls inside the filled range. Used for a "where you should be by now"
-   * pace mark, which the registry has no API for — it exposes only
-   * activeFill/inactiveFill, and children are collected as defs, so an overlay
-   * cannot be injected. Re-apply after a `shadcn add @bklit/gauge-chart`.
-   */
-  markerValue?: number;
-  /** Fill for the marker notch. Ignored unless markerValue is set. */
-  markerFill?: string;
   /** Number of notches */
   totalNotches?: number;
   /** Percentage of the track reserved for gaps between notches */
@@ -114,15 +104,10 @@ function GaugeNotchSvg({
   resolvedActiveFillOpacity,
   resolveBgFill,
   resolveActiveFill,
-  markerIndex,
-  markerFill,
 }: {
   notches: ComputedNotch[];
   width: number;
   height: number;
-  /** Local addition — see GaugeProps.markerValue. */
-  markerIndex?: number;
-  markerFill?: string;
   notchCornerRadius: number;
   cornerDepth: number;
   geometryScrubbing: boolean;
@@ -136,11 +121,6 @@ function GaugeNotchSvg({
   resolveBgFill: (index: number) => string;
   resolveActiveFill: (notch: ComputedNotch) => string;
 }) {
-  // Local addition: the marker overrides its notch in BOTH passes, so it stays
-  // visible whether spending is ahead of the pace or behind it.
-  const isMarker = (index: number) =>
-    markerFill !== undefined && markerIndex !== undefined && index === markerIndex;
-
   return (
     <svg
       aria-hidden="true"
@@ -176,7 +156,7 @@ function GaugeNotchSvg({
           return (
             <path
               d={pathD}
-              fill={isMarker(notch.index) ? markerFill! : resolveBgFill(notch.index)}
+              fill={resolveBgFill(notch.index)}
               fillOpacity={resolvedInactiveFillOpacity}
               key={`bg-${notch.index}`}
             />
@@ -186,7 +166,7 @@ function GaugeNotchSvg({
           <motion.path
             animate={{ opacity: 1, scale: 1 }}
             d={pathD}
-            fill={isMarker(notch.index) ? markerFill! : resolveBgFill(notch.index)}
+            fill={resolveBgFill(notch.index)}
             fillOpacity={resolvedInactiveFillOpacity}
             initial={{ opacity: 0, scale: 0 }}
             key={`bg-${notch.index}`}
@@ -212,7 +192,7 @@ function GaugeNotchSvg({
             return (
               <path
                 d={pathD}
-                fill={isMarker(notch.index) ? markerFill! : resolveActiveFill(notch)}
+                fill={resolveActiveFill(notch)}
                 fillOpacity={resolvedActiveFillOpacity}
                 key={`active-${notch.index}`}
               />
@@ -222,7 +202,7 @@ function GaugeNotchSvg({
             <motion.path
               animate={{ opacity: 1, scale: 1 }}
               d={pathD}
-              fill={isMarker(notch.index) ? markerFill! : resolveActiveFill(notch)}
+              fill={resolveActiveFill(notch)}
               fillOpacity={resolvedActiveFillOpacity}
               initial={{ opacity: 0, scale: 0 }}
               key={`active-${notch.index}`}
@@ -289,8 +269,6 @@ function useGaugeFillState(props: GaugeInnerProps) {
 function GaugeArcInner(props: GaugeInnerProps) {
   const {
     value,
-    markerValue,
-    markerFill,
     totalNotches = 40,
     spacing = 25,
     notchCornerRadius = 0,
@@ -331,14 +309,6 @@ function GaugeArcInner(props: GaugeInnerProps) {
   const innerRadius = outerRadius - notchLength;
 
   const activeNotches = Math.round((value / 100) * totalNotches);
-  // Local addition — see GaugeProps.markerValue.
-  const markerIndex =
-    markerValue === undefined
-      ? undefined
-      : Math.max(
-          0,
-          Math.min(totalNotches - 1, Math.round((markerValue / 100) * totalNotches))
-        );
   const totalAngle = endAngle - startAngle;
   const availableAngle = totalAngle * (1 - spacing / 100);
   const notchAngle = totalNotches > 0 ? availableAngle / totalNotches : 0;
@@ -451,10 +421,6 @@ function GaugeArcInner(props: GaugeInnerProps) {
         notchCornerRadius={notchCornerRadius}
         notches={notches}
         notchTransition={notchTransition}
-        markerFill={markerFill}
-
-        markerIndex={markerIndex}
-
         resolveActiveFill={resolveActiveFill}
         resolveBgFill={resolveBgFill}
         resolvedActiveFillOpacity={fillState.resolvedActiveFillOpacity}
@@ -487,8 +453,6 @@ function GaugeArcInner(props: GaugeInnerProps) {
 function GaugeLinearInner(props: GaugeInnerProps) {
   const {
     value,
-    markerValue,
-    markerFill,
     totalNotches = 40,
     spacing = 25,
     notchCornerRadius = 0,
@@ -530,14 +494,6 @@ function GaugeLinearInner(props: GaugeInnerProps) {
   const widthFactor = Math.min(100, Math.max(10, notchWidthPercent)) / 100;
 
   const activeNotches = Math.round((value / 100) * totalNotches);
-  // Local addition — see GaugeProps.markerValue.
-  const markerIndex =
-    markerValue === undefined
-      ? undefined
-      : Math.max(
-          0,
-          Math.min(totalNotches - 1, Math.round((markerValue / 100) * totalNotches))
-        );
   const availableWidth = width * (1 - spacing / 100);
   const slotWidth = totalNotches > 0 ? availableWidth / totalNotches : 0;
   const gapDen = totalNotches - 1 > 0 ? totalNotches - 1 : 1;
@@ -663,10 +619,6 @@ function GaugeLinearInner(props: GaugeInnerProps) {
         notchCornerRadius={notchCornerRadius}
         notches={notches}
         notchTransition={notchTransition}
-        markerFill={markerFill}
-
-        markerIndex={markerIndex}
-
         resolveActiveFill={resolveActiveFill}
         resolveBgFill={resolveBgFill}
         resolvedActiveFillOpacity={fillState.resolvedActiveFillOpacity}

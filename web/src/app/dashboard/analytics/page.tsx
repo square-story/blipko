@@ -52,7 +52,7 @@ export default async function Page({ searchParams }: PageProps) {
               ),
               categories: (
                 <Suspense fallback={<CategoriesFallback />}>
-                  <CategoriesTab range={cycles} />
+                  <CategoriesTab />
                 </Suspense>
               ),
               commitments: (
