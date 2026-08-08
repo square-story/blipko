@@ -60,27 +60,33 @@
     background-position: 100% -100%;}}
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
-  --color-chart-scale-pattern-color: var(----chart-scale-pattern-color);
-  --color-chart-scale-05: var(----chart-scale-05);
-  --color-chart-scale-04: var(----chart-scale-04);
-  --color-chart-scale-03: var(----chart-scale-03);
-  --color-chart-scale-02: var(----chart-scale-02);
-  --color-chart-scale-01: var(----chart-scale-01);
-  --color-chart-label: var(----chart-label);
-  --color-chart-marker-foreground: var(----chart-marker-foreground);
-  --color-chart-marker-border: var(----chart-marker-border);
-  --color-chart-marker-background: var(----chart-marker-background);
-  --color-chart-tooltip-muted: var(----chart-tooltip-muted);
-  --color-chart-tooltip-foreground: var(----chart-tooltip-foreground);
-  --color-chart-tooltip-background: var(----chart-tooltip-background);
-  --chart-brush-border: var(----chart-brush-border);
-  --color-chart-grid: var(----chart-grid);
-  --color-chart-crosshair: var(----chart-crosshair);
-  --chart-line-secondary: var(----chart-line-secondary);
-  --chart-line-primary: var(----chart-line-primary);
-  --color-chart-foreground-muted: var(----chart-foreground-muted);
-  --color-chart-foreground: var(----chart-foreground);
-  --color-chart-background: var(----chart-background);
+  /* Semantic status colours. These were defined in :root/.dark from the start
+     but never registered here, so `text-success-foreground` and friends did not
+     compile and nothing used them. The chart tones and the Stat variants both
+     read them now. */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-error-border: var(--error-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-border: var(--warning-border);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-border: var(--info-border);
+  --color-destructive-foreground: var(--destructive-foreground);
+  /* Only the four bklit tokens consumed as Tailwind utilities are registered.
+     The rest are read as raw var() inside SVG attributes, so a --color-* alias
+     buys nothing; they live in :root/.dark below. The registry's own block
+     emitted every one of them as var(----chart-*) — four hyphens, resolving to
+     nothing — and two un-prefixed entries leaked into :root and shadowed the
+     real values, so it was replaced wholesale. */
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-label: var(--chart-label);
   @keyframes accordion-down {
     from { height: 0; }
     to { height: var(--radix-accordion-content-height); }
@@ -152,27 +158,36 @@
   --info: oklch(0.96 0.03 240);
   --info-foreground: oklch(0.52 0.15 250);
   --info-border: oklch(0.9 0.06 250);
-  --chart-background: oklch(1 0 0);
-  --chart-foreground: oklch(0.145 0.004 285);
-  --chart-foreground-muted: oklch(0.55 0.014 260);
+  /* bklit-ui chart tokens (its chartCssVars map), split by what they are.
+     Surfaces point at our own tokens so a tooltip or marker matches every other
+     popover in the app and inverts for free in .dark. Chart chrome keeps
+     bklit's lightness — they tuned grid and label contrast for charts
+     specifically — but with the chroma stripped: the registry's greys sit
+     around hue 260/285 and its crosshair is a saturated blue-purple, and this
+     project's neutrals are zero-chroma, so unmodified they read as a cast. */
   --chart-line-primary: var(--chart-1);
   --chart-line-secondary: var(--chart-2);
-  --chart-crosshair: oklch(0.4 0.1828 274.34);
+  --chart-indicator-color: var(--chart-1);
+  --chart-indicator-secondary-color: var(--chart-2);
+
+  --chart-background: var(--card);
+  --chart-marker-background: var(--popover);
+  --chart-marker-border: var(--border);
+  --chart-marker-foreground: var(--popover-foreground);
+  --chart-marker-badge-background: var(--muted);
+  --chart-marker-badge-foreground: var(--muted-foreground);
+  --chart-segment-background: var(--muted);
+  --chart-segment-line: var(--border);
+  --chart-tooltip-background: var(--popover);
+  --chart-tooltip-foreground: var(--popover-foreground);
+  --chart-tooltip-muted: var(--muted-foreground);
+
+  --chart-foreground: oklch(0.145 0 0);
+  --chart-foreground-muted: oklch(0.55 0 0);
+  --chart-label: oklch(0.45 0 0);
+  --chart-crosshair: oklch(0.55 0 0);
   --chart-grid: oklch(0.9 0 0);
   --chart-brush-border: var(--chart-grid);
-  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
-  --chart-tooltip-foreground: oklch(0.985 0 0);
-  --chart-tooltip-muted: oklch(0.65 0.01 260);
-  --chart-marker-background: oklch(0.97 0.005 260);
-  --chart-marker-border: oklch(0.85 0.01 260);
-  --chart-marker-foreground: oklch(0.3 0.01 260);
-  --chart-label: oklch(0.45 0.01 260);
-  --chart-scale-01: oklch(0.98 0.003 106);
-  --chart-scale-02: oklch(0.92 0.008 106);
-  --chart-scale-03: oklch(0.82 0.015 106);
-  --chart-scale-04: oklch(0.68 0.02 106);
-  --chart-scale-05: oklch(0.55 0.025 106);
-  --chart-scale-pattern-color: oklch(0.96 0.005 106);
 }
 
 .dark {
@@ -222,22 +237,16 @@
   --info: oklch(0.23 0.05 250);
   --info-foreground: oklch(0.8 0.12 250);
   --info-border: oklch(0.33 0.07 250);
-  --chart-background: oklch(0.145 0 0);
+  /* Only the chart chrome needs a dark counterpart — the surface tokens above
+     resolve through --card/--popover/--muted and invert on their own. Note the
+     grid is a solid grey rather than var(--border): in dark that token is
+     oklch(1 0 0 / 10%), and a translucent stroke reads differently over a card
+     than over the page. */
   --chart-foreground: oklch(0.45 0 0);
-  --chart-foreground-muted: oklch(0.65 0.01 260);
-  --chart-crosshair: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0 0);
+  --chart-label: oklch(0.75 0 0);
+  --chart-crosshair: oklch(0.55 0 0);
   --chart-grid: oklch(0.25 0 0);
-  --chart-brush-border: var(--chart-grid);
-  --chart-marker-background: oklch(0.25 0.01 260);
-  --chart-marker-border: oklch(0.4 0.01 260);
-  --chart-marker-foreground: oklch(0.9 0 0);
-  --chart-label: oklch(0.75 0.01 260);
-  --chart-scale-01: oklch(0.28 0.03 270);
-  --chart-scale-02: oklch(0.38 0.04 270);
-  --chart-scale-03: oklch(0.48 0.05 270);
-  --chart-scale-04: oklch(0.58 0.06 270);
-  --chart-scale-05: oklch(0.68 0.07 270);
-  --chart-scale-pattern-color: oklch(0.145 0 0);
 }
 
 @layer base {
