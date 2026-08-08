@@ -4,7 +4,7 @@ import Image from "next/image";
 import { ArrowRightIcon, CheckIcon, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/lib/toast";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

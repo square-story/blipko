@@ -6,7 +6,9 @@ import {
   getBoxContributionTrend,
 } from "@/lib/actions/boxes";
 import { BoxDetailHeader } from "./_components/box-detail-header";
-import { BoxContributionChart } from "./_components/box-contribution-chart";
+import { ChartCard } from "@/components/analytics/chart-card";
+import { InOutBarChart } from "@/components/analytics/charts/in-out-bar-chart";
+import { getBudgetSettings } from "@/lib/actions/budget";
 import { BoxEntriesTable } from "./_components/box-entries-table";
 
 interface PageProps {
@@ -29,7 +31,7 @@ export default async function BoxDetailPage({ params, searchParams }: PageProps)
   const box = await getBox(id);
   if (!box) notFound();
 
-  const [entries, trend] = await Promise.all([
+  const [entries, trend, settings] = await Promise.all([
     getBoxEntries({
       boxId: id,
       page: Number(sp.page) || 1,
@@ -41,6 +43,7 @@ export default async function BoxDetailPage({ params, searchParams }: PageProps)
       to: sp.to || undefined,
     }),
     getBoxContributionTrend(id),
+    getBudgetSettings(),
   ]);
 
   return (
@@ -53,8 +56,21 @@ export default async function BoxDetailPage({ params, searchParams }: PageProps)
       ]}
     >
       <div className="flex flex-col gap-6">
-        <BoxDetailHeader box={box} />
-        <BoxContributionChart data={trend} />
+        <BoxDetailHeader box={box} currency={settings.currency} />
+        <ChartCard
+          title="Contributions"
+          description="Money added and taken out, per budget cycle"
+          isEmpty={!trend.some((t) => t.in > 0 || t.out > 0)}
+          emptyLabel="No contributions recorded yet for this box."
+        >
+          <InOutBarChart
+            data={trend}
+            inLabel="Added"
+            outLabel="Taken out"
+            currency={settings.currency}
+            locale={settings.locale}
+          />
+        </ChartCard>
         <BoxEntriesTable
           boxId={id}
           data={entries.data}

@@ -12,8 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { CircularProgress } from "@/components/ui/circular-progress";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import { categoryPacing } from "@/lib/budget";
+import { TONE, type Tone } from "@/lib/chart-palette";
 import { cn } from "@/lib/utils";
 import {
   MoreVertical,
@@ -79,31 +80,25 @@ export function CategoryCard({
   const overPace = pace.overPace && pace.reliable;
   const overSpent = pace.overSpent;
 
-  let colorClass = "text-primary";
-  let ringColor = "text-primary";
-  
+  // The ring and the figure always carried the same colour; one tone now
+  // drives both.
+  let tone: Tone | "primary" = "primary";
+
   if (hasLimit) {
     if (isSavings) {
-      if (savedAll) {
-        colorClass = "text-emerald-500 dark:text-emerald-400";
-        ringColor = "text-emerald-500 dark:text-emerald-400";
-      }
+      if (savedAll) tone = "positive";
+    } else if (overSpent) {
+      tone = "negative";
+    } else if (overPace) {
+      tone = "caution";
     } else {
-      if (overSpent) {
-        colorClass = "text-red-500 dark:text-red-400";
-        ringColor = "text-red-500 dark:text-red-400";
-      } else if (overPace) {
-        colorClass = "text-amber-500 dark:text-amber-400";
-        ringColor = "text-amber-500 dark:text-amber-400";
-      } else {
-        colorClass = "text-emerald-500 dark:text-emerald-400";
-        ringColor = "text-emerald-500 dark:text-emerald-400";
-      }
+      tone = "positive";
     }
   } else {
-    colorClass = "text-muted-foreground";
-    ringColor = "text-muted-foreground";
+    tone = "neutral";
   }
+
+  const colorClass = tone === "primary" ? "text-primary" : TONE[tone];
 
   let pct = 0;
   if (hasLimit && limit > 0) {
@@ -138,7 +133,10 @@ export function CategoryCard({
                 <Lock className="w-3 h-3 text-muted-foreground/50" />
               )}
             </div>
-            <div className="text-xl font-bold text-foreground">
+            {/* truncate matters: without it this sets a min-content width the
+                flex row cannot shrink below, and a long amount runs into the
+                gauge at the 4-up breakpoint. */}
+            <div className="text-lg font-bold text-foreground truncate">
               {hasLimit ? money(limit) : money(cat.spend)}
             </div>
             
@@ -159,13 +157,24 @@ export function CategoryCard({
         </Link>
 
         <div className="flex items-center gap-3 shrink-0">
-          <CircularProgress 
-            value={pct} 
-            size={52} 
-            strokeWidth={4} 
-            color={ringColor} 
-          />
-          
+          {/* No gauge without a budget — there is nothing to be a percentage
+              of, and the emoji chip on the left already identifies the card, so
+              a medallion here would just repeat it. The "(no limit)" caption
+              carries the meaning. */}
+          {hasLimit && (
+            <BudgetGauge
+              pct={pct}
+              tone={tone}
+              pacePct={
+                daysInPeriod > 0
+                  ? Math.min(100, (day / daysInPeriod) * 100)
+                  : undefined
+              }
+              size={48}
+              ariaLabel={`${cat.name} budget used`}
+            />
+          )}
+
           <div className="opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

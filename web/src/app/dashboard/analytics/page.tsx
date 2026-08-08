@@ -1,144 +1,74 @@
+import { Suspense } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { getAnalyticsData } from "@/lib/actions/analytics";
-import { getBoxesContributionTrend } from "@/lib/actions/boxes";
+import { AnalyticsTabs } from "@/components/analytics/analytics-tabs";
+import { CycleRangeControl } from "@/components/analytics/cycle-range-control";
+import { OverviewTab } from "@/components/analytics/tabs/overview-tab";
+import { CashflowTab } from "@/components/analytics/tabs/cashflow-tab";
+import { CategoriesTab } from "@/components/analytics/tabs/categories-tab";
+import { CommitmentsTab } from "@/components/analytics/tabs/commitments-tab";
+import { HabitsTab } from "@/components/analytics/tabs/habits-tab";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { RoundedPieChart } from "@/components/ui/rounded-pie-chart";
-import { BucketTrendChart } from "../_components/income-expense-chart";
-import { IncomeExpenseTrendChart } from "../_components/income-expense-trend-chart";
-import { BoxesTrendChart } from "../_components/boxes-trend-chart";
-import { AnimatedNumber } from "@/components/animated-number";
-import { formatMoney } from "@/lib/budget";
+  CashflowFallback,
+  CategoriesFallback,
+  CommitmentsFallback,
+  HabitsFallback,
+  OverviewFallback,
+} from "@/components/analytics/tabs/fallbacks";
+import {
+  loadAnalyticsParams,
+  normalizeRange,
+} from "@/lib/analytics/search-params";
 
-export default async function Page() {
-    const {
-        monthlyTrend,
-        incomeExpenseTrend,
-        categoryBreakdown,
-        topCategories,
-        incomeThisMonth,
-        spentThisMonth,
-        netThisMonth,
-        currency,
-    } = await getAnalyticsData(6);
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-    const boxesTrend = await getBoxesContributionTrend(6);
+export default async function Page({ searchParams }: PageProps) {
+  // The page itself awaits nothing but the URL state. Each tab is an async
+  // server component that fetches its own data inside its own Suspense
+  // boundary, so the shell paints immediately and the slowest query gates only
+  // its own panel.
+  const { range } = await loadAnalyticsParams(searchParams);
+  const cycles = normalizeRange(range);
 
-    const currencyFormat = {
-        style: "currency" as const,
-        currency,
-        trailingZeroDisplay: "stripIfInteger" as const,
-    };
-
-    return (
-        <ContentLayout title="Analytics">
-            <div className="flex flex-col gap-6 p-4 md:p-8 pt-6">
-                {/* Summary Stats */}
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Income This Month</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">
-                                <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">money in this month</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Spent This Month</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                <AnimatedNumber value={spentThisMonth} format={currencyFormat} />
-                            </div>
-                            <p className="text-xs text-muted-foreground">across all categories</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Net This Month</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div
-                                className={`text-2xl font-bold ${netThisMonth >= 0 ? "text-green-600" : "text-red-600"}`}
-                            >
-                                <AnimatedNumber
-                                    value={netThisMonth}
-                                    format={{ ...currencyFormat, signDisplay: "always" }}
-                                />
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {netThisMonth >= 0 ? "saved this month" : "over budget this month"}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Income vs spending trend */}
-                <IncomeExpenseTrendChart data={incomeExpenseTrend} />
-
-                {/* Monthly bucket trend */}
-                <BucketTrendChart data={monthlyTrend} />
-
-                {/* Box contributions trend */}
-                <BoxesTrendChart data={boxesTrend} />
-
-                {/* Category pie + top categories */}
-                <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-                    <RoundedPieChart
-                        title="Spend by Category"
-                        description="Current month breakdown"
-                        chartData={categoryBreakdown}
-                    />
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Top Categories</CardTitle>
-                            <CardDescription>Highest spend this month</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {topCategories.length === 0 ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">
-                                    No spend yet this month.
-                                </p>
-                            ) : (
-                                <div className="space-y-4">
-                                    {topCategories.map((c) => {
-                                        const max = topCategories[0]?.value ?? 1;
-                                        const pct = Math.round((c.value / max) * 100);
-                                        return (
-                                            <div key={c.name} className="space-y-1">
-                                                <div className="flex items-center justify-between text-sm">
-                                                    <span className="font-medium">{c.name}</span>
-                                                    <span className="text-muted-foreground">
-                                                        {formatMoney(c.value, currency)}
-                                                    </span>
-                                                </div>
-                                                <div className="h-2 w-full rounded-full bg-muted">
-                                                    <div
-                                                        className="h-2 rounded-full bg-primary"
-                                                        style={{ width: `${pct}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </ContentLayout>
-    );
+  return (
+    <ContentLayout title="Analytics">
+      <div className="flex flex-col gap-6 pb-8">
+        {/* nuqs reads useSearchParams, so the client controls need a Suspense
+            boundary or Next bails the whole route out to client rendering. */}
+        <Suspense fallback={<OverviewFallback />}>
+          <AnalyticsTabs
+            action={<CycleRangeControl />}
+            panels={{
+              overview: (
+                <Suspense fallback={<OverviewFallback />}>
+                  <OverviewTab range={cycles} />
+                </Suspense>
+              ),
+              cashflow: (
+                <Suspense fallback={<CashflowFallback />}>
+                  <CashflowTab range={cycles} />
+                </Suspense>
+              ),
+              categories: (
+                <Suspense fallback={<CategoriesFallback />}>
+                  <CategoriesTab range={cycles} />
+                </Suspense>
+              ),
+              commitments: (
+                <Suspense fallback={<CommitmentsFallback />}>
+                  <CommitmentsTab />
+                </Suspense>
+              ),
+              habits: (
+                <Suspense fallback={<HabitsFallback />}>
+                  <HabitsTab range={cycles} />
+                </Suspense>
+              ),
+            }}
+          />
+        </Suspense>
+      </div>
+    </ContentLayout>
+  );
 }

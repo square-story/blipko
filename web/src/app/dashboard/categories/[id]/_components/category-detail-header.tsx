@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CircularProgress } from "@/components/ui/circular-progress";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
 import { categoryPacing, BUCKET_META, formatMoney } from "@/lib/budget";
+import { TONE, type Tone } from "@/lib/chart-palette";
 import { cn } from "@/lib/utils";
 import { Pencil, Lock } from "lucide-react";
 import { resolveCategoryEmoji } from "@/lib/category-emoji";
@@ -37,20 +38,20 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
   const savedAll = hasLimit && detail.spend >= limit;
   const overPace = pace.overPace && pace.reliable;
 
-  let toneClass = "text-muted-foreground";
+  let tone: Tone | "primary" = "neutral";
   if (hasLimit) {
     if (isSavings) {
-      toneClass = savedAll
-        ? "text-emerald-500 dark:text-emerald-400"
-        : "text-primary";
+      tone = savedAll ? "positive" : "primary";
     } else if (pace.overSpent) {
-      toneClass = "text-red-500 dark:text-red-400";
+      tone = "negative";
     } else if (overPace) {
-      toneClass = "text-amber-500 dark:text-amber-400";
+      tone = "caution";
     } else {
-      toneClass = "text-emerald-500 dark:text-emerald-400";
+      tone = "positive";
     }
   }
+
+  const toneClass = tone === "primary" ? "text-primary" : TONE[tone];
 
   const pct = hasLimit && limit > 0 ? (detail.spend / limit) * 100 : 0;
 
@@ -59,14 +60,25 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-card border shadow-sm p-5">
         <div className="flex items-center gap-4 min-w-0">
           {hasLimit ? (
-            <CircularProgress
-              value={pct}
-              size={64}
-              strokeWidth={5}
-              color={toneClass}
+            <BudgetGauge
+              pct={pct}
+              tone={tone}
+              pacePct={
+                detail.daysInPeriod > 0
+                  ? Math.min(100, (detail.day / detail.daysInPeriod) * 100)
+                  : undefined
+              }
+              centerValue={detail.spend}
+              label="spent"
+
+              currency={detail.currency}
+              size={120}
+              ariaLabel={`${detail.name} budget used`}
             />
           ) : (
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 text-2xl shrink-0">
+            // Matches the gauge's footprint so the header does not reflow
+            // depending on whether a budget is set.
+            <div className="flex items-center justify-center w-[120px] h-[120px] rounded-full bg-muted/50 text-3xl shrink-0">
               {displayIcon}
             </div>
           )}

@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getBudgetOverview } from "@/lib/actions/budget";
@@ -33,15 +33,9 @@ import Onboarding from "@/components/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Wallet, TrendingDown, Scale, ArrowRight } from "lucide-react";
 import { BUCKET_META, formatMoney } from "@/lib/budget";
-
-const CATEGORY_COLORS = [
-    "bg-emerald-500 dark:bg-emerald-400",
-    "bg-amber-500 dark:bg-amber-400",
-    "bg-rose-500 dark:bg-rose-400",
-    "bg-blue-500 dark:bg-blue-400",
-    "bg-indigo-500 dark:bg-indigo-400",
-    "bg-purple-500 dark:bg-purple-400",
-];
+import { MeterStrip } from "@/components/ui/meter";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
+import { TONE, seriesClass, toneForBucket } from "@/lib/chart-palette";
 
 // Cards that navigate: the Link is the grid item, so it carries the reveal
 // animation and the hover/focus affordance.
@@ -67,7 +61,14 @@ async function OverviewSection({
         recentExpenses,
         categoryBreakdown,
         hasOnboarded,
+        day,
+        daysInPeriod,
     } = await overviewPromise;
+
+    // Where even spending would have put you by now — the mark on each bucket
+    // gauge. Already on the payload; it just was not being read.
+    const pacePct =
+        daysInPeriod > 0 ? Math.min(100, (day / daysInPeriod) * 100) : undefined;
 
     const taxonomy = hasOnboarded ? [] : await getOnboardingTaxonomy();
     const needsReviewPromise = getNeedsReviewExpenses();
@@ -168,8 +169,9 @@ async function OverviewSection({
                     const isSavings = b.bucket === "SAVINGS";
                     // Savings: beating the target is a win, not a warning.
                     const savingsWin = isSavings && b.spent >= b.budget && b.budget > 0;
-                    const overspent = !isSavings && b.pct > 100;
-                    const barWidth = Math.min(100, b.pct);
+                    // One rule for the figure and the gauge, so they cannot
+                    // disagree. Savings inverts inside toneForBucket.
+                    const tone = b.budget > 0 ? toneForBucket(b.bucket, b.pct) : "neutral";
                     return (
                         <Link
                             key={b.bucket}
@@ -184,28 +186,27 @@ async function OverviewSection({
                                             {meta.emoji} {meta.label}
                                         </span>
                                         <span
-                                            className={`text-sm font-medium ${overspent ? "text-destructive" : savingsWin ? "text-green-600" : "text-muted-foreground"}`}
+                                            className={`text-sm font-medium ${tone === "primary" || tone === "neutral" ? "text-muted-foreground" : TONE[tone]}`}
                                         >
                                             {b.pct}%
                                         </span>
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-2">
-                                    <div className="text-sm">
-                                        <span className="font-semibold">
-                                            {formatMoney(b.spent, currency)}
-                                        </span>{" "}
-                                        <span className="text-muted-foreground">
-                                            / {formatMoney(b.budget, currency)}
-                                        </span>
+                                <CardContent className="flex flex-col items-center gap-2">
+                                    <BudgetGauge
+                                        pct={b.pct}
+                                        tone={tone}
+                                        pacePct={b.budget > 0 ? pacePct : undefined}
+                                        centerValue={b.spent}
+                                        label="spent"
+                                        currency={currency}
+                                        size={132}
+                                        ariaLabel={`${meta.label} budget used`}
+                                    />
+                                    <div className="text-sm text-muted-foreground">
+                                        of {formatMoney(b.budget, currency)}
                                     </div>
-                                    <div className="h-2 w-full rounded-full bg-muted">
-                                        <div
-                                            className={`bar-fill h-2 w-full rounded-full ${overspent ? "bg-destructive" : savingsWin ? "bg-green-600" : "bg-primary"}`}
-                                            style={{ "--pct": barWidth / 100 } as CSSProperties}
-                                        />
-                                    </div>
-                                    <p className={`text-xs ${savingsWin ? "text-green-600" : "text-muted-foreground"}`}>
+                                    <p className={`text-xs text-center ${savingsWin ? TONE.positive : "text-muted-foreground"}`}>
                                         {isSavings
                                             ? b.remaining < 0
                                                 ? `🎉 ${formatMoney(Math.abs(b.remaining), currency)} above target`
@@ -318,29 +319,23 @@ async function OverviewSection({
                                                 Category breakdown
                                             </p>
                                             {/* Every category gets a segment so the bar spans the full width. */}
-                                            <div className="mt-2 flex items-center gap-0.5">
-                                                {categoryBreakdown.map((c, index) => {
-                                                    const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
-                                                    const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-                                                    return (
-                                                        <div
-                                                            key={c.name}
-                                                            className={`${colorClass} h-1.5 rounded-xs`}
-                                                            style={{ width: `${pct}%` }}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
+                                            <MeterStrip
+                                                className="mt-2"
+                                                segments={categoryBreakdown.map((c, index) => ({
+                                                    label: c.name,
+                                                    value: totalSpent > 0 ? (c.value / totalSpent) * 100 : 0,
+                                                    className: seriesClass(index),
+                                                }))}
+                                            />
                                         </div>
 
                                         <ul role="list" className="mt-5 space-y-2">
                                             {categoryBreakdown.slice(0, 6).map((c, index) => {
                                                 const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
-                                                const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
                                                 return (
                                                     <li key={c.name} className="flex items-center gap-2 text-xs">
                                                         <span
-                                                            className={`${colorClass} size-2.5 rounded-xs`}
+                                                            className={`${seriesClass(index)} size-2.5 rounded-xs`}
                                                             aria-hidden="true"
                                                         />
                                                         <span className="text-foreground flex-1">{c.name}</span>
@@ -380,12 +375,24 @@ export default function Page() {
     return (
         <ContentLayout title="Dashboard">
             <div className="flex flex-col gap-4 p-4 md:p-8 pt-6">
+                {/* This one boundary covers the whole section, so the fallback
+                    has to stand in for both rows: the headline stats on their
+                    md:2 lg:3 grid, then the buckets on md:3. It previously
+                    rendered only the stat row, so the buckets popped in with no
+                    placeholder at all. */}
                 <Suspense
                     fallback={
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {[...Array(3)].map((_, i) => (
-                                <Skeleton key={i} className="h-24 rounded-xl" />
-                            ))}
+                        <div className="flex flex-col gap-4">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {[...Array(3)].map((_, i) => (
+                                    <Skeleton key={i} className="h-24 rounded-lg" />
+                                ))}
+                            </div>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {[...Array(3)].map((_, i) => (
+                                    <Skeleton key={i} className="h-64 rounded-xl" />
+                                ))}
+                            </div>
                         </div>
                     }
                 >

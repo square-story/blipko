@@ -60,6 +60,33 @@
     background-position: 100% -100%;}}
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  /* Semantic status colours. These were defined in :root/.dark from the start
+     but never registered here, so `text-success-foreground` and friends did not
+     compile and nothing used them. The chart tones and the Stat variants both
+     read them now. */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-error-border: var(--error-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-border: var(--warning-border);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-border: var(--info-border);
+  --color-destructive-foreground: var(--destructive-foreground);
+  /* Only the four bklit tokens consumed as Tailwind utilities are registered.
+     The rest are read as raw var() inside SVG attributes, so a --color-* alias
+     buys nothing; they live in :root/.dark below. The registry's own block
+     emitted every one of them as var(----chart-*) — four hyphens, resolving to
+     nothing — and two un-prefixed entries leaked into :root and shadowed the
+     real values, so it was replaced wholesale. */
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-label: var(--chart-label);
   @keyframes accordion-down {
     from { height: 0; }
     to { height: var(--radix-accordion-content-height); }
@@ -94,15 +121,6 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  /* Chart series colors: the bucket pastels, plus the in/out pair shared by the
-     box and income-vs-spend charts. Deliberately outside --chart-1..5, which are
-     stock shadcn values with no bucket meaning. Same in both themes for now —
-     defined once here so the fills have one source instead of a hex per chart. */
-  --chart-needs: #829496;
-  --chart-wants: #dba19b;
-  --chart-savings: #a3b18a;
-  --chart-positive: #a3b18a;
-  --chart-negative: #dba19b;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -131,6 +149,47 @@
   --info: oklch(0.96 0.03 240);
   --info-foreground: oklch(0.52 0.15 250);
   --info-border: oklch(0.9 0.06 250);
+  /* bklit-ui chart tokens (its chartCssVars map), split by what they are.
+     Surfaces point at our own tokens so a tooltip or marker matches every other
+     popover in the app and inverts for free in .dark. Chart chrome keeps
+     bklit's lightness — they tuned grid and label contrast for charts
+     specifically — but with the chroma stripped: the registry's greys sit
+     around hue 260/285 and its crosshair is a saturated blue-purple, and this
+     project's neutrals are zero-chroma, so unmodified they read as a cast. */
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-indicator-color: var(--chart-1);
+  --chart-indicator-secondary-color: var(--chart-2);
+
+  --chart-background: var(--card);
+  --chart-marker-background: var(--popover);
+  --chart-marker-border: var(--border);
+  --chart-marker-foreground: var(--popover-foreground);
+  --chart-marker-badge-background: var(--muted);
+  --chart-marker-badge-foreground: var(--muted-foreground);
+  --chart-segment-background: var(--muted);
+  --chart-segment-line: var(--border);
+  --chart-tooltip-background: var(--popover);
+  --chart-tooltip-foreground: var(--popover-foreground);
+  --chart-tooltip-muted: var(--muted-foreground);
+
+  --chart-foreground: oklch(0.145 0 0);
+  --chart-foreground-muted: oklch(0.55 0 0);
+  --chart-label: oklch(0.45 0 0);
+  --chart-crosshair: oklch(0.55 0 0);
+  --chart-grid: oklch(0.9 0 0);
+  --chart-brush-border: var(--chart-grid);
+
+  /* Directional fills for money in vs out. --chart-1..5 is a categorical ramp
+     with no green/red pair, and the semantic --success-foreground /
+     --error-foreground are tuned as text on a tinted chip — at the scale of a
+     full bar they read as stoplights. These carry the same hues at lower
+     chroma so a chart of them is legible rather than loud. */
+  --chart-flow-in: oklch(0.62 0.11 155);
+  --chart-flow-out: oklch(0.62 0.13 25);
+  /* Wash behind an exceeded budget. Strong enough to read as a zone, weak
+     enough that bars stay the subject. */
+  --chart-over-budget: oklch(0.62 0.13 25 / 0.12);
 }
 
 .dark {
@@ -180,6 +239,22 @@
   --info: oklch(0.23 0.05 250);
   --info-foreground: oklch(0.8 0.12 250);
   --info-border: oklch(0.33 0.07 250);
+  /* Only the chart chrome needs a dark counterpart — the surface tokens above
+     resolve through --card/--popover/--muted and invert on their own. Note the
+     grid is a solid grey rather than var(--border): in dark that token is
+     oklch(1 0 0 / 10%), and a translucent stroke reads differently over a card
+     than over the page. */
+  --chart-foreground: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0 0);
+  --chart-label: oklch(0.75 0 0);
+  --chart-crosshair: oklch(0.55 0 0);
+  --chart-grid: oklch(0.25 0 0);
+
+  /* Lifted for the dark canvas: the light-mode values sit too close to the
+     background to read as fills. */
+  --chart-flow-in: oklch(0.72 0.13 155);
+  --chart-flow-out: oklch(0.68 0.15 25);
+  --chart-over-budget: oklch(0.68 0.15 25 / 0.16);
 }
 
 @layer base {

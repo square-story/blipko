@@ -10,6 +10,7 @@ import {
   type BoxInput,
 } from "@/lib/validations/box";
 import type { BoxEntryInput } from "@/lib/validations/box";
+import { cycleIndexer, zonedCycleWindows } from "@/lib/time";
 
 export type BoxView = {
   id: string;
@@ -258,27 +259,34 @@ export async function getBoxEntries({
 }
 
 // Monthly contributions (IN) vs withdrawals (OUT) for the last `months`.
+// IN vs OUT per budget cycle for one box.
+//
+// Windows on payday cycles in the user's timezone rather than server-local
+// calendar months, so the x-axis lines up with every other cycle chart. For a
+// payday of 1 the labels are unchanged; for any other payday the buckets shift
+// to match the user's actual cycle.
 export async function getBoxContributionTrend(
   boxId: string,
-  months = 6,
-): Promise<{ month: string; in: number; out: number }[]> {
+  cycles = 6,
+): Promise<{ cycle: string; in: number; out: number }[]> {
   const session = await auth();
   if (!session?.user?.id) return [];
 
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { timezone: true, payday: true, locale: true },
+  });
 
-  // Seed each month so gaps render as zero bars (mirrors analytics.ts).
-  const map = new Map<string, { month: string; in: number; out: number }>();
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    map.set(key, {
-      month: d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
-      in: 0,
-      out: 0,
-    });
-  }
+  const windows = zonedCycleWindows(
+    user?.payday ?? 1,
+    cycles,
+    user?.timezone ?? "Asia/Kolkata",
+    user?.locale ?? "en-IN",
+  );
+  const indexOf = cycleIndexer(windows);
+
+  // Seed every cycle so gaps render as zero bars rather than disappearing.
+  const rows = windows.map((w) => ({ cycle: w.label, in: 0, out: 0 }));
 
   const entries = await prisma.boxEntry.findMany({
     where: {
@@ -286,63 +294,19 @@ export async function getBoxContributionTrend(
       userId: session.user.id,
       isDeleted: false,
       isTracking: false,
-      date: { gte: start },
+      date: { gte: windows[0]!.start, lt: windows[windows.length - 1]!.end },
     },
     select: { amount: true, direction: true, date: true },
   });
 
   for (const e of entries) {
-    const key = `${e.date.getFullYear()}-${e.date.getMonth()}`;
-    const row = map.get(key);
-    if (!row) continue;
-    if (e.direction === "IN") row.in += Number(e.amount);
-    else row.out += Number(e.amount);
+    const i = indexOf(e.date);
+    if (i < 0) continue;
+    if (e.direction === "IN") rows[i]!.in += Number(e.amount);
+    else rows[i]!.out += Number(e.amount);
   }
 
-  return [...map.values()];
-}
-
-// Aggregate monthly IN vs OUT across ALL the user's boxes for the last `months`
-// — powers the analytics "box contributions" chart.
-export async function getBoxesContributionTrend(
-  months = 6,
-): Promise<{ month: string; in: number; out: number }[]> {
-  const session = await auth();
-  if (!session?.user?.id) return [];
-
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
-
-  const map = new Map<string, { month: string; in: number; out: number }>();
-  for (let i = months - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    map.set(key, {
-      month: d.toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
-      in: 0,
-      out: 0,
-    });
-  }
-
-  const entries = await prisma.boxEntry.findMany({
-    where: {
-      userId: session.user.id,
-      isDeleted: false,
-      isTracking: false,
-      date: { gte: start },
-    },
-    select: { amount: true, direction: true, date: true },
-  });
-
-  for (const e of entries) {
-    const key = `${e.date.getFullYear()}-${e.date.getMonth()}`;
-    const row = map.get(key);
-    if (!row) continue;
-    if (e.direction === "IN") row.in += Number(e.amount);
-    else row.out += Number(e.amount);
-  }
-
-  return [...map.values()];
+  return rows;
 }
 
 // Resolve an optional linked category: must be the user's own leaf category.

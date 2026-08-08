@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { BUCKET_META } from "@/lib/budget";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
+import { TONE } from "@/lib/chart-palette";
 import { CategoryCard } from "./category-card";
 import type {
   CategoryStat,
@@ -22,7 +24,6 @@ interface BucketSectionProps {
   bucket: Bucket;
   overview: BucketOverview;
   categories: CategoryStat[];
-  groupNameById: Map<string, string>;
   suggestionById: Map<string, CategorySuggestion>;
   money: (n: number) => string;
   day: number;
@@ -78,10 +79,10 @@ export const BucketSection = ({
             className={cn(
               "text-sm font-medium tabular-nums",
               over
-                ? "text-red-600"
+                ? TONE.negative
                 : isSavings && remaining <= 0
-                  ? "text-emerald-600"
-                  : "text-muted-foreground",
+                  ? TONE.positive
+                  : TONE.neutral,
             )}
           >
             {isSavings
@@ -93,15 +94,19 @@ export const BucketSection = ({
                 : `${money(remaining)} left`}
           </span>
         </div>
-        <div className="h-2 w-full rounded-full bg-muted">
-          <div
-            className={cn(
-              "h-2 w-full origin-left rounded-full transition-transform duration-300 ease-out",
-              over ? "bg-red-500" : "bg-primary",
-            )}
-            style={{ transform: `scaleX(${Math.min(100, pct) / 100})` }}
-          />
-        </div>
+        <BudgetGauge
+          pct={pct}
+          tone={over ? "negative" : "primary"}
+          orientation="linear"
+          // The mark is where you'd be if you spent evenly. Hidden without a
+          // budget, since there is then nothing to pace against.
+          pacePct={
+            budget > 0 && daysInPeriod > 0
+              ? Math.min(100, (day / daysInPeriod) * 100)
+              : undefined
+          }
+          ariaLabel={`${meta.label} budget used`}
+        />
         <p className="text-xs text-muted-foreground tabular-nums">
           {money(spent)} {isSavings ? "saved" : "spent"} of {money(budget)}
           {budget > 0 &&
@@ -122,7 +127,7 @@ export const BucketSection = ({
         <div className="flex items-center justify-between gap-2 border-t pt-2 pb-3">
           <p className="text-xs tabular-nums text-muted-foreground">
             {money(allocated)} allocated ·{" "}
-            <span className={cn(overAllocated && "text-red-600")}>
+            <span className={cn(overAllocated && TONE.negative)}>
               {overAllocated
                 ? `${money(-unallocated)} over-allocated`
                 : `${money(unallocated)} unallocated`}
@@ -150,8 +155,8 @@ export const BucketSection = ({
         </div>
       )}
 
-      {/* Flat list of the bucket's categories; the group is a subtle tag per row,
-          not a sub-header (groups can span buckets, which made headers confusing). */}
+      {/* Flat list of the bucket's leaf categories. Groups never reach here —
+          page.tsx filters them out, and they can't hold a budget anyway. */}
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No categories in this bucket yet.

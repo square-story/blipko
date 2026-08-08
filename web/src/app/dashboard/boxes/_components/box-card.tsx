@@ -12,7 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { CircularProgress } from "@/components/ui/circular-progress";
+import { BudgetGauge } from "@/components/analytics/charts/budget-gauge";
+import { TONE, type Tone } from "@/lib/chart-palette";
 import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/budget";
 import {
@@ -53,9 +54,7 @@ export function BoxCard({ box, categories, onChanged }: BoxCardProps) {
   const pct = hasTarget ? (progress / target) * 100 : 0;
   const remaining = target - progress;
 
-  const ringColor = reached
-    ? "text-emerald-500 dark:text-emerald-400"
-    : "text-primary";
+  const tone: Tone | "primary" = reached ? "positive" : "primary";
 
   const remove = () => {
     startTransition(async () => {
@@ -96,9 +95,16 @@ export function BoxCard({ box, categories, onChanged }: BoxCardProps) {
           className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
         >
           {hasTarget ? (
-            <CircularProgress value={pct} size={52} strokeWidth={4} color={ringColor} />
+            // No pace mark: a savings target has no cycle to be on track
+            // within, matching the box detail header.
+            <BudgetGauge
+              pct={pct}
+              tone={tone}
+              size={48}
+              ariaLabel={`${box.name} progress toward target`}
+            />
           ) : (
-            <div className="flex items-center justify-center w-[52px] h-[52px] rounded-full bg-muted/50 text-xl shrink-0">
+            <div className="flex items-center justify-center w-[48px] h-[48px] rounded-full bg-muted/50 text-xl shrink-0">
               {box.icon || "📦"}
             </div>
           )}
@@ -175,9 +181,7 @@ export function BoxCard({ box, categories, onChanged }: BoxCardProps) {
         <div
           className={cn(
             "text-xs font-medium mt-0.5",
-            reached
-              ? "text-emerald-600 dark:text-emerald-500"
-              : "text-muted-foreground",
+            reached ? TONE.positive : TONE.neutral,
           )}
         >
           {hasTarget
