@@ -1,4 +1,5 @@
 import { Suspense, type CSSProperties } from "react";
+import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { getBudgetOverview } from "@/lib/actions/budget";
 import { getOnboardingTaxonomy } from "@/lib/actions/onboarding";
@@ -25,11 +26,12 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { AnimatedNumber } from "@/components/animated-number";
 import Onboarding from "@/components/onboarding";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, TrendingDown, PiggyBank } from "lucide-react";
+import { Wallet, TrendingDown, Scale, ArrowRight } from "lucide-react";
 import { BUCKET_META, formatMoney } from "@/lib/budget";
 
 const CATEGORY_COLORS = [
@@ -40,6 +42,11 @@ const CATEGORY_COLORS = [
     "bg-indigo-500 dark:bg-indigo-400",
     "bg-purple-500 dark:bg-purple-400",
 ];
+
+// Cards that navigate: the Link is the grid item, so it carries the reveal
+// animation and the hover/focus affordance.
+const CARD_LINK =
+    "reveal-rise transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&>*]:h-full [&>*]:transition-colors hover:[&>*]:border-primary/40";
 
 async function OverviewSection({
     overviewPromise,
@@ -54,7 +61,9 @@ async function OverviewSection({
         currency,
         buckets,
         totalSpent,
-        savingsProgress,
+        balance,
+        cycleFrom,
+        cycleTo,
         recentExpenses,
         categoryBreakdown,
         hasOnboarded,
@@ -77,6 +86,12 @@ async function OverviewSection({
         trailingZeroDisplay: "stripIfInteger" as const,
     };
 
+    // Transaction links stay scoped to the cycle the cards are reporting on.
+    const cycleQs = new URLSearchParams({
+        from: String(cycleFrom),
+        to: String(cycleTo),
+    }).toString();
+
     return (
         <>
             {!hasOnboarded && <Onboarding taxonomy={taxonomy} />}
@@ -91,45 +106,59 @@ async function OverviewSection({
 
             {/* Headline stats */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Stat className="reveal-rise">
-                    <StatLabel>Income This Cycle</StatLabel>
-                    <StatValue>
-                        <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
-                    </StatValue>
-                    <StatDescription>
-                        Logged this cycle · budget on {formatMoney(monthlyIncome, currency)}
-                        {monthlyIncome > incomeThisMonth
-                            ? ` (expected ${formatMoney(expectedIncome, currency)})`
-                            : ""}
-                    </StatDescription>
-                    <StatIndicator color="success">
-                        <Wallet className="h-4 w-4" />
-                    </StatIndicator>
-                </Stat>
+                <Link href={`/dashboard/income?${cycleQs}`} className={`${CARD_LINK} rounded-lg`}>
+                    <Stat>
+                        <StatLabel>Income This Cycle</StatLabel>
+                        <StatValue>
+                            <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
+                        </StatValue>
+                        <StatDescription>
+                            Logged this cycle · budget on {formatMoney(monthlyIncome, currency)}
+                            {monthlyIncome > incomeThisMonth
+                                ? ` (expected ${formatMoney(expectedIncome, currency)})`
+                                : ""}
+                        </StatDescription>
+                        <StatIndicator color="success">
+                            <Wallet className="h-4 w-4" />
+                        </StatIndicator>
+                    </Stat>
+                </Link>
 
-                <Stat className="reveal-rise" style={{ animationDelay: "40ms" }}>
-                    <StatLabel>Spent This Cycle</StatLabel>
-                    <StatValue>
-                        <AnimatedNumber value={totalSpent} format={currencyFormat} />
-                    </StatValue>
-                    <StatDescription>{periodLabel}</StatDescription>
-                    <StatIndicator color="warning">
-                        <TrendingDown className="h-4 w-4" />
-                    </StatIndicator>
-                </Stat>
+                <Link
+                    href={`/dashboard/expenses?${cycleQs}`}
+                    className={`${CARD_LINK} rounded-lg`}
+                    style={{ animationDelay: "40ms" }}
+                >
+                    <Stat>
+                        <StatLabel>Spent This Cycle</StatLabel>
+                        <StatValue>
+                            <AnimatedNumber value={totalSpent} format={currencyFormat} />
+                        </StatValue>
+                        <StatDescription>{periodLabel}</StatDescription>
+                        <StatIndicator color="warning">
+                            <TrendingDown className="h-4 w-4" />
+                        </StatIndicator>
+                    </Stat>
+                </Link>
 
-                <Stat className="reveal-rise" style={{ animationDelay: "80ms" }}>
-                    <StatLabel>Savings This Month</StatLabel>
-                    <StatValue>
-                        <AnimatedNumber value={savingsProgress.saved} format={currencyFormat} />
-                    </StatValue>
-                    <StatDescription>
-                        {savingsProgress.pct}% of {formatMoney(savingsProgress.target, currency)} target
-                    </StatDescription>
-                    <StatIndicator color="success">
-                        <PiggyBank className="h-4 w-4" />
-                    </StatIndicator>
-                </Stat>
+                <Link
+                    href="/dashboard/analytics"
+                    className={`${CARD_LINK} rounded-lg`}
+                    style={{ animationDelay: "80ms" }}
+                >
+                    <Stat>
+                        <StatLabel>Balance This Cycle</StatLabel>
+                        <StatValue className={balance < 0 ? "text-destructive" : undefined}>
+                            <AnimatedNumber value={balance} format={currencyFormat} />
+                        </StatValue>
+                        <StatDescription>
+                            {formatMoney(incomeThisMonth, currency)} in − {formatMoney(totalSpent, currency)} out
+                        </StatDescription>
+                        <StatIndicator color={balance < 0 ? "error" : "success"}>
+                            <Scale className="h-4 w-4" />
+                        </StatIndicator>
+                    </Stat>
+                </Link>
             </div>
 
             {/* Bucket cards */}
@@ -142,51 +171,54 @@ async function OverviewSection({
                     const overspent = !isSavings && b.pct > 100;
                     const barWidth = Math.min(100, b.pct);
                     return (
-                        <Card
+                        <Link
                             key={b.bucket}
-                            className="reveal-rise"
+                            href={`/dashboard/categories?bucket=${b.bucket}`}
+                            className={`${CARD_LINK} rounded-xl`}
                             style={{ animationDelay: `${i * 40}ms` }}
                         >
-                            <CardHeader className="pb-2">
-                                <CardTitle className="flex items-center justify-between text-base">
-                                    <span>
-                                        {meta.emoji} {meta.label}
-                                    </span>
-                                    <span
-                                        className={`text-sm font-medium ${overspent ? "text-destructive" : savingsWin ? "text-green-600" : "text-muted-foreground"}`}
-                                    >
-                                        {b.pct}%
-                                    </span>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2">
-                                <div className="text-sm">
-                                    <span className="font-semibold">
-                                        {formatMoney(b.spent, currency)}
-                                    </span>{" "}
-                                    <span className="text-muted-foreground">
-                                        / {formatMoney(b.budget, currency)}
-                                    </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-muted">
-                                    <div
-                                        className={`bar-fill h-2 w-full rounded-full ${overspent ? "bg-destructive" : savingsWin ? "bg-green-600" : "bg-primary"}`}
-                                        style={{ "--pct": barWidth / 100 } as CSSProperties}
-                                    />
-                                </div>
-                                <p className={`text-xs ${savingsWin ? "text-green-600" : "text-muted-foreground"}`}>
-                                    {isSavings
-                                        ? b.remaining < 0
-                                            ? `🎉 ${formatMoney(Math.abs(b.remaining), currency)} above target`
-                                            : b.remaining === 0
-                                                ? "🎉 Target reached"
-                                                : `${formatMoney(b.remaining, currency)} to go`
-                                        : b.remaining >= 0
-                                            ? `${formatMoney(b.remaining, currency)} left`
-                                            : `${formatMoney(Math.abs(b.remaining), currency)} over`}
-                                </p>
-                            </CardContent>
-                        </Card>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="flex items-center justify-between text-base">
+                                        <span>
+                                            {meta.emoji} {meta.label}
+                                        </span>
+                                        <span
+                                            className={`text-sm font-medium ${overspent ? "text-destructive" : savingsWin ? "text-green-600" : "text-muted-foreground"}`}
+                                        >
+                                            {b.pct}%
+                                        </span>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div className="text-sm">
+                                        <span className="font-semibold">
+                                            {formatMoney(b.spent, currency)}
+                                        </span>{" "}
+                                        <span className="text-muted-foreground">
+                                            / {formatMoney(b.budget, currency)}
+                                        </span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-muted">
+                                        <div
+                                            className={`bar-fill h-2 w-full rounded-full ${overspent ? "bg-destructive" : savingsWin ? "bg-green-600" : "bg-primary"}`}
+                                            style={{ "--pct": barWidth / 100 } as CSSProperties}
+                                        />
+                                    </div>
+                                    <p className={`text-xs ${savingsWin ? "text-green-600" : "text-muted-foreground"}`}>
+                                        {isSavings
+                                            ? b.remaining < 0
+                                                ? `🎉 ${formatMoney(Math.abs(b.remaining), currency)} above target`
+                                                : b.remaining === 0
+                                                    ? "🎉 Target reached"
+                                                    : `${formatMoney(b.remaining, currency)} to go`
+                                            : b.remaining >= 0
+                                                ? `${formatMoney(b.remaining, currency)} left`
+                                                : `${formatMoney(Math.abs(b.remaining), currency)} over`}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                     );
                 })}
             </div>
@@ -237,75 +269,101 @@ async function OverviewSection({
                                 ))}
                             </div>
                         )}
+
+                        <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="mt-4 h-auto px-0 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+                        >
+                            <Link href={`/dashboard/expenses?${cycleQs}`}>
+                                View all transactions
+                                <ArrowRight className="h-3 w-3" />
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
 
-                <Card className="reveal-rise" style={{ animationDelay: "40ms" }}>
-                    <CardContent className="flex flex-col justify-between pt-6">
-                        <div>
-                            <div className="flex items-center justify-between gap-2">
-                                <h3 className="text-balance text-sm font-bold text-foreground">Top Categories</h3>
-                                <Badge
-                                    variant="secondary"
-                                    className="bg-amber-50 text-amber-700 ring-1 ring-amber-500/30 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
-                                >
-                                    This Month
-                                </Badge>
-                            </div>
+                <Link
+                    href="/dashboard/analytics"
+                    className="reveal-rise rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    style={{ animationDelay: "40ms" }}
+                >
+                    <Card className="h-full transition-colors hover:border-primary/40">
+                        <CardContent className="flex h-full flex-col justify-between pt-6">
+                            <div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <h3 className="text-balance text-sm font-bold text-foreground">Top Categories</h3>
+                                    <Badge
+                                        variant="secondary"
+                                        className="bg-amber-50 text-amber-700 ring-1 ring-amber-500/30 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20"
+                                    >
+                                        This Month
+                                    </Badge>
+                                </div>
 
-                            <p className="text-pretty mt-2 flex items-baseline gap-2">
-                                <span className="text-xl text-foreground">{formatMoney(totalSpent, currency)}</span>
-                                <span className="text-sm text-muted-foreground">total spent</span>
-                            </p>
-
-                            {categoryBreakdown.length === 0 ? (
-                                <p className="py-8 text-center text-sm text-muted-foreground">
-                                    No category spend yet.
+                                <p className="text-pretty mt-2 flex items-baseline gap-2">
+                                    <span className="text-xl text-foreground">{formatMoney(totalSpent, currency)}</span>
+                                    <span className="text-sm text-muted-foreground">total spent</span>
                                 </p>
-                            ) : (
-                                <>
-                                    <div className="mt-4">
-                                        <p className="text-pretty text-sm font-medium text-foreground">
-                                            Category breakdown
-                                        </p>
-                                        <div className="mt-2 flex items-center gap-0.5">
+
+                                {categoryBreakdown.length === 0 ? (
+                                    <p className="py-8 text-center text-sm text-muted-foreground">
+                                        No category spend yet.
+                                    </p>
+                                ) : (
+                                    <>
+                                        <div className="mt-4">
+                                            <p className="text-pretty text-sm font-medium text-foreground">
+                                                Category breakdown
+                                            </p>
+                                            {/* Every category gets a segment so the bar spans the full width. */}
+                                            <div className="mt-2 flex items-center gap-0.5">
+                                                {categoryBreakdown.map((c, index) => {
+                                                    const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
+                                                    const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+                                                    return (
+                                                        <div
+                                                            key={c.name}
+                                                            className={`${colorClass} h-1.5 rounded-xs`}
+                                                            style={{ width: `${pct}%` }}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <ul role="list" className="mt-5 space-y-2">
                                             {categoryBreakdown.slice(0, 6).map((c, index) => {
                                                 const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
                                                 const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
                                                 return (
-                                                    <div
-                                                        key={c.name}
-                                                        className={`${colorClass} h-1.5 rounded-xs`}
-                                                        style={{ width: `${pct}%` }}
-                                                    />
+                                                    <li key={c.name} className="flex items-center gap-2 text-xs">
+                                                        <span
+                                                            className={`${colorClass} size-2.5 rounded-xs`}
+                                                            aria-hidden="true"
+                                                        />
+                                                        <span className="text-foreground flex-1">{c.name}</span>
+                                                        <span className="text-muted-foreground">
+                                                            {formatMoney(c.value, currency)} / {pct.toFixed(1)}%
+                                                        </span>
+                                                    </li>
                                                 );
                                             })}
-                                        </div>
-                                    </div>
+                                        </ul>
+                                    </>
+                                )}
+                            </div>
 
-                                    <ul role="list" className="mt-5 space-y-2">
-                                        {categoryBreakdown.slice(0, 6).map((c, index) => {
-                                            const pct = totalSpent > 0 ? (c.value / totalSpent) * 100 : 0;
-                                            const colorClass = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
-                                            return (
-                                                <li key={c.name} className="flex items-center gap-2 text-xs">
-                                                    <span
-                                                        className={`${colorClass} size-2.5 rounded-xs`}
-                                                        aria-hidden="true"
-                                                    />
-                                                    <span className="text-foreground flex-1">{c.name}</span>
-                                                    <span className="text-muted-foreground">
-                                                        {formatMoney(c.value, currency)} / {pct.toFixed(1)}%
-                                                    </span>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                            <p className="mt-5 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                                {categoryBreakdown.length > 6
+                                    ? `View all ${categoryBreakdown.length} categories`
+                                    : "View analytics"}
+                                <ArrowRight className="h-3 w-3" />
+                            </p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
 
             {/* Boxes summary */}

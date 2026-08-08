@@ -42,7 +42,11 @@ export function BoxesSummaryCard({
                   )
                 : null;
             return (
-              <div key={b.id} className="space-y-1.5">
+              <Link
+                key={b.id}
+                href={`/dashboard/boxes/${b.id}`}
+                className="-mx-2 block space-y-1.5 rounded-md px-2 py-1 transition-colors hover:bg-muted/50"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-1.5">
                     {b.icon && <span className="shrink-0">{b.icon}</span>}
@@ -66,7 +70,7 @@ export function BoxesSummaryCard({
                     />
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })}
           {extra > 0 && (

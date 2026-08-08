@@ -101,7 +101,8 @@ export async function getBudgetOverview() {
   });
 
   const totalSpent = buckets.reduce((sum, b) => sum + b.spent, 0);
-  const savings = buckets.find((b) => b.bucket === "SAVINGS")!;
+  // What's left in hand this cycle: everything logged in minus everything out.
+  const balance = incomeThisMonth - totalSpent;
 
   // Category breakdown for the current month (named, spend desc).
   const categoryIds = categoryGroups
@@ -145,6 +146,10 @@ export async function getBudgetOverview() {
     expectedIncome,
     incomeThisMonth,
     periodLabel,
+    // Cycle bounds in the epoch-ms form the expense/income tables filter on.
+    // `end` is exclusive, so `cycleTo` is the cycle's last day.
+    cycleFrom: start.getTime(),
+    cycleTo: end.getTime() - 86400000,
     day,
     daysInPeriod,
     remainingDays,
@@ -153,11 +158,7 @@ export async function getBudgetOverview() {
     split,
     buckets,
     totalSpent,
-    savingsProgress: {
-      saved: savings.spent,
-      target: savings.budget,
-      pct: savings.pct,
-    },
+    balance,
     recentExpenses,
     categoryBreakdown,
     hasOnboarded: user?.hasOnboarded ?? false,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useQueryState, parseAsString } from "nuqs";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -35,6 +36,14 @@ export default function CategoriesPage() {
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState<CategoryStat | null>(null);
+  // Bucket tab lives in the URL so the dashboard cards can deep-link into it.
+  const [bucketParam, setBucketParam] = useQueryState(
+    "bucket",
+    parseAsString.withDefault(BUCKETS[0]),
+  );
+  const activeBucket = (BUCKETS as readonly string[]).includes(bucketParam)
+    ? bucketParam
+    : BUCKETS[0];
 
   const load = () =>
     startTransition(async () => {
@@ -154,7 +163,11 @@ export default function CategoriesPage() {
         )}
 
         {leaves.length > 0 && (
-          <Tabs defaultValue={BUCKETS[0]} className="pt-2">
+          <Tabs
+            value={activeBucket}
+            onValueChange={setBucketParam}
+            className="pt-2"
+          >
             <TabsList className="grid w-full grid-cols-3">
               {bucketData.map(({ bucket, meta, inBucket }) => (
                 <TabsTrigger key={bucket} value={bucket}>
