@@ -1,11 +1,15 @@
 name: cron-tick
 
 # Drives the backend's scheduled jobs (nudges, cycle report, recurring). Each job
-# self-gates on the user's local hour, so an hourly UTC tick covers every local
-# hour once per day. Runs on a schedule + on-demand via the Actions tab.
+# self-gates on a multi-hour window in the user's local timezone and is deduped by
+# its own ledger, so a dense UTC tick covers every local window once per day and
+# extra ticks are no-ops. Runs on a schedule + on-demand via the Actions tab.
+#
+# Every 20 min, not hourly: GitHub's shared schedulers routinely delay runs by
+# 20-50 min and drop them under load, and ":00" is the most congested slot.
 on:
   schedule:
-    - cron: "0 * * * *" # hourly, on the hour (UTC)
+    - cron: "*/20 * * * *"
   workflow_dispatch: {}
 
 jobs:

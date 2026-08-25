@@ -118,6 +118,86 @@ describe("SendBudgetNudges", () => {
     expect(messageService.sendMessage).not.toHaveBeenCalled();
   });
 
+  // The delivery window (19:00-22:59 local). The fixture user is on UTC, so the
+  // UTC hour is the local hour. These run WITHOUT force — they are the gate.
+  describe("local delivery window", () => {
+    const at = (hour: number) => new Date(Date.UTC(2026, 5, 15, hour));
+
+    it("stays quiet before the window opens", async () => {
+      setSpend({ WANTS: 16200 });
+
+      const result = await useCase.execute(at(18));
+
+      expect(result.sent).toBe(0);
+      expect(result.skipped.outsideWindow).toBe(1);
+      expect(messageService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends at the opening hour", async () => {
+      setSpend({ WANTS: 16200 });
+
+      const { sent } = await useCase.execute(at(19));
+
+      expect(sent).toBe(1);
+    });
+
+    it("still sends late in the window, so a delayed tick is not lost", async () => {
+      setSpend({ WANTS: 16200 });
+
+      const { sent } = await useCase.execute(at(22));
+
+      expect(sent).toBe(1);
+    });
+
+    it("stays quiet after the window closes", async () => {
+      setSpend({ WANTS: 16200 });
+
+      const result = await useCase.execute(at(23));
+
+      expect(result.sent).toBe(0);
+      expect(result.skipped.outsideWindow).toBe(1);
+    });
+
+    it("sends once across several ticks inside the window", async () => {
+      setSpend({ WANTS: 16200 });
+      // Stand in for the unique index: the first record wins, later ones lose.
+      const recorded = new Set<string>();
+      nudgeRepository.recordSentIfNew = vi.fn(
+        (u: string, b: string, k: string, key: string) => {
+          const id = [u, b, k, key].join("|");
+          if (recorded.has(id)) return Promise.resolve(false);
+          recorded.add(id);
+          return Promise.resolve(true);
+        },
+      );
+
+      const first = await useCase.execute(at(19));
+      const second = await useCase.execute(at(21));
+
+      expect(first.sent).toBe(1);
+      expect(second.sent).toBe(0);
+      expect(messageService.sendMessage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("reports why users were skipped", async () => {
+    userRepository.findOnboardedWithTelegram.mockResolvedValue([
+      { ...user, id: "off", notificationDosage: "OFF" },
+      { ...user, id: "noTg", telegramId: null },
+      { ...user, id: "broke", monthlyIncome: 0 },
+    ]);
+
+    const result = await useCase.execute(NOW, true);
+
+    expect(result.considered).toBe(3);
+    expect(result.skipped).toEqual({
+      dosageOff: 1,
+      noTelegram: 1,
+      noIncome: 1,
+      outsideWindow: 0,
+    });
+  });
+
   it("adds a daily check-in summary for RELENTLESS on top of alerts", async () => {
     userRepository.findOnboardedWithTelegram.mockResolvedValue([
       { ...user, notificationDosage: "RELENTLESS" },

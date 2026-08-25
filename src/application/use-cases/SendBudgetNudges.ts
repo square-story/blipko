@@ -15,16 +15,31 @@ import {
   periodKey,
   pctSpent,
 } from "./budgetMath";
-import { zonedParts, zonedYmd } from "../../utils/time";
+import { inLocalHourWindow, zonedYmd } from "../../utils/time";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 // Savings overspend is good, not a leak — only nudge the spending buckets.
 const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
-// Nudges go out at ~19:00 in each user's local timezone.
+// Nudges go out in the 19:00-22:59 window of each user's local timezone. It is a
+// window and not a single hour because the cron tick drifts and is sometimes
+// dropped; an exact-hour gate loses the whole day's nudges when that happens.
+// Every nudge is ledger-deduped per day or per cycle, so extra ticks inside the
+// window cannot re-send.
 const NUDGE_HOUR = 19;
+const NUDGE_WINDOW_HOURS = 4;
+
+export type NudgeSkipReason =
+  | "noTelegram"
+  | "dosageOff"
+  | "outsideWindow"
+  | "noIncome";
 
 export interface SendBudgetNudgesResult {
   sent: number;
+  considered: number;
+  // Why the other users got nothing — without this, `sent: 0` is indistinguishable
+  // from the job never running at all.
+  skipped: Record<NudgeSkipReason, number>;
 }
 
 // Proactive reminders, gated by each user's notificationDosage:
@@ -51,15 +66,23 @@ export class SendBudgetNudgesUseCase {
     const users = await this.userRepository.findOnboardedWithTelegram();
 
     let sent = 0;
+    const skipped: Record<NudgeSkipReason, number> = {
+      noTelegram: 0,
+      dosageOff: 0,
+      outsideWindow: 0,
+      noIncome: 0,
+    };
     for (const user of users) {
       try {
-        sent += await this.nudgeUser(user, now, force);
+        const result = await this.nudgeUser(user, now, force);
+        sent += result.sent;
+        if (result.skip) skipped[result.skip]++;
       } catch (err) {
         // One user's failure must not abort the batch.
         console.error(`Nudge failed for user ${user.id}:`, err);
       }
     }
-    return { sent };
+    return { sent, considered: users.length, skipped };
   }
 
   private async nudgeUser(
@@ -73,13 +96,16 @@ export class SendBudgetNudgesUseCase {
     },
     now: Date,
     force: boolean,
-  ): Promise<number> {
+  ): Promise<{ sent: number; skip?: NudgeSkipReason }> {
     const dosage = user.notificationDosage;
-    if (!user.telegramId || dosage === "OFF") return 0;
+    if (!user.telegramId) return { sent: 0, skip: "noTelegram" };
+    if (dosage === "OFF") return { sent: 0, skip: "dosageOff" };
 
-    // Send only at the user's local evening hour (unless forced for testing).
+    // Send only inside the user's local evening window (unless forced for testing).
     const tz = user.timezone;
-    if (!force && zonedParts(now, tz).hour !== NUDGE_HOUR) return 0;
+    if (!force && !inLocalHourWindow(now, tz, NUDGE_HOUR, NUDGE_WINDOW_HOURS)) {
+      return { sent: 0, skip: "outsideWindow" };
+    }
 
     const loud = dosage === "AGGRESSIVE" || dosage === "RELENTLESS";
 
@@ -94,7 +120,7 @@ export class SendBudgetNudgesUseCase {
       Number(user.monthlyIncome ?? 0),
       await this.incomeRepository.sumForMonth(user.id, start, end),
     );
-    if (income <= 0) return 0;
+    if (income <= 0) return { sent: 0, skip: "noIncome" };
 
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
@@ -182,7 +208,7 @@ export class SendBudgetNudgesUseCase {
         sent++;
       }
     }
-    return sent;
+    return { sent };
   }
 
   private async send(telegramId: string, body: string): Promise<void> {
