@@ -77,6 +77,50 @@ describe("PostRecurringCharges", () => {
     );
   });
 
+  // The posting window (06:00-09:59 local) — no `force`, so this is the gate.
+  describe("local posting window", () => {
+    const at = (hour: number) => new Date(Date.UTC(2026, 5, 15, hour));
+
+    it("stays quiet before the window opens", async () => {
+      const { posted } = await useCase.execute(at(5));
+      expect(posted).toBe(0);
+      expect(expenseRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("posts at the opening hour", async () => {
+      const { posted } = await useCase.execute(at(6));
+      expect(posted).toBe(1);
+    });
+
+    it("still posts late in the window, so a delayed tick is not lost", async () => {
+      const { posted } = await useCase.execute(at(9));
+      expect(posted).toBe(1);
+    });
+
+    it("stays quiet after the window closes", async () => {
+      const { posted } = await useCase.execute(at(10));
+      expect(posted).toBe(0);
+    });
+
+    it("posts once across several ticks inside the window", async () => {
+      // Stand in for lastPostedKey: markPosted flips the rule for later ticks.
+      recurringRuleRepository.markPosted = vi.fn(
+        async (id: string, key: string) => {
+          recurringRuleRepository.findAllActive.mockResolvedValue([
+            { ...expenseRule, id, lastPostedKey: key },
+          ]);
+        },
+      );
+
+      const first = await useCase.execute(at(6));
+      const second = await useCase.execute(at(8));
+
+      expect(first.posted).toBe(1);
+      expect(second.posted).toBe(0);
+      expect(expenseRepository.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("posts a due box contribution as an IN entry, notifies without undo hint", async () => {
     recurringRuleRepository.findAllActive.mockResolvedValue([
       {

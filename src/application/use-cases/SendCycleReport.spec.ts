@@ -71,6 +71,32 @@ describe("SendCycleReport", () => {
     expect(messageService.sendMessage).not.toHaveBeenCalled();
   });
 
+  // The delivery window (07:00-10:59 local) — no `force`, so this is the gate.
+  describe("local delivery window", () => {
+    const dayOne = (hour: number) => new Date(Date.UTC(2026, 5, 1, hour));
+
+    it("stays quiet before the window opens", async () => {
+      const { sent } = await useCase.execute(dayOne(6));
+      expect(sent).toBe(0);
+      expect(messageService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends at the opening hour", async () => {
+      const { sent } = await useCase.execute(dayOne(7));
+      expect(sent).toBe(1);
+    });
+
+    it("still sends late in the window, so a delayed tick is not lost", async () => {
+      const { sent } = await useCase.execute(dayOne(10));
+      expect(sent).toBe(1);
+    });
+
+    it("stays quiet after the window closes", async () => {
+      const { sent } = await useCase.execute(dayOne(11));
+      expect(sent).toBe(0);
+    });
+  });
+
   it("is idempotent — skips when already recorded for this cycle", async () => {
     nudgeRepository.recordSentIfNew.mockResolvedValue(false);
     const { sent } = await useCase.execute(

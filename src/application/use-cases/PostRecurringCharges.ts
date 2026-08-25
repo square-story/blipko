@@ -8,10 +8,13 @@ import { IBoxRepository } from "../../domain/repositories/IBoxRepository";
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { postRecurringRule } from "./postRecurringRule";
-import { zonedParts } from "../../utils/time";
+import { inLocalHourWindow, zonedParts } from "../../utils/time";
 
-// Recurring rules auto-post at ~06:00 in the owner's local timezone.
+// Recurring rules auto-post in the 06:00-09:59 window of the owner's local
+// timezone. A window and not a single hour because the cron tick drifts and is
+// sometimes dropped; `lastPostedKey` keeps it to one post per month regardless.
 const RECURRING_HOUR = 6;
+const RECURRING_WINDOW_HOURS = 4;
 
 export interface PostRecurringChargesResult {
   posted: number;
@@ -51,8 +54,17 @@ export class PostRecurringChargesUseCase {
         }
         if (!user?.telegramId) continue;
 
-        const { year, month, day, hour } = zonedParts(now, user.timezone);
-        if (!force && hour !== RECURRING_HOUR) continue;
+        const { year, month, day } = zonedParts(now, user.timezone);
+        if (
+          !force &&
+          !inLocalHourWindow(
+            now,
+            user.timezone,
+            RECURRING_HOUR,
+            RECURRING_WINDOW_HOURS,
+          )
+        )
+          continue;
 
         const monthKey = `${year}-${String(month).padStart(2, "0")}`;
         if (rule.lastPostedKey === monthKey) continue; // already posted this month

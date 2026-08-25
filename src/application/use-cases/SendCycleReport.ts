@@ -6,10 +6,14 @@ import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
 import { buildCycleReport } from "./cycleReport";
 import { periodDayInfo } from "./budgetMath";
-import { zonedParts } from "../../utils/time";
+import { inLocalHourWindow } from "../../utils/time";
 
-// The cycle report goes out at ~07:00 in the user's local timezone, on day 1.
+// The cycle report goes out in the 07:00-10:59 window of the user's local
+// timezone, on day 1. A window and not a single hour because the cron tick
+// drifts and is sometimes dropped; the CYCLE_REPORT ledger row keeps it to one
+// send per ended cycle no matter how many ticks land inside the window.
 const REPORT_HOUR = 7;
+const REPORT_WINDOW_HOURS = 4;
 
 export interface SendCycleReportResult {
   sent: number;
@@ -62,7 +66,8 @@ export class SendCycleReportUseCase {
     if (!user.telegramId) return 0;
     const tz = user.timezone;
     // Morning of day 1 in the user's timezone (unless forced for testing).
-    if (!force && zonedParts(now, tz).hour !== REPORT_HOUR) return 0;
+    if (!force && !inLocalHourWindow(now, tz, REPORT_HOUR, REPORT_WINDOW_HOURS))
+      return 0;
     if (periodDayInfo(user.payday, now, tz).day !== 1) return 0;
 
     const { text, endedKey } = await buildCycleReport(

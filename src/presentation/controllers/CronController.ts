@@ -11,10 +11,12 @@ import { logger } from "../../utils/logger";
 const log = logger.child({ component: "cron" });
 const PRUNE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Runs the scheduled jobs, driven by an hourly Railway cron hitting
-// POST /api/cron/tick with the shared secret. Each job self-gates on the user's
-// local hour, so the same hourly tick delivers everything at the right local
-// time. `?force=1` bypasses the hour gate (testing); `?only=nudges|recurring|report`
+// Runs the scheduled jobs, driven by the GitHub Actions cron
+// (.github/workflows/cron.yml) hitting POST /api/cron/tick with the shared
+// secret every 20 minutes. Each job self-gates on a multi-hour window in the
+// user's local timezone and dedupes itself, so the same tick delivers everything
+// at the right local time and repeat ticks inside a window are no-ops.
+// `?force=1` bypasses the window gate (testing); `?only=nudges|recurring|report`
 // runs a single job.
 export class CronController {
   constructor(

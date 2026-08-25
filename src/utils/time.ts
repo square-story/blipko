@@ -48,6 +48,20 @@ export function zonedParts(date: Date, tz: string): ZonedParts {
   };
 }
 
+// True when `date` falls in [startHour, startHour + hours) local wall-clock in
+// `tz`. Scheduled jobs gate on a window, not an exact hour: the cron tick drifts
+// by tens of minutes and is sometimes dropped outright, and an exact-hour gate
+// turns either into a silently lost day.
+export function inLocalHourWindow(
+  date: Date,
+  tz: string,
+  startHour: number,
+  hours: number,
+): boolean {
+  const { hour } = zonedParts(date, tz);
+  return hour >= startHour && hour < startHour + hours;
+}
+
 // "YYYY-MM-DD" of `date` in the given timezone.
 export function zonedYmd(date: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {
