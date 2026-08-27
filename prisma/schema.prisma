@@ -116,8 +116,11 @@ model User {
   telegramLinkToken    TelegramLinkToken?
 }
 
-// Idempotency log for proactive nudges: at most one row per
-// (user, bucket, kind, month), so a nudge is sent once per month, not daily.
+// Idempotency log for proactive nudges. periodKey carries the repeat scope, and
+// the scope IS the repeat rate — see SendBudgetNudges. One of:
+//   "c:<cycle-start>"        once per budget cycle
+//   "d:<date>"               once per day
+//   "d:<date>#<hour>"        once per send window
 model BudgetNudge {
   id        String    @id @default(cuid())
   userId    String

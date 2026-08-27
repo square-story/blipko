@@ -83,7 +83,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       },
       {
         name: "Reminders you control",
-        what: "Optional nudges as a bucket fills up, at four intensities from off to relentless.",
+        what: "Optional nudges as a bucket fills up. Four intensities set how many times a day the bot speaks: off, gentle (once, in the evening), aggressive (twice), relentless (three times, and it keeps repeating while a bucket is over 80%).",
         why: "A warning before you overspend is worth more than a report afterwards — but only if you chose how loud it is. Off is the default.",
       },
       {

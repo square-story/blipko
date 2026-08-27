@@ -13,9 +13,9 @@ import { formatMoney } from "../budgetMath";
 
 const DOSAGE_LABEL: Record<NotificationDosage, string> = {
   OFF: "No reminders",
-  GENTLE: "Gentle (1–2 a day)",
-  AGGRESSIVE: "Aggressive",
-  RELENTLESS: "Relentless",
+  GENTLE: "Gentle (once a day)",
+  AGGRESSIVE: "Aggressive (twice a day)",
+  RELENTLESS: "Relentless (3x a day)",
 };
 
 const VALID: NotificationDosage[] = [
