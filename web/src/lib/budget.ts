@@ -256,9 +256,13 @@ export const DOSAGES: {
   hint: string;
 }[] = [
   { value: "OFF", label: "Off", hint: "No reminders" },
-  { value: "GENTLE", label: "Gentle", hint: "1–2 a day" },
-  { value: "AGGRESSIVE", label: "Aggressive", hint: "+ daily check-in" },
-  { value: "RELENTLESS", label: "Relentless", hint: "Daily + repeats" },
+  { value: "GENTLE", label: "Gentle", hint: "Once a day, in the evening" },
+  { value: "AGGRESSIVE", label: "Aggressive", hint: "Twice a day" },
+  {
+    value: "RELENTLESS",
+    label: "Relentless",
+    hint: "3x a day, and repeats while a bucket is hot",
+  },
 ];
 
 export function localeForCurrency(currency: string): string {

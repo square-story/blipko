@@ -15,18 +15,31 @@ import {
   periodKey,
   pctSpent,
 } from "./budgetMath";
-import { inLocalHourWindow, zonedYmd } from "../../utils/time";
+import { zonedParts, zonedYmd } from "../../utils/time";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 // Savings overspend is good, not a leak — only nudge the spending buckets.
 const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
-// Nudges go out in the 19:00-22:59 window of each user's local timezone. It is a
-// window and not a single hour because the cron tick drifts and is sometimes
-// dropped; an exact-hour gate loses the whole day's nudges when that happens.
-// Every nudge is ledger-deduped per day or per cycle, so extra ticks inside the
-// window cannot re-send.
-const NUDGE_HOUR = 19;
-const NUDGE_WINDOW_HOURS = 4;
+// How often a dosage is allowed to speak, as local-time send windows. This is
+// what "Reminder frequency" actually controls — one burst per window, so GENTLE
+// gets one a day and RELENTLESS three.
+//
+// Windows are 4h wide and never overlap. Width, not a single hour, because the
+// cron tick drifts by tens of minutes and is sometimes dropped outright; an
+// exact-hour gate loses the whole day. Every nudge is ledger-deduped, so extra
+// ticks inside one window cannot re-send.
+const WINDOW_HOURS = 4;
+const NUDGE_WINDOWS: Record<NotificationDosage, number[]> = {
+  OFF: [],
+  GENTLE: [19], //           19:00-22:59
+  AGGRESSIVE: [13, 19], //   13:00-16:59, 19:00-22:59
+  RELENTLESS: [9, 14, 19], // 09:00-12:59, 14:00-17:59, 19:00-22:59
+};
+
+// Which window this tick falls in, or null when the user should hear nothing.
+function currentWindow(hour: number, starts: number[]): number | null {
+  return starts.find((s) => hour >= s && hour < s + WINDOW_HOURS) ?? null;
+}
 
 export type NudgeSkipReason =
   | "noTelegram"
@@ -42,12 +55,17 @@ export interface SendBudgetNudgesResult {
   skipped: Record<NudgeSkipReason, number>;
 }
 
-// Proactive reminders, gated by each user's notificationDosage:
-//   OFF        → nothing.
-//   GENTLE     → WARN_80 + OVER, once per bucket per cycle (the original behavior).
-//   AGGRESSIVE → adds WARN_50 + a once-a-day CHECKIN summary.
-//   RELENTLESS → as AGGRESSIVE, and OVER repeats daily until they're back under.
-// Idempotency via INudgeRepository keeps a single daily run from spamming.
+// Proactive reminders. notificationDosage picks both how many windows a day the
+// user hears from (NUDGE_WINDOWS) and how often each kind may repeat:
+//
+//   kind      GENTLE   AGGRESSIVE   RELENTLESS
+//   CHECKIN   slot     slot         slot          → once per window
+//   WARN_80   cycle    day          day           → a hot bucket keeps nagging
+//   WARN_50   —        cycle        cycle         → 50% is not "running hot"
+//   OVER      cycle    day          slot
+//
+// Idempotency via INudgeRepository is what enforces all of it: the key scope IS
+// the repeat rate, so several ticks inside one window collapse to one send.
 export class SendBudgetNudgesUseCase {
   constructor(
     private readonly userRepository: IUserRepository,
@@ -101,18 +119,24 @@ export class SendBudgetNudgesUseCase {
     if (!user.telegramId) return { sent: 0, skip: "noTelegram" };
     if (dosage === "OFF") return { sent: 0, skip: "dosageOff" };
 
-    // Send only inside the user's local evening window (unless forced for testing).
+    // Send only inside one of this dosage's local windows (unless forced).
     const tz = user.timezone;
-    if (!force && !inLocalHourWindow(now, tz, NUDGE_HOUR, NUDGE_WINDOW_HOURS)) {
-      return { sent: 0, skip: "outsideWindow" };
-    }
+    const windows = NUDGE_WINDOWS[dosage];
+    const window = currentWindow(zonedParts(now, tz).hour, windows);
+    if (!force && window === null) return { sent: 0, skip: "outsideWindow" };
+    // Forced runs have no real window; pin to the first so keys stay deterministic.
+    const slotHour = window ?? windows[0];
 
     const loud = dosage === "AGGRESSIVE" || dosage === "RELENTLESS";
 
     // Per-user payday cycle, computed in the user's timezone.
     const { start, end } = currentBudgetPeriod(user.payday, now, tz);
-    const cycleKey = periodKey(user.payday, now, tz);
-    const dayKey = zonedYmd(now, tz);
+    // Three dedupe scopes sharing one column. Prefixed because periodKey() returns
+    // the cycle START DATE, the same YYYY-MM-DD shape as the day key — on a
+    // payday-1 cycle the two would otherwise collide and swallow a nudge.
+    const cycleKey = `c:${periodKey(user.payday, now, tz)}`;
+    const dayKey = `d:${zonedYmd(now, tz)}`;
+    const slotKey = `${dayKey}#${slotHour}`;
     const { day, daysInPeriod } = periodDayInfo(user.payday, now, tz);
     const daysLeft = daysInPeriod - day;
 
@@ -142,8 +166,10 @@ export class SendBudgetNudgesUseCase {
       summary.push(`${meta.emoji} ${meta.label} ${pctSpent(spent, budget)}%`);
 
       if (spent > budget) {
-        // RELENTLESS repeats the over-budget alert daily; others once per cycle.
-        const overKey = dosage === "RELENTLESS" ? dayKey : cycleKey;
+        // Over budget is the emergency: RELENTLESS re-raises it every window,
+        // AGGRESSIVE every day, GENTLE once for the cycle.
+        const overKey =
+          dosage === "RELENTLESS" ? slotKey : loud ? dayKey : cycleKey;
         if (
           await this.nudgeRepository.recordSentIfNew(
             user.id,
@@ -159,12 +185,14 @@ export class SendBudgetNudgesUseCase {
           sent++;
         }
       } else if (spent / budget >= 0.8) {
+        // "When a bucket runs hot" — daily for the loud levels. Cycle-keyed here
+        // meant a bucket could sit at 88% all month after one alert.
         if (
           await this.nudgeRepository.recordSentIfNew(
             user.id,
             bucket,
             "WARN_80",
-            cycleKey,
+            loud ? dayKey : cycleKey,
           )
         ) {
           await this.send(
@@ -191,14 +219,16 @@ export class SendBudgetNudgesUseCase {
       }
     }
 
-    // Aggressive/Relentless also get a once-a-day check-in summary.
-    if (loud && summary.length > 0) {
+    // Every dosage gets the check-in, once per window — this is the thing that
+    // makes the levels differ in volume. GENTLE without it sent nothing at all
+    // unless a bucket crossed 80%.
+    if (summary.length > 0) {
       if (
         await this.nudgeRepository.recordSentIfNew(
           user.id,
           "NEEDS",
           "CHECKIN",
-          dayKey,
+          slotKey,
         )
       ) {
         await this.send(
