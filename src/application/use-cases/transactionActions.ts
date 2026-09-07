@@ -340,7 +340,7 @@ export async function bucketRemaining(
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
   const income = effectiveMonthlyIncome(
     Number(user.monthlyIncome ?? 0),
-    await deps.incomeRepository.sumForMonth(user.id, start, end),
+    await deps.incomeRepository.sumEarnedForMonth(user.id, start, end),
   );
   return bucketBudget(income, config, bucket) - spent;
 }

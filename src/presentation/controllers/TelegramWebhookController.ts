@@ -20,6 +20,7 @@ import { PrismaCategoryRepository } from "../../data/repositories/PrismaCategory
 import { PrismaBudgetConfigRepository } from "../../data/repositories/PrismaBudgetConfigRepository";
 import { PrismaParseLogRepository } from "../../data/repositories/PrismaParseLogRepository";
 import { PrismaIncomeRepository } from "../../data/repositories/PrismaIncomeRepository";
+import { PrismaIncomeCategoryRepository } from "../../data/repositories/PrismaIncomeCategoryRepository";
 import { PrismaRecurringRuleRepository } from "../../data/repositories/PrismaRecurringRuleRepository";
 import { PrismaBoxRepository } from "../../data/repositories/PrismaBoxRepository";
 import { PrismaConversationRepository } from "../../data/repositories/PrismaConversationRepository";
@@ -69,6 +70,7 @@ const categoryRepository = new PrismaCategoryRepository(prisma);
 const budgetConfigRepository = new PrismaBudgetConfigRepository(prisma);
 const parseLogRepository = new PrismaParseLogRepository(prisma);
 const incomeRepository = new PrismaIncomeRepository(prisma);
+const incomeCategoryRepository = new PrismaIncomeCategoryRepository(prisma);
 const recurringRuleRepository = new PrismaRecurringRuleRepository(prisma);
 const boxRepository = new PrismaBoxRepository(prisma);
 const nudgeRepository = new PrismaNudgeRepository(prisma);
@@ -114,6 +116,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   budgetConfigRepository,
   parseLogRepository,
   incomeRepository,
+  incomeCategoryRepository,
   recurringRuleRepository,
   boxRepository,
   conversationRepository,

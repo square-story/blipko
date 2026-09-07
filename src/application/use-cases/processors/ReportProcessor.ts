@@ -50,7 +50,7 @@ export class ReportProcessor implements MessageProcessor {
       DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
     const prior = previousCycles(user.payday, 1)[0]!;
-    const loggedIncome = await this.incomeRepository.sumForMonth(
+    const loggedIncome = await this.incomeRepository.sumEarnedForMonth(
       user.id,
       start,
       end,

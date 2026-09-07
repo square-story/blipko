@@ -25,6 +25,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
   let budgetConfigRepository: any;
   let parseLogRepository: any;
   let incomeRepository: any;
+  let incomeCategoryRepository: any;
   let recurringRuleRepository: any;
   let boxRepository: any;
   let conversationRepository: any;
@@ -73,9 +74,16 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       create: vi.fn().mockResolvedValue({ id: "plog1" }),
       findById: vi.fn().mockResolvedValue(null),
     };
+    incomeCategoryRepository = {
+      findAllForUser: vi.fn().mockResolvedValue([
+        { id: "salary", name: "Salary", countsAsEarnings: true },
+        { id: "other", name: "Other Income", countsAsEarnings: true },
+      ]),
+    };
     incomeRepository = {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
       findLastByUserId: vi.fn().mockResolvedValue(null),
       findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),
@@ -115,6 +123,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       budgetConfigRepository,
       parseLogRepository,
       incomeRepository,
+      incomeCategoryRepository,
       recurringRuleRepository,
       boxRepository,
       conversationRepository,
@@ -123,6 +132,22 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       async (fn: any) => fn({}),
       "https://blipko.lol",
     );
+  });
+
+  // Without the income list in the prompt the model cannot tell a refund from a
+  // salary, and every return lands on the earnings side by default.
+  it("passes the income categories to the parser", async () => {
+    aiParser.parseText.mockResolvedValue({
+      transactions: [{ intent: "UNKNOWN", confidence: 0.9 }],
+    });
+
+    await useCase.execute({
+      platformUserId: "123",
+      textMessage: "1500 from nadha returned",
+    } as any);
+
+    const ctx = aiParser.parseText.mock.calls[0]![1];
+    expect(ctx.incomeCategories).toEqual(["Salary", "Other Income"]);
   });
 
   describe("assistant lane", () => {
@@ -135,6 +160,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
         budgetConfigRepository,
         parseLogRepository,
         incomeRepository,
+        incomeCategoryRepository,
         recurringRuleRepository,
         boxRepository,
         conversationRepository,
@@ -434,6 +460,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
 
   it("records income and replies with the refreshed budget", async () => {
     incomeRepository.sumForMonth.mockResolvedValue(55000);
+    incomeRepository.sumEarnedForMonth.mockResolvedValue(55000);
     aiParser.parseText.mockResolvedValue({
       transactions: [
         { intent: "INCOME", amount: 5000, note: "freelance", confidence: 0.9 },
@@ -446,7 +473,13 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     });
 
     expect(incomeRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 5000, userId: "u1" }),
+      // The categories loaded for the prompt are the same rows IncomeProcessor
+      // resolves against — no category named, so it lands on the fallback.
+      expect.objectContaining({
+        amount: 5000,
+        userId: "u1",
+        categoryId: "other",
+      }),
     );
     expect(messageService.sendInteractiveMessage.mock.calls[0][1]).toContain(
       "Income this cycle: ₹55,000",

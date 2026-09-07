@@ -43,7 +43,10 @@ describe("SendBudgetNudges", () => {
     };
     nudgeRepository = { recordSentIfNew: vi.fn().mockResolvedValue(true) };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
-    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    const incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+    };
     useCase = new SendBudgetNudgesUseCase(
       userRepository,
       expenseRepository,

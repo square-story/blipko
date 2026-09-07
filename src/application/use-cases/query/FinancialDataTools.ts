@@ -339,11 +339,13 @@ export class FinancialDataTools implements IFinancialDataTools {
       now,
       tz,
     );
-    const incomeLogged = await this.incomeRepository.sumForMonth(
-      user.id,
-      start,
-      end,
-    );
+    // Two different numbers on purpose: incomeLogged is what actually landed
+    // (what the model should quote), incomeEarned is what the budget is built on.
+    // A refund shows up in the first and not the second.
+    const [incomeLogged, incomeEarned] = await Promise.all([
+      this.incomeRepository.sumForMonth(user.id, start, end),
+      this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+    ]);
     return {
       tz,
       config,
@@ -355,7 +357,7 @@ export class FinancialDataTools implements IFinancialDataTools {
       incomeLogged,
       monthlyIncome: effectiveMonthlyIncome(
         Number(user.monthlyIncome ?? 0),
-        incomeLogged,
+        incomeEarned,
       ),
     };
   }

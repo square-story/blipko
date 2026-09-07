@@ -19,6 +19,7 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         source: data.source ?? null,
         note: data.note ?? null,
         batchId: data.batchId ?? null,
+        categoryId: data.categoryId ?? null,
       },
     });
   }
@@ -34,6 +35,25 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         userId,
         isDeleted: false,
         date: { gte: monthStart, lt: monthEnd },
+      },
+    });
+    return Number(result._sum.amount ?? 0);
+  }
+
+  async sumEarnedForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number> {
+    const result = await this.prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: monthStart, lt: monthEnd },
+        // NOT { category: { countsAsEarnings: true } } — that would drop
+        // uncategorised rows, silently shrinking every pre-taxonomy user's budget.
+        NOT: { category: { countsAsEarnings: false } },
       },
     });
     return Number(result._sum.amount ?? 0);

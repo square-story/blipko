@@ -14,6 +14,7 @@ import { renderHistoryBlock } from "./historyBlock";
 // confirm the bucket before saving (handled downstream).
 export function buildBudgetSystemPrompt(
   categories: CategoryHint[],
+  incomeCategories: string[],
   history?: ConversationTurn[],
   assistantMode = false,
 ): string {
@@ -21,15 +22,18 @@ export function buildBudgetSystemPrompt(
     categories.length > 0
       ? categories.map((c) => `- ${c.name} (${c.bucket})`).join("\n")
       : "- (none yet)";
+  const incomeBlock = renderIncomeCategoryBlock(incomeCategories);
 
   if (assistantMode) {
-    return buildLogOrEscalatePrompt(categoryList, history);
+    return buildLogOrEscalatePrompt(categoryList, incomeBlock, history);
   }
 
   return `You are an expert budgeting assistant for Indian users. You read an informal money message in English, Hindi, Hinglish, Malayalam, or Manglish (often code-mixed) and return STRICT JSON describing it.
 
 ### USER'S CATEGORIES (map to one of these when it fits):
 ${categoryList}
+
+${incomeBlock}
 ${renderHistoryBlock(history)}
 ### OUTPUT (strict JSON, no prose):
 Always return an object with a "transactions" array — never a bare transaction
@@ -116,6 +120,24 @@ ones that don't apply.
 - Output ONLY the JSON object.`;
 }
 
+// One copy, used by both prompt modes. The earnings/not-earnings rule is the
+// whole feature; two copies of it would drift.
+function renderIncomeCategoryBlock(incomeCategories: string[]): string {
+  const list =
+    incomeCategories.length > 0
+      ? incomeCategories.map((c) => `- ${c}`).join("\n")
+      : "- (none yet)";
+  return `### INCOME CATEGORIES (for intent INCOME, put the name in "category"):
+${list}
+
+Money coming back to the user is NOT earnings. "X returned the money", "got my
+refund", "he paid me back for lunch", "advance from Y" → Money Lent Returned,
+Refund, Reimbursement or Loan / Advance Received. Earned money — salary, a
+freelance payment, a dividend, a bonus — gets the matching earnings category.
+This distinction changes their budget, so read the message rather than defaulting
+to Salary.`;
+}
+
 // The assistant-lane prompt. The parser has exactly one decision to make here:
 // is this a clear spend or income to log, or is it something the assistant
 // should handle? Everything conversational — questions, commands, corrections,
@@ -127,12 +149,15 @@ ones that don't apply.
 // it out with the user's real data in front of it.
 function buildLogOrEscalatePrompt(
   categoryList: string,
+  incomeBlock: string,
   history?: ConversationTurn[],
 ): string {
   return `You are the fast-path classifier for an Indian budgeting bot. You read an informal money message in English, Hindi, Hinglish, Malayalam, or Manglish (often code-mixed) and return STRICT JSON.
 
 ### USER'S CATEGORIES (map to one of these when it fits):
 ${categoryList}
+
+${incomeBlock}
 ${renderHistoryBlock(history)}
 ### YOUR ONLY DECISION
 Is this message a CLEAR record of money the user just spent or received?

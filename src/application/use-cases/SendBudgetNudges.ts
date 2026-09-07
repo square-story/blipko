@@ -142,7 +142,7 @@ export class SendBudgetNudgesUseCase {
 
     const income = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      await this.incomeRepository.sumForMonth(user.id, start, end),
+      await this.incomeRepository.sumEarnedForMonth(user.id, start, end),
     );
     if (income <= 0) return { sent: 0, skip: "noIncome" };
 

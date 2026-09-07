@@ -233,7 +233,7 @@ export async function recordExpenseAndReply(
   );
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
-  const monthIncome = await deps.incomeRepository.sumForMonth(
+  const monthIncome = await deps.incomeRepository.sumEarnedForMonth(
     user.id,
     start,
     end,

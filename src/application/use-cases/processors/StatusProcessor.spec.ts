@@ -28,7 +28,10 @@ describe("StatusProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
-    const incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    const incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+    };
     processor = new StatusProcessor(
       expenseRepository,
       budgetConfigRepository,
