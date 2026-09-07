@@ -164,6 +164,10 @@ export function effectiveMonthlyIncome(
   return Math.max(expected, incomeThisMonth);
 }
 
+// Income `where` fragment for budget math: drop refunds, reimbursements and
+// repaid loans. NOT{false} rather than {true} so uncategorised rows still count.
+export const EARNED_ONLY = { NOT: { category: { countsAsEarnings: false } } };
+
 // Integer percentage of budget spent (0 when budget is 0).
 export function pctSpent(spent: number, budget: number): number {
   if (budget <= 0) return 0;
