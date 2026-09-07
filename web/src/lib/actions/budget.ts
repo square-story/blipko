@@ -13,6 +13,7 @@ import {
   currentBudgetPeriod,
   periodDayInfo,
   effectiveMonthlyIncome,
+  EARNED_ONLY,
   pctSpent,
   type BudgetSplit,
 } from "@/lib/budget";
@@ -44,7 +45,7 @@ export async function getBudgetOverview() {
   const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
   const { day, daysInPeriod, remainingDays } = periodDayInfo(user?.payday ?? 1);
 
-  const [config, grouped, recent, categoryGroups, incomeAgg] =
+  const [config, grouped, recent, categoryGroups, incomeAgg, earnedAgg] =
     await Promise.all([
       prisma.budgetConfig.findUnique({ where: { userId } }),
       prisma.expense.groupBy({
@@ -67,12 +68,24 @@ export async function getBudgetOverview() {
         _sum: { amount: true },
         where: { userId, isDeleted: false, date: { gte: start, lt: end } },
       }),
+      prisma.income.aggregate({
+        _sum: { amount: true },
+        where: {
+          userId,
+          isDeleted: false,
+          date: { gte: start, lt: end },
+          ...EARNED_ONLY,
+        },
+      }),
     ]);
 
   const expectedIncome = Number(user?.monthlyIncome ?? 0);
+  // Gross (what landed) is what the Income card shows; earned (refunds excluded)
+  // is what budgets are built on.
   const incomeThisMonth = Number(incomeAgg._sum.amount ?? 0);
-  // Budgets track actual income this month, floored at the expected salary.
-  const monthlyIncome = effectiveMonthlyIncome(expectedIncome, incomeThisMonth);
+  const earnedThisMonth = Number(earnedAgg._sum.amount ?? 0);
+  // Budgets track earned income this month, floored at the expected salary.
+  const monthlyIncome = effectiveMonthlyIncome(expectedIncome, earnedThisMonth);
   const currency = user?.currency ?? "INR";
   const locale = user?.locale ?? "en-IN";
   const split: BudgetSplit = config

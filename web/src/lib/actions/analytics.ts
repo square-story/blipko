@@ -12,6 +12,7 @@ import {
   bucketBudget,
   categoryPacing,
   effectiveMonthlyIncome,
+  EARNED_ONLY,
   pctSpent,
   type BudgetSplit,
   type CategoryPacing,
@@ -274,6 +275,7 @@ export async function getOverviewAnalytics(
         userId: ctx.userId,
         isDeleted: false,
         date: { gte: current.start, lt: current.end },
+        ...EARNED_ONLY,
       },
     }),
     prisma.expense.groupBy({
@@ -893,6 +895,7 @@ export async function getCommitmentAnalytics(): Promise<CommitmentAnalytics> {
         userId: ctx.userId,
         isDeleted: false,
         date: { gte: current.start, lt: current.end },
+        ...EARNED_ONLY,
       },
     }),
     prisma.expense.aggregate({
