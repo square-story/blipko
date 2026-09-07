@@ -14,6 +14,9 @@ export interface CategoryHint {
 
 export interface ParseContext {
   categories: CategoryHint[];
+  // Income category names. A plain list, not CategoryHint[]: income has no
+  // bucket, and the 50/30/20 split is a property of spending only.
+  incomeCategories: string[];
   history?: ConversationTurn[];
   // "YYYY-MM-DD" in the USER'S timezone. Passed in rather than derived inside
   // the parser: a server-side UTC date tells an IST user it is yesterday every

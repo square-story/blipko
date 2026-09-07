@@ -9,6 +9,7 @@ export interface CreateIncomeDTO {
   source?: string | undefined;
   note?: string | undefined;
   batchId?: string | undefined;
+  categoryId?: string | undefined;
 }
 
 // Partial edit of an existing income (amount/source/note).
@@ -20,8 +21,19 @@ export interface UpdateIncomeDTO {
 
 export interface IIncomeRepository {
   create(data: CreateIncomeDTO, tx?: TxClient): Promise<Income>;
-  // Sum of non-deleted income within [monthStart, monthEnd).
+  // GROSS: every non-deleted income within [monthStart, monthEnd), whatever kind.
+  // This is "money that landed" — what the income page, Wrapped and the
+  // assistant's earnings question all want. Do NOT use it for budget math.
   sumForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number>;
+  // BUDGET BASIS: the same window, minus categories flagged
+  // countsAsEarnings = false. A refund offsets an expense that already consumed
+  // budget, so counting it again would widen the budget on money you did not
+  // earn. An uncategorised row still counts, so pre-taxonomy rows behave as before.
+  sumEarnedForMonth(
     userId: string,
     monthStart: Date,
     monthEnd: Date,

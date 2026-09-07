@@ -162,7 +162,7 @@ export async function buildCycleReport(
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
 
-  const endedLogged = await deps.incomeRepository.sumForMonth(
+  const endedLogged = await deps.incomeRepository.sumEarnedForMonth(
     user.id,
     ended.start,
     ended.end,

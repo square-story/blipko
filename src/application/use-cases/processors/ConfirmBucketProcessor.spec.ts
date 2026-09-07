@@ -46,7 +46,10 @@ describe("ConfirmBucketProcessor", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+    };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("m1"),
       sendInteractiveMessage: vi.fn().mockResolvedValue("m2"),

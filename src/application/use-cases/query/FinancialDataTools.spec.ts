@@ -49,7 +49,10 @@ describe("FinancialDataTools", () => {
         },
       ]),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(50000) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(50000),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(50000),
+    };
     budgetConfigRepository = {
       findByUserId: vi
         .fn()
@@ -211,6 +214,7 @@ describe("FinancialDataTools", () => {
     it("says NO when there is no budget at all rather than inventing one", async () => {
       userRepository.findById.mockResolvedValue({ ...user, monthlyIncome: 0 });
       incomeRepository.sumForMonth.mockResolvedValue(0);
+      incomeRepository.sumEarnedForMonth.mockResolvedValue(0);
       const res = await tools.checkAffordability("u1", 100, "WANTS");
       expect(res.verdict).toBe("NO");
       expect(res.reason).toMatch(/no income recorded/i);

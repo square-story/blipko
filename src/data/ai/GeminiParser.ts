@@ -112,6 +112,7 @@ export class GeminiParser implements IAiParser {
       config: {
         systemInstruction: buildBudgetSystemPrompt(
           ctx.categories,
+          ctx.incomeCategories,
           ctx.history,
           ctx.assistantMode,
         ),

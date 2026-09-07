@@ -10,6 +10,7 @@ import { ICategoryRepository } from "../../domain/repositories/ICategoryReposito
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
 import { IParseLogRepository } from "../../domain/repositories/IParseLogRepository";
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
+import { IIncomeCategoryRepository } from "../../domain/repositories/IIncomeCategoryRepository";
 import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
 import { IBoxRepository } from "../../domain/repositories/IBoxRepository";
 import { IConversationRepository } from "../../domain/repositories/IConversationRepository";
@@ -86,6 +87,7 @@ export class ProcessIncomingMessageUseCase {
     private readonly budgetConfigRepository: IBudgetConfigRepository,
     private readonly parseLogRepository: IParseLogRepository,
     private readonly incomeRepository: IIncomeRepository,
+    private readonly incomeCategoryRepository: IIncomeCategoryRepository,
     private readonly recurringRuleRepository: IRecurringRuleRepository,
     private readonly boxRepository: IBoxRepository,
     private readonly conversationRepository: IConversationRepository,
@@ -295,10 +297,15 @@ export class ProcessIncomingMessageUseCase {
       }
     }
 
-    // AI parse with the user's category list as context.
-    const categories = await this.loadCategoryHints(user.id);
+    // AI parse with the user's category lists as context.
+    const [categories, incomeCategories] = await Promise.all([
+      this.loadCategoryHints(user.id),
+      this.incomeCategoryRepository.findAllForUser(user.id),
+    ]);
+    context.incomeCategories = incomeCategories;
     const batch = await this.aiParser.parseText(payload.textMessage, {
       categories,
+      incomeCategories: incomeCategories.map((c) => c.name),
       history,
       today: zonedYmd(new Date(), user.timezone),
       assistantMode: this.assistantAgent !== null,

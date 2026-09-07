@@ -1,4 +1,4 @@
-import { User } from "@prisma/client";
+import { IncomeCategory, User } from "@prisma/client";
 import { ParsedData, ParsedBatch } from "../../../domain/entities/ParsedData";
 import { ConversationTurn } from "../../../domain/services/IAiParser";
 import { TransactionRef } from "../transactionActions";
@@ -20,6 +20,10 @@ export interface ProcessContext {
   // processors gate on this (canHandle can't do async lookups).
   replyTarget?: TransactionRef | undefined;
   conversationHistory?: ConversationTurn[] | undefined;
+  // The user's income taxonomy, loaded once for the parser prompt and reused by
+  // IncomeProcessor to resolve the name the parser picked. Unset on the pre-parse
+  // path, where nothing needs it.
+  incomeCategories?: IncomeCategory[] | undefined;
 }
 
 export interface ProcessOutput {

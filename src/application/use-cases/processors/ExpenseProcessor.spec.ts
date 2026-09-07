@@ -39,7 +39,10 @@ describe("ExpenseProcessor", () => {
     parseLogRepository = {
       create: vi.fn().mockResolvedValue({ id: "log1" }),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+    };
     boxRepository = {
       findByCategoryId: vi.fn().mockResolvedValue(null),
       addEntry: vi.fn().mockResolvedValue({ id: "be1" }),

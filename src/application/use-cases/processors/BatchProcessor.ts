@@ -104,7 +104,11 @@ export class BatchProcessor implements MessageProcessor {
       DEFAULT_SPLIT;
     const batchIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      await this.incomeRepository.sumForMonth(user.id, periodStart, periodEnd),
+      await this.incomeRepository.sumEarnedForMonth(
+        user.id,
+        periodStart,
+        periodEnd,
+      ),
     );
 
     for (const item of items) {
@@ -194,7 +198,7 @@ export class BatchProcessor implements MessageProcessor {
     let budgetLine = "";
     if (recordedIncome) {
       const { start, end } = currentBudgetPeriod(user.payday);
-      const monthIncome = await this.incomeRepository.sumForMonth(
+      const monthIncome = await this.incomeRepository.sumEarnedForMonth(
         user.id,
         start,
         end,

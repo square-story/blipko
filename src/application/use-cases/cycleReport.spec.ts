@@ -27,7 +27,10 @@ describe("buildCycleReport", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(50000) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(50000),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(50000),
+    };
 
     const ended: Record<string, number> = {
       NEEDS: 20000,

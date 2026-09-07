@@ -105,6 +105,7 @@ model User {
   incomes        Income[]
   budgetConfig   BudgetConfig?
   categories     Category[]
+  incomeCategories IncomeCategory[]
   logs           ParseLog[]
   budgetNudges   BudgetNudge[]
   recurringRules RecurringRule[]
@@ -276,12 +277,43 @@ model Income {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // What kind of money this is. Null = uncategorised, which counts as earnings
+  // so rows predating the taxonomy keep their old budget behaviour.
+  categoryId String?
+  category   IncomeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   isDeleted Boolean   @default(false)
   deletedAt DateTime?
 
   @@index([userId, date])
   @@index([userId, isDeleted, date])
   @@index([userId, batchId])
+}
+
+// Income taxonomy. Separate from Category (the expense one) on purpose: that
+// model requires a `bucket`, is uniquely named per user in the same namespace,
+// and carries monthlyBudget/weight/Box — none of which mean anything for income.
+//
+// countsAsEarnings is the whole point. It lives on the CATEGORY, not the row, so
+// a new kind of income is a data change rather than a code change, and
+// re-pointing a category moves every past and future row with it.
+model IncomeCategory {
+  id   String @id @default(cuid())
+  name String
+
+  // False for money that is not new income — a refund, a friend paying you back,
+  // a loan. Those must not widen the budget: the matching expense already
+  // consumed it, so counting the return too inflates the budget twice over.
+  countsAsEarnings Boolean @default(true)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  incomes Income[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
 }
 
 // ─── Boxes ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { CATEGORY_TEMPLATE } from "../src/domain/categoryTemplate";
+import { INCOME_CATEGORY_TEMPLATE } from "../src/domain/incomeCategoryTemplate";
 
 const prisma = new PrismaClient();
 
@@ -42,6 +43,27 @@ async function upsertSystemCategory(data: {
   return created.id;
 }
 
+// Seeds the SYSTEM income taxonomy (userId = null). Idempotent, and it reconciles
+// countsAsEarnings in place — that flag is the budget rule, so a template change
+// has to reach existing rows rather than only new ones. Not prisma.upsert: the
+// unique key is (userId, name) and Prisma will not take a null in a compound
+// unique where.
+async function seedIncomeCategories(): Promise<void> {
+  for (const { name, countsAsEarnings } of INCOME_CATEGORY_TEMPLATE) {
+    const existing = await prisma.incomeCategory.findFirst({
+      where: { userId: null, name },
+    });
+    if (existing) {
+      await prisma.incomeCategory.update({
+        where: { id: existing.id },
+        data: { countsAsEarnings },
+      });
+    } else {
+      await prisma.incomeCategory.create({ data: { name, countsAsEarnings } });
+    }
+  }
+}
+
 async function main() {
   let groups = 0;
   let leaves = 0;
@@ -65,7 +87,10 @@ async function main() {
       leaves++;
     }
   }
-  console.log(`Seeded ${groups} system groups and ${leaves} leaf categories.`);
+  await seedIncomeCategories();
+  console.log(
+    `Seeded ${groups} system groups, ${leaves} leaf categories, and ${INCOME_CATEGORY_TEMPLATE.length} income categories.`,
+  );
 }
 
 main()

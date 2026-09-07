@@ -33,6 +33,7 @@ export class OpenAIParser implements IAiParser {
           role: "system",
           content: buildBudgetSystemPrompt(
             ctx.categories,
+            ctx.incomeCategories,
             ctx.history,
             ctx.assistantMode,
           ),

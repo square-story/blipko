@@ -30,7 +30,10 @@ describe("TransactionActionProcessor", () => {
       update: vi.fn().mockResolvedValue(undefined),
       sumByBucketForMonth: vi.fn().mockResolvedValue(0),
     };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+    };
     categoryRepository = {
       findById: vi
         .fn()

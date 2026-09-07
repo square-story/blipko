@@ -3,6 +3,13 @@ import { IncomeProcessor } from "./IncomeProcessor";
 
 const user = { id: "u1", telegramId: "123", monthlyIncome: 50000 };
 
+// Loaded once upstream (for the parser prompt) and handed down on the context.
+const incomeCategories = [
+  { id: "salary", name: "Salary", countsAsEarnings: true },
+  { id: "other", name: "Other Income", countsAsEarnings: true },
+  { id: "returned", name: "Money Lent Returned", countsAsEarnings: false },
+];
+
 describe("IncomeProcessor", () => {
   let incomeRepository: any;
   let budgetConfigRepository: any;
@@ -15,6 +22,7 @@ describe("IncomeProcessor", () => {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       // After creating, this month's income totals 55,000 (50k salary + 5k freelance).
       sumForMonth: vi.fn().mockResolvedValue(55000),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(55000),
     };
     budgetConfigRepository = {
       findByUserId: vi
@@ -79,6 +87,68 @@ describe("IncomeProcessor", () => {
       "inc1",
       "m2",
     );
+  });
+
+  // The bug this taxonomy exists for: a friend paying you back is not a raise.
+  // The expense it offsets already consumed budget, so counting the return as
+  // income would widen the budget on money that was already spent.
+  it("files a refund under a non-earning category and says the budget is unchanged", async () => {
+    const output = await processor.process({
+      user: { id: "u1", monthlyIncome: 40000, payday: 1 },
+      incomeCategories,
+      platformUserId: "123",
+      textMessage: "1500 from nadha, he returned the money",
+      parsed: {
+        intent: "INCOME",
+        amount: 1500,
+        category: "Money Lent Returned",
+        note: "return from nadha",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(incomeRepository.create.mock.calls[0]![0].categoryId).toBe(
+      "returned",
+    );
+    expect(output.response).toContain("Money coming back, not new income");
+  });
+
+  it("does not say that for real earnings", async () => {
+    const output = await processor.process({
+      user: { id: "u1", monthlyIncome: 40000, payday: 1 },
+      incomeCategories,
+      platformUserId: "123",
+      textMessage: "got salary 40000",
+      parsed: {
+        intent: "INCOME",
+        amount: 40000,
+        category: "Salary",
+        note: "salary",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(incomeRepository.create.mock.calls[0]![0].categoryId).toBe("salary");
+    expect(output.response).not.toContain("Money coming back");
+  });
+
+  // An unknown name must not throw or write a dangling id — it lands on the
+  // fallback, which counts as earnings, i.e. the pre-taxonomy behaviour.
+  it("falls back to Other Income when the parser invents a category", async () => {
+    await processor.process({
+      user: { id: "u1", monthlyIncome: 40000, payday: 1 },
+      incomeCategories,
+      platformUserId: "123",
+      textMessage: "got 500 from somewhere",
+      parsed: {
+        intent: "INCOME",
+        amount: 500,
+        category: "Crypto Airdrop",
+        confidence: 0.7,
+      },
+    } as any);
+
+    expect(incomeRepository.create.mock.calls[0]![0].categoryId).toBe("other");
   });
 
   it("asks again when the amount is missing", async () => {

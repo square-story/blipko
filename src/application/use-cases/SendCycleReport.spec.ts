@@ -35,7 +35,10 @@ describe("SendCycleReport", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     nudgeRepository = { recordSentIfNew: vi.fn().mockResolvedValue(true) };
-    incomeRepository = { sumForMonth: vi.fn().mockResolvedValue(0) };
+    incomeRepository = {
+      sumForMonth: vi.fn().mockResolvedValue(0),
+      sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+    };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
     useCase = new SendCycleReportUseCase(
       userRepository,

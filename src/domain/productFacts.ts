@@ -87,6 +87,11 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         why: "A warning before you overspend is worth more than a report afterwards — but only if you chose how loud it is. Off is the default.",
       },
       {
+        name: "Income that knows what it is",
+        what: "Logged income is filed under a category — salary, freelance, dividend, or a non-earning one like a refund, a reimbursement, money you lent being paid back, or a loan. Only earnings raise your budget; the rest is still recorded and still shows in your income total.",
+        why: "When a friend pays you back for lunch, that is not a raise. Counting it as income would widen your budget on money you already spent, so the same lunch would be paid for twice.",
+      },
+      {
         name: "Web dashboard",
         what: "Charts, trends, a filterable and exportable transaction list, and all settings.",
         why: "Chat is best for capture and quick answers; the dashboard is where you review a month properly and change how things are set up.",
