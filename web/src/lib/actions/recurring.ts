@@ -17,6 +17,8 @@ export type RecurringRuleView = {
   bucket: Bucket | null;
   categoryId: string | null;
   categoryName: string | null;
+  incomeCategoryId: string | null;
+  incomeCategoryName: string | null;
   boxId: string | null;
   boxName: string | null;
   note: string | null;
@@ -30,6 +32,7 @@ export async function getRecurringRules(): Promise<RecurringRuleView[]> {
     where: { userId: session.user.id, isActive: true },
     include: {
       category: { select: { name: true } },
+      incomeCategory: { select: { name: true } },
       box: { select: { name: true } },
     },
     orderBy: [{ kind: "asc" }, { dayOfMonth: "asc" }],
@@ -43,6 +46,8 @@ export async function getRecurringRules(): Promise<RecurringRuleView[]> {
     bucket: r.bucket,
     categoryId: r.categoryId,
     categoryName: r.category?.name ?? null,
+    incomeCategoryId: r.incomeCategoryId,
+    incomeCategoryName: r.incomeCategory?.name ?? null,
     boxId: r.boxId,
     boxName: r.box?.name ?? null,
     note: r.note,
@@ -67,6 +72,7 @@ export async function createRecurringRule(
 
   let bucket: Bucket | null = null;
   let categoryId: string | null = null;
+  let incomeCategoryId: string | null = null;
   let boxId: string | null = null;
 
   if (data.kind === "EXPENSE") {
@@ -79,6 +85,19 @@ export async function createRecurringRule(
         categoryId = existing.id;
         bucket = existing.bucket;
       }
+    }
+  } else if (data.kind === "INCOME") {
+    // Its own taxonomy, and no bucket. findFirst + OR because every system
+    // row has a null userId, which an ownership check would reject.
+    if (data.incomeCategoryId) {
+      const existing = await prisma.incomeCategory.findFirst({
+        where: {
+          id: data.incomeCategoryId,
+          OR: [{ userId: null }, { userId }],
+        },
+        select: { id: true },
+      });
+      if (existing) incomeCategoryId = existing.id;
     }
   } else if (data.kind === "BOX") {
     if (!data.boxId) return { success: false, error: "Pick a box" };
@@ -97,6 +116,7 @@ export async function createRecurringRule(
       dayOfMonth: data.dayOfMonth,
       bucket,
       categoryId,
+      incomeCategoryId,
       boxId,
       note: data.note ?? null,
     },
@@ -139,6 +159,7 @@ export async function updateRecurringRule(
 
   let bucket: Bucket | null = null;
   let categoryId: string | null = null;
+  let incomeCategoryId: string | null = null;
   let boxId: string | null = null;
 
   if (data.kind === "EXPENSE") {
@@ -151,6 +172,19 @@ export async function updateRecurringRule(
         categoryId = existing.id;
         bucket = existing.bucket;
       }
+    }
+  } else if (data.kind === "INCOME") {
+    // Its own taxonomy, and no bucket. findFirst + OR because every system
+    // row has a null userId, which an ownership check would reject.
+    if (data.incomeCategoryId) {
+      const existing = await prisma.incomeCategory.findFirst({
+        where: {
+          id: data.incomeCategoryId,
+          OR: [{ userId: null }, { userId }],
+        },
+        select: { id: true },
+      });
+      if (existing) incomeCategoryId = existing.id;
     }
   } else if (data.kind === "BOX") {
     if (!data.boxId) return { success: false, error: "Pick a box" };
@@ -169,6 +203,7 @@ export async function updateRecurringRule(
       dayOfMonth: data.dayOfMonth,
       bucket,
       categoryId,
+      incomeCategoryId,
       boxId,
       note: data.note ?? null,
     },

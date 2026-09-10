@@ -5,6 +5,9 @@ import { z } from "zod";
 export const incomeEditSchema = z.object({
   amount: z.number().positive("Must be positive").max(1_000_000_000),
   date: z.date(),
+  // Re-assign only: the 13 system categories are the whole taxonomy, and Radix
+  // Select cannot hold an empty value, so there is no way to clear this.
+  categoryId: z.string().trim().max(50).optional(),
   source: z.string().trim().max(50).optional(),
   note: z.string().trim().max(100).optional(),
 });
