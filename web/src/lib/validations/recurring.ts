@@ -11,6 +11,9 @@ export const recurringRuleSchema = z.object({
     .max(28, "Use 1–28 to avoid month-end issues"),
   bucket: z.enum(["NEEDS", "WANTS", "SAVINGS"]).optional(),
   categoryId: z.string().trim().max(50).optional(),
+  // INCOME rules only. A separate field because income has its own taxonomy
+  // and no bucket; `kind` decides which of the two applies.
+  incomeCategoryId: z.string().trim().max(50).optional(),
   boxId: z.string().trim().max(50).optional(),
   note: z.string().trim().max(100).optional(),
 });

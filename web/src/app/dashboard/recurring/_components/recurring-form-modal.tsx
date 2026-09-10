@@ -16,7 +16,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -41,12 +43,14 @@ import {
 } from "@/lib/validations/recurring";
 import { toast } from "@/lib/toast";
 import type { CategoryStat } from "@/lib/actions/categories";
+import type { IncomeCategoryOption } from "@/lib/actions/income";
 import type { BoxView } from "@/lib/actions/boxes";
 import { CategoryCombobox } from "@/components/category-combobox";
 
 interface RecurringFormModalProps {
   rule?: RecurringRuleView;
   categories: CategoryStat[];
+  incomeCategories: IncomeCategoryOption[];
   boxes: BoxView[];
   onSaved: () => void;
   trigger?: React.ReactNode;
@@ -55,6 +59,7 @@ interface RecurringFormModalProps {
 export function RecurringFormModal({
   rule,
   categories,
+  incomeCategories,
   boxes,
   onSaved,
   trigger,
@@ -71,6 +76,7 @@ export function RecurringFormModal({
       dayOfMonth: rule?.dayOfMonth ?? 1,
       bucket: rule?.bucket ?? "NEEDS",
       categoryId: rule?.categoryId ?? undefined,
+      incomeCategoryId: rule?.incomeCategoryId ?? undefined,
       boxId: rule?.boxId ?? undefined,
       note: rule?.note ?? "",
     },
@@ -86,6 +92,7 @@ export function RecurringFormModal({
         dayOfMonth: rule?.dayOfMonth ?? 1,
         bucket: rule?.bucket ?? "NEEDS",
         categoryId: rule?.categoryId ?? undefined,
+        incomeCategoryId: rule?.incomeCategoryId ?? undefined,
         boxId: rule?.boxId ?? undefined,
         note: rule?.note ?? "",
       });
@@ -217,6 +224,55 @@ export function RecurringFormModal({
                           if (category) form.setValue("bucket", category.bucket);
                         }}
                       />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {kind === "INCOME" && (
+                <FormField
+                  control={form.control}
+                  name="incomeCategoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category (Optional)</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Uncategorised" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {/* Grouped by the rule that decides whether this
+                              raises the budget every month. */}
+                          <SelectGroup>
+                            <SelectLabel>Counts as income</SelectLabel>
+                            {incomeCategories
+                              .filter((c) => c.countsAsEarnings)
+                              .map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name}
+                                </SelectItem>
+                              ))}
+                          </SelectGroup>
+                          <SelectGroup>
+                            <SelectLabel>
+                              Doesn&apos;t raise your budget
+                            </SelectLabel>
+                            {incomeCategories
+                              .filter((c) => !c.countsAsEarnings)
+                              .map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name}
+                                </SelectItem>
+                              ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
