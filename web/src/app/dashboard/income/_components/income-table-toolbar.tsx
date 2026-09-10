@@ -5,6 +5,7 @@ import type { Table } from "@tanstack/react-table";
 
 import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
+import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X, Download } from "lucide-react";
@@ -14,11 +15,13 @@ import { exportIncomeCsv, type IncomeFilters } from "@/lib/actions/income";
 interface IncomeTableToolbarProps<TData> {
   table: Table<TData>;
   filters: IncomeFilters;
+  categoryOptions: { label: string; value: string }[];
 }
 
 export function IncomeTableToolbar<TData>({
   table,
   filters,
+  categoryOptions,
 }: IncomeTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
   const [isExporting, startExport] = React.useTransition();
@@ -47,6 +50,14 @@ export function IncomeTableToolbar<TData>({
         onChange={(event) => table.setGlobalFilter(event.target.value)}
         className="h-8 w-[150px] lg:w-[250px]"
       />
+      {table.getColumn("categoryName") && categoryOptions.length > 0 && (
+        <DataTableFacetedFilter
+          column={table.getColumn("categoryName")}
+          title="Category"
+          options={categoryOptions}
+          multiple
+        />
+      )}
       {table.getColumn("date") && (
         <DataTableDateFilter
           column={table.getColumn("date")!}
