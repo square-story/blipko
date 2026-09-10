@@ -1,4 +1,5 @@
 import { Bucket } from "@prisma/client";
+import { INCOME_CATEGORY_TEMPLATE } from "../../../domain/incomeCategoryTemplate";
 import {
   IAssistantWriteTools,
   ProposalResult,
@@ -27,6 +28,14 @@ type ResolvedBucket =
 // makes (box name, expense id, category, bucket) is resolved against real rows
 // HERE — so a confirmed action can never apply to something invented, and an
 // unresolvable reference comes back as a soft error with the valid options.
+// The income taxonomy is 13 fixed system rows, seeded for every user, so it can
+// be validated against the template without a repository round-trip.
+function resolveIncomeCategoryName(name: string): string | undefined {
+  const wanted = name.trim().toLowerCase();
+  return INCOME_CATEGORY_TEMPLATE.find((c) => c.name.toLowerCase() === wanted)
+    ?.name;
+}
+
 export class AssistantWriteTools implements IAssistantWriteTools {
   constructor(
     private readonly pendingActionRepository: IPendingActionRepository,
@@ -46,21 +55,47 @@ export class AssistantWriteTools implements IAssistantWriteTools {
       note?: string | undefined;
     },
   ): Promise<ProposalResult> {
-    const bucket = await this.resolveBucket(
-      userId,
-      input.bucket,
-      input.category,
-    );
-    if (!bucket.resolved) return bucket.failure;
+    // Two taxonomies, and only `kind` says which one `category` meant. This
+    // used to resolve every rule against the EXPENSE categories, so an income
+    // rule could be staged with an expense category and inherit its bucket.
+    let payload;
+    if (input.kind === "INCOME") {
+      const match = input.category
+        ? resolveIncomeCategoryName(input.category)
+        : undefined;
+      if (input.category && !match) {
+        return {
+          ok: false,
+          error: "unknown_income_category",
+          message: `"${input.category}" is not one of the income categories.`,
+          available_categories: INCOME_CATEGORY_TEMPLATE.map((c) => c.name),
+        };
+      }
+      // No bucket: the 50/30/20 split is a property of spending.
+      payload = {
+        kind: input.kind,
+        amount: input.amount,
+        dayOfMonth: input.dayOfMonth,
+        ...(match ? { incomeCategoryName: match } : {}),
+        ...(input.note ? { note: input.note } : {}),
+      };
+    } else {
+      const bucket = await this.resolveBucket(
+        userId,
+        input.bucket,
+        input.category,
+      );
+      if (!bucket.resolved) return bucket.failure;
 
-    const payload = {
-      kind: input.kind,
-      amount: input.amount,
-      dayOfMonth: input.dayOfMonth,
-      ...(bucket.bucket ? { bucket: bucket.bucket } : {}),
-      ...(input.category ? { categoryName: input.category } : {}),
-      ...(input.note ? { note: input.note } : {}),
-    };
+      payload = {
+        kind: input.kind,
+        amount: input.amount,
+        dayOfMonth: input.dayOfMonth,
+        ...(bucket.bucket ? { bucket: bucket.bucket } : {}),
+        ...(input.category ? { categoryName: input.category } : {}),
+        ...(input.note ? { note: input.note } : {}),
+      };
+    }
 
     const label = input.note ?? input.category ?? input.kind.toLowerCase();
     const summary =

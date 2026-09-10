@@ -107,7 +107,10 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         command: "/report",
         what: "This cycle's summary and biggest spending leaks.",
       },
-      { command: "/recurring", what: "See repeating income and expenses." },
+      {
+        command: "/recurring",
+        what: "See repeating income and expenses. A repeating income is filed under an income category, so a monthly reimbursement does not raise your budget.",
+      },
       {
         command: "/boxes",
         what: "See savings boxes and progress toward targets.",

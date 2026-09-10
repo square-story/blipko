@@ -199,4 +199,28 @@ describe("PostRecurringCharges", () => {
     );
     expect(expenseRepository.create).not.toHaveBeenCalled();
   });
+
+  // The rule's category has to reach the row it posts, or every auto-logged
+  // income is uncategorised — which counts as earnings, so a recurring
+  // reimbursement would widen the budget every month.
+  it("carries the rule's income category onto the posted row", async () => {
+    recurringRuleRepository.findAllActive.mockResolvedValue([
+      {
+        id: "rr3",
+        userId: "u1",
+        kind: "INCOME",
+        amount: 2500,
+        dayOfMonth: 25,
+        incomeCategoryId: "ic-reimbursement",
+        note: "travel claim",
+      },
+    ]);
+
+    await useCase.execute(new Date(Date.UTC(2026, 5, 26, 12)), true);
+
+    expect(incomeRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryId: "ic-reimbursement" }),
+      expect.anything(),
+    );
+  });
 });

@@ -111,6 +111,7 @@ export class ProcessIncomingMessageUseCase {
               boxRepository,
               recurringRuleRepository,
               messageService,
+              incomeCategoryRepository,
             ),
           ]
         : []),

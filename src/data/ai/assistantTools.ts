@@ -1,4 +1,5 @@
 import { Bucket } from "@prisma/client";
+import { INCOME_CATEGORY_TEMPLATE } from "../../domain/incomeCategoryTemplate";
 import {
   DateRange,
   IFinancialDataTools,
@@ -222,7 +223,10 @@ function writeTools(categoryProp: Record<string, unknown>): ToolDef[] {
         ...BUCKET_PROP,
         category: {
           type: "string",
-          description: "Category name for an expense rule.",
+          description:
+            "For an EXPENSE rule, one of the user's spending categories. For an INCOME rule, one of the income categories: " +
+            INCOME_CATEGORY_TEMPLATE.map((c) => c.name).join(", ") +
+            ". The two are separate taxonomies — never use a spending category on an income rule.",
         },
         note: { type: "string", description: "Short label, e.g. 'rent'." },
       },
