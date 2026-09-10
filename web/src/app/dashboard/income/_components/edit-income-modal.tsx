@@ -31,7 +31,20 @@ import {
   ResponsiveModalDescription,
   ResponsiveModalFooter,
 } from "@/components/ui/responsive-modal";
-import { updateIncome, type IncomeData } from "@/lib/actions/income";
+import {
+  updateIncome,
+  type IncomeData,
+  type IncomeCategoryOption,
+} from "@/lib/actions/income";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   incomeEditSchema,
   type IncomeEditInput,
@@ -40,12 +53,14 @@ import { toast } from "@/lib/toast";
 
 interface EditIncomeModalProps {
   income: IncomeData;
+  categories: IncomeCategoryOption[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function EditIncomeModal({
   income,
+  categories,
   open,
   onOpenChange,
 }: EditIncomeModalProps) {
@@ -58,6 +73,8 @@ export function EditIncomeModal({
     defaultValues: {
       amount: income.amount,
       date: income.date,
+      // ?? undefined, not ?? "" — Radix Select cannot hold an empty value.
+      categoryId: income.categoryId ?? undefined,
       source: income.source ?? "",
       note: income.note ?? "",
     },
@@ -68,6 +85,7 @@ export function EditIncomeModal({
       form.reset({
         amount: income.amount,
         date: income.date,
+        categoryId: income.categoryId ?? undefined,
         source: income.source ?? "",
         note: income.note ?? "",
       });
@@ -93,7 +111,7 @@ export function EditIncomeModal({
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>Edit Income</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            Update the amount, date, source, or note for this income.
+            Update the amount, date, category, source, or note for this income.
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
         <Form {...form}>
@@ -167,6 +185,50 @@ export function EditIncomeModal({
                     <FormControl>
                       <Input placeholder="salary, freelance, etc." {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    {/* value, not defaultValue: this form calls reset() on open,
+                        and defaultValue would keep the previous row's pick. */}
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Uncategorised" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {/* Grouped by the rule that actually matters, so the
+                            consequence is visible at the moment of choosing. */}
+                        <SelectGroup>
+                          <SelectLabel>Counts as income</SelectLabel>
+                          {categories
+                            .filter((c) => c.countsAsEarnings)
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                        <SelectGroup>
+                          <SelectLabel>Doesn&apos;t raise your budget</SelectLabel>
+                          {categories
+                            .filter((c) => !c.countsAsEarnings)
+                            .map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

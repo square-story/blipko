@@ -12,16 +12,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { deleteIncome, type IncomeData } from "@/lib/actions/income";
+import {
+  deleteIncome,
+  type IncomeData,
+  type IncomeCategoryOption,
+} from "@/lib/actions/income";
 import { toast } from "@/lib/toast";
 import { EditIncomeModal } from "./edit-income-modal";
 import { MoveToBoxModal } from "@/app/dashboard/_components/move-to-box-modal";
 
 interface IncomeRowActionsProps {
   income: IncomeData;
+  categories: IncomeCategoryOption[];
 }
 
-export function IncomeRowActions({ income }: IncomeRowActionsProps) {
+export function IncomeRowActions({
+  income,
+  categories,
+}: IncomeRowActionsProps) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -67,6 +75,7 @@ export function IncomeRowActions({ income }: IncomeRowActionsProps) {
       </DropdownMenu>
 
       <EditIncomeModal
+        categories={categories}
         income={income}
         open={editOpen}
         onOpenChange={setEditOpen}

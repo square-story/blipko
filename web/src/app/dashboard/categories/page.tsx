@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useQueryState, parseAsString } from "nuqs";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
+import { CategoriesTabs } from "@/components/categories-tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tabs,
@@ -132,6 +133,7 @@ export default function CategoriesPage() {
   return (
     <ContentLayout title="Categories">
       <div className="space-y-4">
+        <CategoriesTabs />
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
             Your spending split into 50/30/20 buckets. Each bucket is your
