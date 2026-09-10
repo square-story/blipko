@@ -145,6 +145,56 @@ describe("AssistantWriteTools", () => {
         pendingActionRepository.create.mock.calls[0]![0].payload.bucket,
       ).toBe("NEEDS");
     });
+
+    // Income has its own taxonomy. This used to resolve every rule against the
+    // expense categories, so an income rule inherited a spending category and
+    // its bucket.
+    it("stages an income rule against the income taxonomy, with no bucket", async () => {
+      await writes.proposeRecurring("u1", {
+        kind: "INCOME",
+        amount: 45000,
+        dayOfMonth: 1,
+        bucket: "NEEDS", // meaningless for income
+        category: "Salary",
+      });
+
+      expect(categoryRepository.findByNameForUser).not.toHaveBeenCalled();
+      const payload = pendingActionRepository.create.mock.calls[0]![0].payload;
+      expect(payload.incomeCategoryName).toBe("Salary");
+      expect(payload.categoryName).toBeUndefined();
+      expect(payload.bucket).toBeUndefined();
+    });
+
+    it("rejects an unknown income category with the income names", async () => {
+      const res = await writes.proposeRecurring("u1", {
+        kind: "INCOME",
+        amount: 45000,
+        dayOfMonth: 1,
+        category: "Food", // a real EXPENSE category, wrong taxonomy
+      });
+
+      expect(res).toMatchObject({
+        ok: false,
+        error: "unknown_income_category",
+      });
+      expect((res as any).available_categories).toContain("Salary");
+      expect((res as any).available_categories).toContain("Refund");
+      expect(pendingActionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("matches an income category case-insensitively", async () => {
+      await writes.proposeRecurring("u1", {
+        kind: "INCOME",
+        amount: 45000,
+        dayOfMonth: 1,
+        category: "salary",
+      });
+
+      expect(
+        pendingActionRepository.create.mock.calls[0]![0].payload
+          .incomeCategoryName,
+      ).toBe("Salary");
+    });
   });
 
   describe("payload validation happens before staging", () => {

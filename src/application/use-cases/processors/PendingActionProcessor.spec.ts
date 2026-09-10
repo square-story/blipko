@@ -25,6 +25,7 @@ describe("PendingActionProcessor", () => {
   let boxRepository: any;
   let recurringRuleRepository: any;
   let messageService: any;
+  let incomeCategoryRepository: any;
   let p: PendingActionProcessor;
 
   beforeEach(() => {
@@ -51,6 +52,12 @@ describe("PendingActionProcessor", () => {
       create: vi.fn().mockResolvedValue({ id: "r1" }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
+    incomeCategoryRepository = {
+      findAllForUser: vi.fn().mockResolvedValue([
+        { id: "ic-salary", name: "Salary", countsAsEarnings: true },
+        { id: "ic-other", name: "Other Income", countsAsEarnings: true },
+      ]),
+    };
 
     p = new PendingActionProcessor(
       pendingActionRepository,
@@ -59,6 +66,7 @@ describe("PendingActionProcessor", () => {
       boxRepository,
       recurringRuleRepository,
       messageService,
+      incomeCategoryRepository,
     );
   });
 
@@ -232,6 +240,52 @@ describe("PendingActionProcessor", () => {
       expect(recurringRuleRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ bucket: "NEEDS", categoryId: "c1" }),
       );
+    });
+
+    // The bug: this resolved every rule against the EXPENSE taxonomy whatever
+    // the kind, so an income rule for a user who happened to have a spending
+    // category called "Freelance" got that category AND its bucket attached.
+    it("never resolves an income rule against the expense categories", async () => {
+      pendingActionRepository.findLiveForUser.mockResolvedValue(
+        pending({
+          kind: "SET_RECURRING",
+          payload: {
+            kind: "INCOME",
+            amount: 45000,
+            dayOfMonth: 1,
+            incomeCategoryName: "Salary",
+            note: "salary",
+          },
+        }),
+      );
+      // A same-named expense category exists; it must not be consulted.
+      categoryRepository.findByNameForUser.mockResolvedValue({
+        id: "c-freelance",
+        name: "Salary",
+        bucket: "WANTS",
+      });
+
+      await p.process(ctx("act:p1:y"));
+
+      expect(categoryRepository.findByNameForUser).not.toHaveBeenCalled();
+      const created = recurringRuleRepository.create.mock.calls[0]![0];
+      expect(created.incomeCategoryId).toBe("ic-salary");
+      expect(created.categoryId).toBeUndefined();
+      expect(created.bucket).toBeUndefined();
+    });
+
+    it("falls back to Other Income when the assistant names nothing", async () => {
+      pendingActionRepository.findLiveForUser.mockResolvedValue(
+        pending({
+          kind: "SET_RECURRING",
+          payload: { kind: "INCOME", amount: 45000, dayOfMonth: 1 },
+        }),
+      );
+
+      await p.process(ctx("act:p1:y"));
+      expect(
+        recurringRuleRepository.create.mock.calls[0]![0].incomeCategoryId,
+      ).toBe("ic-other");
     });
   });
 

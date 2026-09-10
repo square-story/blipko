@@ -6,8 +6,11 @@ export interface CreateRecurringRuleDTO {
   kind: RecurringKind;
   amount: number;
   dayOfMonth: number;
+  // bucket + categoryId are EXPENSE-only; incomeCategoryId is INCOME-only;
+  // boxId is BOX-only. `kind` decides which apply.
   bucket?: Bucket | undefined;
   categoryId?: string | undefined;
+  incomeCategoryId?: string | undefined;
   boxId?: string | undefined;
   note?: string | undefined;
 }

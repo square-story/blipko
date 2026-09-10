@@ -3,6 +3,11 @@ import { RecurringSetupProcessor } from "./RecurringSetupProcessor";
 
 const user = { id: "u1", telegramId: "123" };
 
+const INCOME_CATEGORIES = [
+  { id: "ic-salary", name: "Salary", countsAsEarnings: true },
+  { id: "ic-other", name: "Other Income", countsAsEarnings: true },
+];
+
 describe("RecurringSetupProcessor", () => {
   let recurringRuleRepository: any;
   let categoryRepository: any;
@@ -164,6 +169,56 @@ describe("RecurringSetupProcessor", () => {
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
       "Recurring income",
     );
+  });
+
+  // An income rule posts an Income row every month. Without a category those
+  // rows are uncategorised, which counts as earnings — fine for salary, wrong
+  // for a recurring reimbursement.
+  it("files a recurring income under its income category", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "salary 50000 on 25th monthly",
+      incomeCategories: INCOME_CATEGORIES,
+      parsed: {
+        intent: "RECURRING",
+        recurringKind: "INCOME",
+        amount: 50000,
+        dayOfMonth: 25,
+        category: "Salary",
+        note: "salary",
+        confidence: 0.9,
+      },
+    } as any);
+
+    const created = recurringRuleRepository.create.mock.calls[0]![0];
+    expect(created.incomeCategoryId).toBe("ic-salary");
+    // Income has no bucket and must never borrow an expense category.
+    expect(created.bucket).toBeUndefined();
+    expect(created.categoryId).toBeUndefined();
+    expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
+      "Salary",
+    );
+  });
+
+  it("falls back to Other Income when the parser names nothing", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "50000 on 25th monthly",
+      incomeCategories: INCOME_CATEGORIES,
+      parsed: {
+        intent: "RECURRING",
+        recurringKind: "INCOME",
+        amount: 50000,
+        dayOfMonth: 25,
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(
+      recurringRuleRepository.create.mock.calls[0]![0].incomeCategoryId,
+    ).toBe("ic-other");
   });
 
   it("asks for a day when dayOfMonth is missing", async () => {

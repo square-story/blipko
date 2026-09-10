@@ -101,16 +101,16 @@ model User {
   sessions      Session[]
 
   // Core relations
-  expenses       Expense[]
-  incomes        Income[]
-  budgetConfig   BudgetConfig?
-  categories     Category[]
+  expenses         Expense[]
+  incomes          Income[]
+  budgetConfig     BudgetConfig?
+  categories       Category[]
   incomeCategories IncomeCategory[]
-  logs           ParseLog[]
-  budgetNudges   BudgetNudge[]
-  recurringRules RecurringRule[]
-  boxes          Box[]
-  boxEntries     BoxEntry[]
+  logs             ParseLog[]
+  budgetNudges     BudgetNudge[]
+  recurringRules   RecurringRule[]
+  boxes            Box[]
+  boxEntries       BoxEntry[]
 
   conversationMessages ConversationMessage[]
   pendingActions       PendingAction[]
@@ -194,21 +194,27 @@ model Category {
 
 // A repeating income/expense the scheduler auto-posts each month on dayOfMonth.
 model RecurringRule {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  kind          RecurringKind
-  amount        Decimal       @db.Decimal(12, 2)
-  dayOfMonth    Int // 1–28
-  bucket        Bucket? // for EXPENSE
-  categoryId    String?
-  category      Category?     @relation(fields: [categoryId], references: [id])
-  boxId         String? // for BOX: auto-contribute (IN) to this box each month
-  box           Box?          @relation(fields: [boxId], references: [id])
-  note          String?
-  isActive      Boolean       @default(true)
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind             RecurringKind
+  amount           Decimal         @db.Decimal(12, 2)
+  dayOfMonth       Int // 1–28
+  bucket           Bucket? // for EXPENSE
+  categoryId       String?
+  category         Category?       @relation(fields: [categoryId], references: [id])
+  // for INCOME. A separate FK because Category is the EXPENSE taxonomy and
+  // requires a bucket, which means nothing for income. `kind` decides which of
+  // the two is read; validated in the app layer, not a DB check, exactly as
+  // bucket and boxId already are.
+  incomeCategoryId String?
+  incomeCategory   IncomeCategory? @relation(fields: [incomeCategoryId], references: [id], onDelete: SetNull)
+  boxId            String? // for BOX: auto-contribute (IN) to this box each month
+  box              Box?            @relation(fields: [boxId], references: [id])
+  note             String?
+  isActive         Boolean         @default(true)
   // "YYYY-MM" of the last auto-post — idempotency for the daily job.
-  lastPostedKey String?
+  lastPostedKey    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -309,7 +315,8 @@ model IncomeCategory {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  incomes Income[]
+  incomes        Income[]
+  recurringRules RecurringRule[]
 
   createdAt DateTime @default(now())
 
@@ -425,7 +432,7 @@ model ProcessedMessage {
 // instead of being guessed from emoji-laden prose. The AI-metadata columns are
 // nullable: deterministic slash-command turns fill none of them.
 model ConversationMessage {
-  id String @id @default(cuid())
+  id      String @id @default(cuid())
   // Append order. createdAt is not safe to order by: two turns written in the
   // same millisecond tie, and across instances clocks drift — either way the
   // transcript replayed to the model comes back scrambled.

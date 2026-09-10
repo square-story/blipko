@@ -42,6 +42,9 @@ export async function postRecurringRule(
           confidence: 1,
           source: rule.note ?? "recurring",
           note: rule.note ?? undefined,
+          // Null until the rule carries one, which still counts as earnings —
+          // the right default for a recurring income rule.
+          categoryId: rule.incomeCategoryId ?? undefined,
         },
         tx,
       );

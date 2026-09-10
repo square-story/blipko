@@ -9,6 +9,7 @@ import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepos
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { BUCKET_META, formatMoney, sanitizeMd } from "../budgetMath";
 import { normalizeCategoryName } from "../categoryName";
+import { resolveIncomeCategory } from "../../../domain/incomeCategoryTemplate";
 import { NEW_CATEGORY_LINE } from "../expenseFlow";
 
 const MAX_AMOUNT = 1_000_000_000;
@@ -49,18 +50,29 @@ export class RecurringSetupProcessor implements MessageProcessor {
     const kind = parsed.recurringKind ?? "EXPENSE";
 
     if (kind === "INCOME") {
+      // Income has its own taxonomy and no bucket. The rows were loaded
+      // upstream for the parser prompt; a rule set from a pre-parse path has
+      // none, and a null category still counts as earnings.
+      const incomeCategory = resolveIncomeCategory(
+        context.incomeCategories ?? [],
+        parsed.category,
+      );
       const rule = await this.recurringRuleRepository.create({
         userId: user.id,
         kind: "INCOME",
         amount,
         dayOfMonth: day,
+        incomeCategoryId: incomeCategory?.id,
         note: parsed.note,
       });
+      const filed = incomeCategory
+        ? ` · ${sanitizeMd(incomeCategory.name)}`
+        : "";
       return this.finish(
         platformUserId,
         rule.id,
         day,
-        `🔁 Recurring income set: ${formatMoney(amount)}${parsed.note ? ` (${sanitizeMd(parsed.note)})` : ""} on day ${day} — I'll auto-log it each month.`,
+        `🔁 Recurring income set: ${formatMoney(amount)}${filed}${parsed.note ? ` (${sanitizeMd(parsed.note)})` : ""} on day ${day} — I'll auto-log it each month.`,
       );
     }
 

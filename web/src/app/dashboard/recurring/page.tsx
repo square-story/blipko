@@ -19,6 +19,10 @@ import {
 } from "@/lib/actions/recurring";
 import { getCategories, type CategoryStat } from "@/lib/actions/categories";
 import { getBoxes, type BoxView } from "@/lib/actions/boxes";
+import {
+  getIncomeCategories,
+  type IncomeCategoryOption,
+} from "@/lib/actions/income";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RecurringFormModal } from "./_components/recurring-form-modal";
 import { toast } from "@/lib/toast";
@@ -28,19 +32,25 @@ export default function RecurringPage() {
   const [rules, setRules] = useState<RecurringRuleView[]>([]);
   const [categories, setCategories] = useState<CategoryStat[]>([]);
   const [boxes, setBoxes] = useState<BoxView[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<
+    IncomeCategoryOption[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [pending, startTransition] = useTransition();
 
   const load = async () => {
     try {
-      const [fetchedRules, fetchedCats, fetchedBoxes] = await Promise.all([
-        getRecurringRules(),
-        getCategories(),
-        getBoxes(),
-      ]);
+      const [fetchedRules, fetchedCats, fetchedBoxes, fetchedIncomeCats] =
+        await Promise.all([
+          getRecurringRules(),
+          getCategories(),
+          getBoxes(),
+          getIncomeCategories(),
+        ]);
       setRules(fetchedRules);
       setCategories(fetchedCats);
       setBoxes(fetchedBoxes);
+      setIncomeCategories(fetchedIncomeCats);
     } catch (err) {
       toast.error("Failed to load recurring data");
     } finally {
@@ -80,6 +90,7 @@ export default function RecurringPage() {
         {!loading && (
           <RecurringFormModal
             categories={categories}
+            incomeCategories={incomeCategories}
             boxes={boxes}
             onSaved={load}
           />
@@ -127,6 +138,7 @@ export default function RecurringPage() {
                         <RecurringFormModal
                           rule={r}
                           categories={categories}
+            incomeCategories={incomeCategories}
                           boxes={boxes}
                           onSaved={load}
                           trigger={
@@ -201,6 +213,7 @@ export default function RecurringPage() {
                         <RecurringFormModal
                           rule={r}
                           categories={categories}
+            incomeCategories={incomeCategories}
                           boxes={boxes}
                           onSaved={load}
                           trigger={
@@ -268,6 +281,7 @@ export default function RecurringPage() {
                         <RecurringFormModal
                           rule={r}
                           categories={categories}
+            incomeCategories={incomeCategories}
                           boxes={boxes}
                           onSaved={load}
                           trigger={

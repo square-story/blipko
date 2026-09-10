@@ -8,6 +8,8 @@ import { IExpenseRepository } from "../../../domain/repositories/IExpenseReposit
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IBoxRepository } from "../../../domain/repositories/IBoxRepository";
 import { IRecurringRuleRepository } from "../../../domain/repositories/IRecurringRuleRepository";
+import { IIncomeCategoryRepository } from "../../../domain/repositories/IIncomeCategoryRepository";
+import { resolveIncomeCategory } from "../../../domain/incomeCategoryTemplate";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { parseActCallback } from "../actCallback";
 import { parsePendingPayload } from "../../../domain/entities/PendingAction";
@@ -34,6 +36,7 @@ export class PendingActionProcessor implements MessageProcessor {
     private readonly boxRepository: IBoxRepository,
     private readonly recurringRuleRepository: IRecurringRuleRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly incomeCategoryRepository: IIncomeCategoryRepository,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -107,8 +110,27 @@ export class PendingActionProcessor implements MessageProcessor {
           dayOfMonth: number;
           bucket?: "NEEDS" | "WANTS" | "SAVINGS";
           categoryName?: string;
+          incomeCategoryName?: string;
           note?: string;
         };
+        // Two taxonomies. This used to resolve against the EXPENSE categories
+        // whatever the kind, so an income rule could be handed an expense
+        // category and inherit its bucket.
+        if (p.kind === "INCOME") {
+          const incomeCategory = resolveIncomeCategory(
+            await this.incomeCategoryRepository.findAllForUser(userId),
+            p.incomeCategoryName,
+          );
+          await this.recurringRuleRepository.create({
+            userId,
+            kind: "INCOME",
+            amount: p.amount,
+            dayOfMonth: p.dayOfMonth,
+            incomeCategoryId: incomeCategory?.id,
+            note: p.note,
+          });
+          return `🔁 Set up: ${formatMoney(p.amount)} income on day ${p.dayOfMonth} every month.`;
+        }
         const category = p.categoryName
           ? await this.categoryRepository.findByNameForUser(
               userId,
@@ -126,7 +148,7 @@ export class PendingActionProcessor implements MessageProcessor {
           categoryId: category?.id,
           note: p.note,
         });
-        return `🔁 Set up: ${formatMoney(p.amount)} ${p.kind === "INCOME" ? "income" : "expense"} on day ${p.dayOfMonth} every month.`;
+        return `🔁 Set up: ${formatMoney(p.amount)} expense on day ${p.dayOfMonth} every month.`;
       }
 
       case "BOX_MOVE": {

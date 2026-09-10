@@ -21,8 +21,12 @@ export const SetRecurringPayload = z.object({
   kind: z.enum(["INCOME", "EXPENSE"]),
   amount: z.number().positive().max(1_000_000_000),
   dayOfMonth: z.number().int().min(1).max(28),
+  // bucket + categoryName apply to an EXPENSE rule (Category, which requires a
+  // bucket); incomeCategoryName applies to an INCOME rule (IncomeCategory,
+  // which has none). `kind` decides which is read.
   bucket: z.enum(BUCKETS).optional(),
   categoryName: z.string().min(1).max(50).optional(),
+  incomeCategoryName: z.string().min(1).max(50).optional(),
   note: z.string().max(200).optional(),
 });
 
