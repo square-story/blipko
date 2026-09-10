@@ -7,6 +7,7 @@ describe("ReportProcessor", () => {
   let expenseRepository: any;
   let budgetConfigRepository: any;
   let messageService: any;
+  let incomeRepository: any;
   let processor: ReportProcessor;
 
   beforeEach(() => {
@@ -32,7 +33,7 @@ describe("ReportProcessor", () => {
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
     messageService = { sendMessage: vi.fn().mockResolvedValue("m1") };
-    const incomeRepository = {
+    incomeRepository = {
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
     };
@@ -66,7 +67,7 @@ describe("ReportProcessor", () => {
 
     const body = messageService.sendMessage.mock.calls[0][0].body;
     expect(body).toContain("summary");
-    expect(body).toContain("Income logged ₹0");
+    expect(body).toContain("Income ₹0");
     expect(body).toContain("budget on ₹50,000");
     expect(body).toContain("₹23,400 / ₹25,000");
     expect(body).toContain("under by ₹1,600");
@@ -76,6 +77,39 @@ describe("ReportProcessor", () => {
     expect(body).toContain("Biggest leaks in Wants:");
     expect(body).toContain("Food delivery  ₹3,800");
     expect(body).toContain("Shopping  ₹2,900");
+  });
+
+  // /report used to print the EARNED figure under the label "Income logged", so
+  // a refund was invisible here while /status called it out. Same line now.
+  it("names the money coming back when gross and earned differ", async () => {
+    incomeRepository.sumForMonth.mockResolvedValue(69000);
+    incomeRepository.sumEarnedForMonth.mockResolvedValue(62000);
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "report",
+    } as any);
+
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("Income ₹69,000");
+    expect(body).toContain("budget on ₹62,000");
+    expect(body).toContain("₹7,000 of that is money coming back");
+  });
+
+  it("stays short when every rupee was earned", async () => {
+    incomeRepository.sumForMonth.mockResolvedValue(62000);
+    incomeRepository.sumEarnedForMonth.mockResolvedValue(62000);
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "report",
+    } as any);
+
+    const body = messageService.sendMessage.mock.calls[0][0].body;
+    expect(body).toContain("Income ₹62,000");
+    expect(body).not.toContain("money coming back");
   });
 
   it("omits the leaks section when there is no Wants spend", async () => {

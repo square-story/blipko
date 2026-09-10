@@ -14,8 +14,9 @@ import {
   currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
-  periodDayInfo,
+  incomeBasisLine,
   pctSpent,
+  periodDayInfo,
   progressBar,
 } from "../budgetMath";
 
@@ -95,13 +96,7 @@ export class StatusProcessor implements MessageProcessor {
       }
     }
 
-    // Only call out the gap when there is one, so the common case stays short.
-    const notCounted = loggedIncome - earnedIncome;
-    const basisNote =
-      notCounted > 0
-        ? ` — ${formatMoney(notCounted)} of that is money coming back, so it doesn't raise the budget`
-        : "";
-    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n💵 Income: ${formatMoney(loggedIncome)} (budget on ${formatMoney(monthlyIncome)})${basisNote}\n\n${lines.join("\n")}`;
+    let body = `📊 This cycle — Day ${day} of ${daysInPeriod}\n💵 ${incomeBasisLine(loggedIncome, earnedIncome, monthlyIncome)}\n\n${lines.join("\n")}`;
     if (dailyParts.length > 0) {
       body += `\n\nSafe daily spend left:  ${dailyParts.join(" · ")}`;
     }

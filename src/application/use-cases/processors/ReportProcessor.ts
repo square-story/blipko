@@ -14,6 +14,7 @@ import {
   currentBudgetPeriod,
   effectiveMonthlyIncome,
   formatMoney,
+  incomeBasisLine,
   previousCycles,
   sanitizeMd,
 } from "../budgetMath";
@@ -50,14 +51,16 @@ export class ReportProcessor implements MessageProcessor {
       DEFAULT_SPLIT;
     const { start, end } = currentBudgetPeriod(user.payday);
     const prior = previousCycles(user.payday, 1)[0]!;
-    const loggedIncome = await this.incomeRepository.sumEarnedForMonth(
-      user.id,
-      start,
-      end,
-    );
+    // Gross for the line, earned for the budget — /report used to print the
+    // earned figure under the label "Income logged", so a refund was invisible
+    // here while /status called it out. The two now agree.
+    const [grossIncome, earnedIncome] = await Promise.all([
+      this.incomeRepository.sumForMonth(user.id, start, end),
+      this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+    ]);
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      loggedIncome,
+      earnedIncome,
     );
     const monthName = new Intl.DateTimeFormat("en-IN", {
       timeZone: user.timezone,
@@ -83,7 +86,7 @@ export class ReportProcessor implements MessageProcessor {
       lines.push(this.bucketLine(bucket, spent, budget, prevSpent));
     }
 
-    let body = `📅 ${monthName} summary\n\nIncome logged ${formatMoney(loggedIncome)} (budget on ${formatMoney(monthlyIncome)})\n${lines.join("\n")}`;
+    let body = `📅 ${monthName} summary\n\n${incomeBasisLine(grossIncome, earnedIncome, monthlyIncome)}\n${lines.join("\n")}`;
 
     const vs = vsLastSuffix(totalSpent, totalPrev);
     if (vs) body += `\n\nTotal spend ${formatMoney(totalSpent)}${vs}`;

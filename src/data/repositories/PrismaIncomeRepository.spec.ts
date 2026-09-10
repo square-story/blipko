@@ -72,4 +72,34 @@ describe("PrismaIncomeRepository income sums", () => {
 
     expect(prisma.income.create.mock.calls[0]![0].data.categoryId).toBe("cat1");
   });
+
+  it("updates the category when one is given", async () => {
+    prisma.income.update = vi.fn().mockResolvedValue({});
+
+    await repo.update("i1", { categoryId: "cat2" });
+
+    expect(prisma.income.update.mock.calls[0]![0].data).toEqual({
+      categoryId: "cat2",
+    });
+  });
+
+  // Preservation by omission. The Telegram edit path cannot set a category, so
+  // it must not blank the one the parser assigned.
+  it("leaves the category untouched when the field is absent", async () => {
+    prisma.income.update = vi.fn().mockResolvedValue({});
+
+    await repo.update("i1", { amount: 500 });
+
+    expect(prisma.income.update.mock.calls[0]![0].data).not.toHaveProperty(
+      "categoryId",
+    );
+  });
+
+  it("can clear the category with an explicit null", async () => {
+    prisma.income.update = vi.fn().mockResolvedValue({});
+
+    await repo.update("i1", { categoryId: null });
+
+    expect(prisma.income.update.mock.calls[0]![0].data.categoryId).toBeNull();
+  });
 });

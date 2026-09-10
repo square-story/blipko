@@ -9,6 +9,7 @@ import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepos
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { IParseLogRepository } from "../../../domain/repositories/IParseLogRepository";
+import { resolveIncomeCategory } from "../../../domain/incomeCategoryTemplate";
 import {
   IMessagingPlatform,
   InlineButtonRows,
@@ -115,6 +116,13 @@ export class BatchProcessor implements MessageProcessor {
       // Batch mode only logs money; skip stray non-EXPENSE/INCOME items.
       if (item.intent === "INCOME") {
         if (!isValidAmount(item.amount, INCOME_MAX)) continue;
+        // Same resolve-or-fallback as the single-income path. Without it a
+        // refund buried in a batch stays uncategorised, and an uncategorised
+        // row counts as earnings — so it widens the budget anyway.
+        const category = resolveIncomeCategory(
+          context.incomeCategories ?? [],
+          item.category,
+        );
         await this.incomeRepository.create({
           userId: user.id,
           amount: item.amount,
@@ -123,10 +131,13 @@ export class BatchProcessor implements MessageProcessor {
           source: item.note,
           note: item.note,
           batchId,
+          categoryId: category?.id,
         });
         recordedIncome = true;
         const label = item.note ? ` (${sanitizeMd(item.note)})` : "";
-        logged.push(`✅ Income ${formatMoney(item.amount)}${label}`);
+        // Mark money coming back, so it is not silently invisible in the summary.
+        const tick = category && !category.countsAsEarnings ? "↩️" : "✅";
+        logged.push(`${tick} Income ${formatMoney(item.amount)}${label}`);
         continue;
       }
       if (item.intent !== "EXPENSE") continue;
