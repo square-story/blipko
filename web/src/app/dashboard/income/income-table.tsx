@@ -9,9 +9,13 @@ import {
   ColumnFiltersState,
 } from "@tanstack/react-table";
 import { useQueryState, parseAsInteger, parseAsString } from "nuqs";
-import { IncomeData, IncomeFilters } from "@/lib/actions/income";
+import {
+  type IncomeData,
+  type IncomeFilters,
+  type IncomeCategoryOption,
+} from "@/lib/actions/income";
 import { DataTable } from "@/components/data-table/data-table";
-import { columns } from "./_components/columns";
+import { getIncomeColumns } from "./_components/columns";
 import { IncomeTableToolbar } from "./_components/income-table-toolbar";
 import { IncomeTableFloatingBar } from "./_components/income-table-floating-bar";
 import { DataTableAmountTotals } from "@/components/data-table/data-table-amount-totals";
@@ -21,6 +25,8 @@ interface IncomeTableProps {
   pageCount: number;
   total: number;
   totalAmount: number;
+  categories: IncomeCategoryOption[];
+  categoryOptions: { label: string; value: string }[];
 }
 
 export function IncomeTable({
@@ -28,7 +34,13 @@ export function IncomeTable({
   pageCount,
   total,
   totalAmount,
+  categories,
+  categoryOptions,
 }: IncomeTableProps) {
+  const columns = React.useMemo(
+    () => getIncomeColumns(categories),
+    [categories],
+  );
   const [page, setPage] = useQueryState(
     "page",
     parseAsInteger.withDefault(1).withOptions({ shallow: false }),
@@ -53,6 +65,10 @@ export function IncomeTable({
     "perPage",
     parseAsInteger.withDefault(10).withOptions({ shallow: false }),
   );
+  const [categoryId, setCategoryId] = useQueryState(
+    "categoryId",
+    parseAsString.withOptions({ shallow: false }),
+  );
 
   const columnFilters = React.useMemo<ColumnFiltersState>(() => {
     const filters: ColumnFiltersState = [];
@@ -62,8 +78,14 @@ export function IncomeTable({
         value: [from ? Number(from) : undefined, to ? Number(to) : undefined],
       });
     }
+    // Mounted on the categoryName column but keyed by id, exactly as the expense
+    // table does. Safe only because manualFiltering means the accessor value is
+    // never compared client-side.
+    if (categoryId) {
+      filters.push({ id: "categoryName", value: categoryId.split(".") });
+    }
     return filters;
-  }, [from, to]);
+  }, [from, to, categoryId]);
 
   const sorting: SortingState = React.useMemo(() => {
     if (!sort) return [];
@@ -98,6 +120,13 @@ export function IncomeTable({
       setFrom(null);
       setTo(null);
     }
+
+    const categoryFilter = newFilters.find((f) => f.id === "categoryName");
+    if (categoryFilter && Array.isArray(categoryFilter.value)) {
+      setCategoryId(categoryFilter.value.join("."));
+    } else {
+      setCategoryId(null);
+    }
   };
 
   const onGlobalFilterChange = (updater: Updater<string>) => {
@@ -109,6 +138,7 @@ export function IncomeTable({
     search: search || undefined,
     from: from || undefined,
     to: to || undefined,
+    categoryId: categoryId || undefined,
   };
 
   const table = useReactTable({
@@ -151,7 +181,11 @@ export function IncomeTable({
         />
       }
     >
-      <IncomeTableToolbar table={table} filters={currentFilters} />
+      <IncomeTableToolbar
+        table={table}
+        filters={currentFilters}
+        categoryOptions={categoryOptions}
+      />
     </DataTable>
   );
 }

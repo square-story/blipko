@@ -1,7 +1,7 @@
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TransactionsTabs } from "@/components/transactions-tabs";
 import { IncomeTable } from "./income-table";
-import { getIncome } from "@/lib/actions/income";
+import { getIncome, getIncomeCategories } from "@/lib/actions/income";
 
 interface PageProps {
   searchParams: Promise<{
@@ -11,6 +11,7 @@ interface PageProps {
     sort?: string;
     from?: string;
     to?: string;
+    categoryId?: string;
   }>;
 }
 
@@ -22,15 +23,18 @@ export default async function Page({ searchParams }: PageProps) {
   const sort = params.sort || "date.desc";
   const from = params.from || "";
   const to = params.to || "";
+  const categoryId = params.categoryId || "";
 
-  const { data, total, totalAmount, pageCount } = await getIncome({
-    page,
-    limit,
-    search,
-    sort,
-    from,
-    to,
-  });
+  const [{ data, total, totalAmount, pageCount }, categories] =
+    await Promise.all([
+      getIncome({ page, limit, search, sort, from, to, categoryId }),
+      getIncomeCategories(),
+    ]);
+
+  const categoryOptions = categories.map((c) => ({
+    label: c.name,
+    value: c.id,
+  }));
 
   return (
     <ContentLayout title="Transactions">
@@ -41,6 +45,8 @@ export default async function Page({ searchParams }: PageProps) {
           pageCount={pageCount}
           total={total}
           totalAmount={totalAmount}
+          categories={categories}
+          categoryOptions={categoryOptions}
         />
       </div>
     </ContentLayout>
