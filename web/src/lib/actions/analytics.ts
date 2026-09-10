@@ -521,7 +521,13 @@ export async function getCashflowAnalytics(
     }),
     prisma.income.findMany({
       where: { userId: ctx.userId, isDeleted: false, date: { gte, lt } },
-      select: { amount: true, date: true },
+      // EARNED_ONLY is a where-fragment and cannot split one findMany into two
+      // totals, so carry the flag per row instead.
+      select: {
+        amount: true,
+        date: true,
+        category: { select: { countsAsEarnings: true } },
+      },
     }),
     prisma.boxEntry.findMany({
       where: { userId: ctx.userId, isDeleted: false, date: { gte, lt } },
@@ -539,6 +545,9 @@ export async function getCashflowAnalytics(
   const indexOf = cycleIndexer(windows);
   const agg = windows.map(() => ({
     income: 0,
+    // Income minus refunds, repaid loans and transfers. Used only as a rate
+    // DENOMINATOR — see the savings rows below for why the numerator stays gross.
+    earned: 0,
     spend: 0,
     savingsBucket: 0,
     boxIn: 0,
@@ -557,7 +566,11 @@ export async function getCashflowAnalytics(
   for (const inc of incomes) {
     const i = indexOf(inc.date);
     if (i < 0) continue;
-    agg[i]!.income += Number(inc.amount);
+    const amount = Number(inc.amount);
+    agg[i]!.income += amount;
+    // Uncategorised counts as earnings, matching sumEarnedForMonth's
+    // NOT{countsAsEarnings:false} — absence is not a refund.
+    if (inc.category?.countsAsEarnings !== false) agg[i]!.earned += amount;
   }
 
   for (const b of boxEntries) {
@@ -596,19 +609,24 @@ export async function getCashflowAnalytics(
   });
 
   const savings: SavingsRow[] = windows.map((w, i) => {
-    const { income, spend, savingsBucket, boxContributed } = agg[i]!;
+    const { income, earned, spend, savingsBucket, boxContributed } = agg[i]!;
     const trueSaved = savingsBucket + boxContributed;
     return {
       cycle: w.label,
       cycleKey: w.key,
       income,
+      // Gross numerator, earned denominator. `income - spend` is already right:
+      // a refund is in both sides and cancels. Dropping it from income alone
+      // would leave the refunded expense in spend and invent a loss that never
+      // happened. Only the divisor is wrong — dividing by gross treats money
+      // coming back as something you earned, understating the rate.
       unspent: income - spend,
       trueSaved,
-      // Income is taken per cycle as actually logged. user.monthlyIncome is a
+      // Earnings are taken per cycle as actually logged. user.monthlyIncome is a
       // current setting, not history — applying it backwards would invent
       // income for months before the user set it.
-      unspentRatePct: income > 0 ? ((income - spend) / income) * 100 : null,
-      trueSavingsRatePct: income > 0 ? (trueSaved / income) * 100 : null,
+      unspentRatePct: earned > 0 ? ((income - spend) / earned) * 100 : null,
+      trueSavingsRatePct: earned > 0 ? (trueSaved / earned) * 100 : null,
     };
   });
 
@@ -628,7 +646,9 @@ export async function getCashflowAnalytics(
     cashflow,
     savings,
     boxes,
-    cyclesWithoutIncome: savings.filter((s) => s.income <= 0).length,
+    // A cycle whose only deposits were refunds had no income, however much
+    // money moved through it.
+    cyclesWithoutIncome: agg.filter((a) => a.earned <= 0).length,
     insights: {
       cashflow: previous
         ? deltaInsight({

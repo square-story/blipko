@@ -4,7 +4,12 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Bucket } from "@prisma/client";
-import { BUCKETS, BUCKET_META, currentMonthRange } from "@/lib/budget";
+import {
+  BUCKETS,
+  BUCKET_META,
+  currentMonthRange,
+  EARNED_ONLY,
+} from "@/lib/budget";
 import { DEFAULT_TZ, isMonthEndWindow, zonedParts } from "@/lib/time";
 
 export type WrappedBucketSlice = {
@@ -55,34 +60,46 @@ export async function getWrappedStats(): Promise<WrappedStats | null> {
   const { start, end } = currentMonthRange(now);
   const where = { userId, isDeleted: false, date: { gte: start, lt: end } };
 
-  const [bucketGroups, incomeAgg, biggest, txnCount, categoryGroups] =
-    await Promise.all([
-      prisma.expense.groupBy({
-        by: ["bucket"],
-        _sum: { amount: true },
-        where,
-      }),
-      prisma.income.aggregate({ _sum: { amount: true }, where }),
-      prisma.expense.findFirst({
-        where,
-        orderBy: { amount: "desc" },
-        select: {
-          amount: true,
-          note: true,
-          rawText: true,
-          bucket: true,
-          category: { select: { name: true } },
-        },
-      }),
-      prisma.expense.count({ where }),
-      prisma.expense.groupBy({
-        by: ["categoryId"],
-        _sum: { amount: true },
-        where,
-        orderBy: { _sum: { amount: "desc" } },
-        take: 1,
-      }),
-    ]);
+  const [
+    bucketGroups,
+    incomeAgg,
+    earnedAgg,
+    biggest,
+    txnCount,
+    categoryGroups,
+  ] = await Promise.all([
+    prisma.expense.groupBy({
+      by: ["bucket"],
+      _sum: { amount: true },
+      where,
+    }),
+    prisma.income.aggregate({ _sum: { amount: true }, where }),
+    // Same window, minus refunds and repaid loans. The rate divides by this;
+    // the totals stay gross. See below.
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: { ...where, ...EARNED_ONLY },
+    }),
+    prisma.expense.findFirst({
+      where,
+      orderBy: { amount: "desc" },
+      select: {
+        amount: true,
+        note: true,
+        rawText: true,
+        bucket: true,
+        category: { select: { name: true } },
+      },
+    }),
+    prisma.expense.count({ where }),
+    prisma.expense.groupBy({
+      by: ["categoryId"],
+      _sum: { amount: true },
+      where,
+      orderBy: { _sum: { amount: "desc" } },
+      take: 1,
+    }),
+  ]);
 
   if (txnCount === 0) return null;
 
@@ -104,9 +121,15 @@ export async function getWrappedStats(): Promise<WrappedStats | null> {
   });
 
   const totalIncome = Number(incomeAgg._sum.amount ?? 0);
+  const totalEarned = Number(earnedAgg._sum.amount ?? 0);
+  // netSaved stays gross and is already correct: a refund sits on both sides
+  // and cancels. Removing it from income alone would leave the refunded expense
+  // in spend and invent a loss. The rate is the part that was wrong — dividing
+  // by gross counts money coming back as something earned. The story copy
+  // already says "of everything you earned"; now the maths agrees.
   const netSaved = totalIncome - totalSpent;
   const savingsRatePct =
-    totalIncome > 0 ? Math.round((netSaved / totalIncome) * 100) : 0;
+    totalEarned > 0 ? Math.round((netSaved / totalEarned) * 100) : 0;
 
   // Top category by spend (skip uncategorized rows).
   let topCategory: WrappedStats["topCategory"] = null;
