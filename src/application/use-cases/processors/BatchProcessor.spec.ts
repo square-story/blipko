@@ -10,6 +10,13 @@ const user = {
   locale: "en-IN",
 };
 
+// Loaded once upstream (for the parser prompt) and handed down on the context.
+const INCOME_CATEGORIES = [
+  { id: "salary", name: "Salary", countsAsEarnings: true },
+  { id: "other", name: "Other Income", countsAsEarnings: true },
+  { id: "returned", name: "Money Lent Returned", countsAsEarnings: false },
+];
+
 describe("BatchProcessor", () => {
   let expenseRepository: any;
   let categoryRepository: any;
@@ -133,6 +140,67 @@ describe("BatchProcessor", () => {
       "e1",
       "summary-msg",
     );
+  });
+
+  // The gap this closes: batch income used to be written with no category, and
+  // an uncategorised row counts as earnings — so a refund buried in a
+  // multi-transaction message widened the budget anyway.
+  it("files batch income under a category, and marks money coming back", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "chai 30, nadha returned 1500",
+      incomeCategories: INCOME_CATEGORIES,
+      parsedBatch: {
+        transactions: [
+          {
+            intent: "EXPENSE",
+            amount: 30,
+            category: "Eating Out",
+            bucket: "WANTS",
+            confidence: 0.9,
+          },
+          {
+            intent: "INCOME",
+            amount: 1500,
+            category: "Money Lent Returned",
+            note: "nadha",
+            confidence: 0.9,
+          },
+        ],
+      },
+    } as any);
+
+    expect(incomeRepository.create.mock.calls[0]![0].categoryId).toBe(
+      "returned",
+    );
+    const summary = messageService.sendInteractiveMessage.mock.calls[0][1];
+    expect(summary).toContain("↩️ Income ₹1,500");
+  });
+
+  it("falls back to Other Income for a batch item with no category", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "chai 30, got 500",
+      incomeCategories: INCOME_CATEGORIES,
+      parsedBatch: {
+        transactions: [
+          {
+            intent: "EXPENSE",
+            amount: 30,
+            category: "Eating Out",
+            bucket: "WANTS",
+            confidence: 0.9,
+          },
+          { intent: "INCOME", amount: 500, confidence: 0.9 },
+        ],
+      },
+    } as any);
+
+    expect(incomeRepository.create.mock.calls[0]![0].categoryId).toBe("other");
+    const summary = messageService.sendInteractiveMessage.mock.calls[0][1];
+    expect(summary).toContain("✅ Income ₹500");
   });
 
   it("counts invented categories in one footer instead of per line", async () => {

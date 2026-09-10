@@ -7,6 +7,7 @@ import {
   bucketBudget,
   effectiveMonthlyIncome,
   formatMoney,
+  incomeBasisLine,
   previousCycles,
   sanitizeMd,
 } from "./budgetMath";
@@ -162,12 +163,14 @@ export async function buildCycleReport(
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
 
-  const endedLogged = await deps.incomeRepository.sumEarnedForMonth(
-    user.id,
-    ended.start,
-    ended.end,
-  );
-  const endedIncome = effectiveMonthlyIncome(expected, endedLogged);
+  // Gross for the line, earned for the budget. This used to print the earned
+  // figure labelled "Income logged", so a refund vanished from the wrapped
+  // report while /status named it.
+  const [endedGross, endedEarned] = await Promise.all([
+    deps.incomeRepository.sumForMonth(user.id, ended.start, ended.end),
+    deps.incomeRepository.sumEarnedForMonth(user.id, ended.start, ended.end),
+  ]);
+  const endedIncome = effectiveMonthlyIncome(expected, endedEarned);
 
   const lines: string[] = [];
   let totalSpent = 0;
@@ -224,9 +227,12 @@ export async function buildCycleReport(
   let text =
     `📊 ${label} wrapped\n\n` +
     headline +
-    `\n\nIncome logged ${formatMoney(endedLogged)} (budget on ${formatMoney(endedIncome)})\n` +
+    `\n\n${incomeBasisLine(endedGross, endedEarned, endedIncome)}\n` +
     lines.join("\n") +
-    `\n\n${net >= 0 ? "Net saved" : "Net overspent"} ${formatMoney(Math.abs(net))} (income − spend)`;
+    // "budget − spend", not "income − spend": net is computed from the effective
+    // figure, which carries the expected-salary floor. Saying "income" made the
+    // arithmetic on screen fail to add up whenever the floor applied.
+    `\n\n${net >= 0 ? "Net saved" : "Net overspent"} ${formatMoney(Math.abs(net))} (budget − spend)`;
 
   if (moverBits.length > 0) {
     text += `\n\nBiggest movers: ${moverBits.join(" · ")}`;

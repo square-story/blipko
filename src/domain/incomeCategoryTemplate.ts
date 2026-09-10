@@ -32,3 +32,18 @@ export const INCOME_CATEGORY_TEMPLATE: IncomeCategoryTemplate[] = [
   { name: "Loan / Advance Received", countsAsEarnings: false },
   { name: "Transfer Between Accounts", countsAsEarnings: false },
 ];
+
+// Resolve a parser-supplied category name against the user's real rows. An
+// unknown or missing name lands on the fallback, which counts as earnings — the
+// behaviour from before the taxonomy existed. Shared so the fallback RULE lives
+// in one place; duplicating it is how the next call site drifts.
+export function resolveIncomeCategory<T extends { name: string }>(
+  all: T[],
+  name: string | null | undefined,
+): T | undefined {
+  const wanted = name?.trim().toLowerCase();
+  const hit = wanted
+    ? all.find((c) => c.name.toLowerCase() === wanted)
+    : undefined;
+  return hit ?? all.find((c) => c.name === INCOME_FALLBACK_CATEGORY);
+}

@@ -4,7 +4,7 @@ import {
   ProcessOutput,
 } from "./MessageProcessor";
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
-import { INCOME_FALLBACK_CATEGORY } from "../../../domain/incomeCategoryTemplate";
+import { resolveIncomeCategory } from "../../../domain/incomeCategoryTemplate";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { txnCb } from "../txnCallback";
@@ -55,14 +55,11 @@ export class IncomeProcessor implements MessageProcessor {
       return { response, parsed };
     }
 
-    // Resolve the parser's category name against the user's real rows (loaded
-    // upstream for the prompt). An unknown or missing name lands on the fallback,
-    // which counts as earnings — the behaviour from before the taxonomy existed.
-    const all = context.incomeCategories ?? [];
-    const wanted = parsed.category?.trim().toLowerCase();
-    const category =
-      (wanted && all.find((c) => c.name.toLowerCase() === wanted)) ||
-      all.find((c) => c.name === INCOME_FALLBACK_CATEGORY);
+    // Rows were loaded upstream for the parser prompt; reuse them here.
+    const category = resolveIncomeCategory(
+      context.incomeCategories ?? [],
+      parsed.category,
+    );
 
     const income = await this.incomeRepository.create({
       userId: user.id,

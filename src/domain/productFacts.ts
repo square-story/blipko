@@ -88,7 +88,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       },
       {
         name: "Income that knows what it is",
-        what: "Logged income is filed under a category — salary, freelance, dividend, or a non-earning one like a refund, a reimbursement, money you lent being paid back, or a loan. Only earnings raise your budget; the rest is still recorded and still shows in your income total.",
+        what: "Income you log is filed under a category — salary, freelance, dividend, or a non-earning one like a refund, a reimbursement, money you lent being paid back, or a loan. Only earnings raise your budget; the rest is still recorded and still shows in your income total. If the bot files something wrongly, you can change the category on the dashboard.",
         why: "When a friend pays you back for lunch, that is not a raise. Counting it as income would widen your budget on money you already spent, so the same lunch would be paid for twice.",
       },
       {
@@ -101,7 +101,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
     commands: [
       {
         command: "/status",
-        what: "Budget health this cycle and safe daily spend.",
+        what: "Budget health this cycle and safe daily spend, including what raised your budget and what did not.",
       },
       {
         command: "/report",
@@ -121,7 +121,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
     dashboard: {
       url: dashboardUrl,
       whatItIsFor:
-        "Charts and trends, the full transaction list with CSV export, editing categories and their monthly limits, managing recurring rules, and all settings including income and reminder intensity.",
+        "Charts and trends, the full transaction list with CSV export, editing categories and their monthly limits, changing which category an income is filed under, managing recurring rules, and all settings including income and reminder intensity.",
       howToConnect:
         "Sign in on the dashboard, then tap Connect Telegram there to link this chat. Setting up income and categories happens on the dashboard, not in chat.",
     },

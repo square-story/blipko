@@ -96,6 +96,7 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         ...(data.amount !== undefined && { amount: data.amount }),
         ...(data.source !== undefined && { source: data.source }),
         ...(data.note !== undefined && { note: data.note }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
       },
     });
   }

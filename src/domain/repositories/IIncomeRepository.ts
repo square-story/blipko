@@ -12,11 +12,14 @@ export interface CreateIncomeDTO {
   categoryId?: string | undefined;
 }
 
-// Partial edit of an existing income (amount/source/note).
+// Partial edit of an existing income (amount/source/note/category). Every field
+// is applied only when present, so a caller that omits one leaves it untouched —
+// which is how the Telegram edit path preserves a category it cannot set.
 export interface UpdateIncomeDTO {
   amount?: number | undefined;
   source?: string | null | undefined;
   note?: string | null | undefined;
+  categoryId?: string | null | undefined;
 }
 
 export interface IIncomeRepository {

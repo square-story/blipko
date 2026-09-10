@@ -112,6 +112,23 @@ export function formatMoney(amount: number): string {
   return `₹${inr.format(Math.round(amount))}`;
 }
 
+// The income line every summary shares. Gross is what landed and is what the
+// user recognises; the budget is built on earnings. Printing only one makes the
+// other look wrong — "I got 69k, why is my budget 62k?" — so name the gap, and
+// only when there is one, to keep the common case short.
+export function incomeBasisLine(
+  gross: number,
+  earned: number,
+  effective: number,
+): string {
+  const notCounted = gross - earned;
+  const note =
+    notCounted > 0
+      ? ` — ${formatMoney(notCounted)} of that is money coming back, so it doesn't raise the budget`
+      : "";
+  return `Income ${formatMoney(gross)} (budget on ${formatMoney(effective)})${note}`;
+}
+
 export interface PeriodDayInfo {
   day: number; // 1-based day within the cycle
   daysInPeriod: number;

@@ -66,7 +66,27 @@ describe("buildCycleReport", () => {
     const { text, endedKey } = await buildCycleReport(deps(), user, NOW);
     expect(endedKey).toBe("2026-05-01");
     expect(text).toContain("May wrapped");
-    expect(text).toContain("Income logged ₹50,000");
+    expect(text).toContain("Income ₹50,000");
+  });
+
+  // The wrapped report printed the EARNED figure labelled "Income logged", so a
+  // refund vanished from it while /status named it.
+  it("names the money coming back when gross and earned differ", async () => {
+    const d = deps();
+    d.incomeRepository.sumForMonth = vi.fn().mockResolvedValue(57000);
+    d.incomeRepository.sumEarnedForMonth = vi.fn().mockResolvedValue(50000);
+
+    const { text } = await buildCycleReport(d, user, NOW);
+    expect(text).toContain("Income ₹57,000");
+    expect(text).toContain("budget on ₹50,000");
+    expect(text).toContain("₹7,000 of that is money coming back");
+  });
+
+  // Net is computed from the effective figure (which carries the expected-salary
+  // floor), so calling it "income − spend" made the on-screen sums not add up.
+  it("labels net against the budget, not income", async () => {
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).toContain("(budget − spend)");
   });
 
   it("headlines the overall spend change vs the prior cycle", async () => {
