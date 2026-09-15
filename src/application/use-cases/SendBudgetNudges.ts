@@ -140,9 +140,14 @@ export class SendBudgetNudgesUseCase {
     const { day, daysInPeriod } = periodDayInfo(user.payday, now, tz);
     const daysLeft = daysInPeriod - day;
 
+    const [earned, carried] = await Promise.all([
+      this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+      this.incomeRepository.sumCarryForMonth(user.id, start, end),
+    ]);
     const income = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      await this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+      earned,
+      carried,
     );
     if (income <= 0) return { sent: 0, skip: "noIncome" };
 

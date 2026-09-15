@@ -1,4 +1,4 @@
-import { IncomeCategory, User } from "@prisma/client";
+import { IncomeCategory, PendingAction, User } from "@prisma/client";
 import { ParsedData, ParsedBatch } from "../../../domain/entities/ParsedData";
 import { ConversationTurn } from "../../../domain/services/IAiParser";
 import { TransactionRef } from "../transactionActions";
@@ -19,6 +19,10 @@ export interface ProcessContext {
   // Resolved when the user replied to a transaction confirmation — the reply/edit
   // processors gate on this (canHandle can't do async lookups).
   replyTarget?: TransactionRef | undefined;
+  // Set when the user tapped "Different amount" on the carry-forward prompt and
+  // the staged request is still live. Same reason as replyTarget: canHandle is
+  // sync, so the lookup happens before the dispatch loop.
+  carryPrompt?: PendingAction | undefined;
   conversationHistory?: ConversationTurn[] | undefined;
   // The user's income taxonomy, loaded once for the parser prompt and reused by
   // IncomeProcessor to resolve the name the parser picked. Unset on the pre-parse

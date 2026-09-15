@@ -1,5 +1,10 @@
 import { Bucket } from "@prisma/client";
 
+// Duplicated from src/domain/incomeCategoryTemplate.ts on purpose: the web app
+// is deployed rooted at web/ and cannot import the backend's source tree. The
+// name is the join key, so the two must not drift.
+export const CARRY_INCOME_CATEGORY = "Opening Balance";
+
 // 50/30/20 buckets, in display order.
 export const BUCKETS: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
 
@@ -156,17 +161,26 @@ export function bucketBudget(
 }
 
 // The income to budget against this month: expected salary is a floor, actual
-// income logged this month expands it above that floor. Matches the backend.
+// income logged this month expands it above that floor, and money carried over
+// from last cycle is ADDED on top of that floor rather than folded into it.
+// Matches the backend.
 export function effectiveMonthlyIncome(
   expected: number,
   incomeThisMonth: number,
+  carriedForward = 0,
 ): number {
-  return Math.max(expected, incomeThisMonth);
+  return Math.max(expected, incomeThisMonth) + carriedForward;
 }
 
 // Income `where` fragment for budget math: drop refunds, reimbursements and
 // repaid loans. NOT{false} rather than {true} so uncategorised rows still count.
 export const EARNED_ONLY = { NOT: { category: { countsAsEarnings: false } } };
+
+// Money carried in from the previous cycle. Excluded from EARNED_ONLY by its
+// countsAsEarnings:false category, then added back on top of the basis — see
+// effectiveMonthlyIncome. Keeping it out of `earned` is what stops carried
+// money from inflating savings-rate denominators.
+export const CARRY_ONLY = { category: { name: CARRY_INCOME_CATEGORY } };
 
 // Integer percentage of budget spent (0 when budget is 0).
 export function pctSpent(spent: number, budget: number): number {

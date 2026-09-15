@@ -53,6 +53,9 @@ import { RecurringCommandProcessor } from "./processors/RecurringCommandProcesso
 import { TransactionActionProcessor } from "./processors/TransactionActionProcessor";
 import { TransactionReplyProcessor } from "./processors/TransactionReplyProcessor";
 import { resolveByConfirmationMessage } from "./transactionActions";
+import { CarryPromptProcessor } from "./processors/CarryPromptProcessor";
+import { CarryAmountProcessor } from "./processors/CarryAmountProcessor";
+import { parseBareAmount } from "./carryFlow";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -97,12 +100,15 @@ export class ProcessIncomingMessageUseCase {
     private readonly webAppUrl: string,
     // Null when the assistant lane is off — QueryProcessor then answers as before.
     private readonly assistantAgent: IAssistantAgent | null = null,
+    // NOT gated on the assistant lane: pending actions also back the
+    // carry-forward "different amount" step, which ships either way.
     private readonly pendingActionRepository: IPendingActionRepository | null = null,
   ) {
     this.preParseProcessors = [
       // Confirmations for assistant-proposed writes. First, and before any AI:
-      // a button press is an answer to a question already asked.
-      ...(pendingActionRepository
+      // a button press is an answer to a question already asked. Gated on the
+      // AGENT, not the repository — the repository also backs carry-forward.
+      ...(pendingActionRepository && assistantAgent
         ? [
             new PendingActionProcessor(
               pendingActionRepository,
@@ -113,6 +119,26 @@ export class ProcessIncomingMessageUseCase {
               messageService,
               incomeCategoryRepository,
             ),
+          ]
+        : []),
+      // Cycle-start carry-forward: the car: buttons, then the typed amount they
+      // can lead to. Before the transaction handlers because a bare number is
+      // ambiguous and the staged request is the only thing that disambiguates it.
+      ...(pendingActionRepository
+        ? [
+            new CarryPromptProcessor(
+              {
+                userRepository,
+                expenseRepository,
+                incomeRepository,
+                incomeCategoryRepository,
+                categoryRepository,
+                boxRepository,
+              },
+              pendingActionRepository,
+              messageService,
+            ),
+            new CarryAmountProcessor(pendingActionRepository, messageService),
           ]
         : []),
       new TransactionActionProcessor(
@@ -275,6 +301,17 @@ export class ProcessIncomingMessageUseCase {
         )
       : null;
 
+    // Only for messages that are nothing but a number — the one shape that is
+    // ambiguous between "carry this much" and "log this expense". Everything
+    // else skips the query.
+    const carryPrompt =
+      this.pendingActionRepository && parseBareAmount(payload.textMessage)
+        ? await this.pendingActionRepository.findLiveByKindForUser(
+            user.id,
+            "CARRY_AMOUNT",
+          )
+        : null;
+
     const context: ProcessContext = {
       user,
       platformUserId: payload.platformUserId,
@@ -283,6 +320,7 @@ export class ProcessIncomingMessageUseCase {
       callbackMessageId: payload.callbackMessageId,
       callbackQueryId: payload.callbackQueryId,
       replyTarget: replyTarget ?? undefined,
+      carryPrompt: carryPrompt ?? undefined,
       conversationHistory: history,
     };
 

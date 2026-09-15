@@ -31,6 +31,7 @@ describe("StatusProcessor", () => {
     const incomeRepository = {
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
     processor = new StatusProcessor(
       expenseRepository,

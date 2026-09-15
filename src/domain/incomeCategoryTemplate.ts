@@ -14,6 +14,12 @@ export interface IncomeCategoryTemplate {
 // The name new income falls back to when the parser picks something unknown.
 export const INCOME_FALLBACK_CATEGORY = "Other Income";
 
+// Money the user carried over from the previous cycle. countsAsEarnings is
+// false so it stays out of `earned` everywhere — the budget basis adds it back
+// explicitly (see effectiveMonthlyIncome), which keeps savings-rate
+// denominators honest instead of crediting the user for earning it twice.
+export const CARRY_INCOME_CATEGORY = "Opening Balance";
+
 export const INCOME_CATEGORY_TEMPLATE: IncomeCategoryTemplate[] = [
   // Earnings — money you actually made. These widen the budget.
   { name: "Salary", countsAsEarnings: true },
@@ -31,6 +37,7 @@ export const INCOME_CATEGORY_TEMPLATE: IncomeCategoryTemplate[] = [
   { name: "Money Lent Returned", countsAsEarnings: false },
   { name: "Loan / Advance Received", countsAsEarnings: false },
   { name: "Transfer Between Accounts", countsAsEarnings: false },
+  { name: CARRY_INCOME_CATEGORY, countsAsEarnings: false },
 ];
 
 // Resolve a parser-supplied category name against the user's real rows. An

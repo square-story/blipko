@@ -84,6 +84,7 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
       findLastByUserId: vi.fn().mockResolvedValue(null),
       findByConfirmationMessageId: vi.fn().mockResolvedValue(null),
       updateConfirmationMessageId: vi.fn().mockResolvedValue(undefined),

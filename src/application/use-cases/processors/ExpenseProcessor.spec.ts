@@ -42,6 +42,7 @@ describe("ExpenseProcessor", () => {
     incomeRepository = {
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
     boxRepository = {
       findByCategoryId: vi.fn().mockResolvedValue(null),

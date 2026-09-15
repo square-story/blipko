@@ -99,11 +99,18 @@ export function bucketBudget(
 // The income to budget against this month: the expected salary is a floor, and
 // actual income logged this month expands it above that floor. Lets salaried
 // and variable-income users share one rule (gig users set expected = 0).
+//
+// Money carried over from last cycle is ADDED on top of that floor, not folded
+// into it — a floor would swallow it whole for anyone whose expected salary is
+// larger than what they have logged so far, which is most users early in a
+// cycle. It is excluded from `incomeThisMonth` by its countsAsEarnings:false
+// category, so adding it here counts it exactly once.
 export function effectiveMonthlyIncome(
   expected: number,
   incomeThisMonth: number,
+  carriedForward = 0,
 ): number {
-  return Math.max(expected, incomeThisMonth);
+  return Math.max(expected, incomeThisMonth) + carriedForward;
 }
 
 const inr = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
@@ -120,8 +127,12 @@ export function incomeBasisLine(
   gross: number,
   earned: number,
   effective: number,
+  carriedForward = 0,
 ): string {
-  const notCounted = gross - earned;
+  // Carried-forward money is inside `gross` but outside `earned`, same as a
+  // refund. Subtracting it here too keeps it out of the "doesn't raise the
+  // budget" note — it is the one non-earning inflow that does raise it.
+  const notCounted = gross - earned - carriedForward;
   const note =
     notCounted > 0
       ? ` — ${formatMoney(notCounted)} of that is money coming back, so it doesn't raise the budget`

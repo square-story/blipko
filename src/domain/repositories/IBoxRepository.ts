@@ -32,6 +32,10 @@ export interface CreateBoxEntryDTO {
   source?: BoxEntrySource | undefined;
   note?: string | undefined;
   rawText?: string | undefined;
+  // Set when the entry mirrors a transaction that stays live (the carry-forward
+  // SAVINGS expense). Analytics reads it to avoid counting the same money on
+  // both the expense and the box side.
+  sourceExpenseId?: string | undefined;
 }
 
 // A box plus its computed balance (Σ IN − Σ OUT over non-deleted entries).

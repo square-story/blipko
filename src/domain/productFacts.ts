@@ -52,6 +52,11 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         why: "The reason most budgeting apps fail is friction — opening an app and tapping through forms. Texting takes a second, so the habit actually survives past week two.",
       },
       {
+        name: "Carry forward at cycle start",
+        what: "On the first day of a new cycle Blipko asks what to do with last cycle's leftover: move it to savings (optionally into a box), or carry it in as an opening balance that widens this cycle's budget. You can answer in chat or on the dashboard, and can set a different amount than the one suggested.",
+        why: "Leftover money used to quietly vanish at the cycle boundary — it was neither saved on purpose nor available to spend. Deciding once, at the moment it exists, is what turns an underspend into either real savings or a bigger, honest budget.",
+      },
+      {
         name: "50/30/20 budgeting on a payday cycle",
         what: "Every spend lands in Needs (50%), Wants (30%) or Savings (20%). The split is adjustable, and the cycle runs from your payday rather than the 1st.",
         why: "You see what is left in the pot that matters instead of one meaningless total, and the cycle lines up with when you actually get paid.",

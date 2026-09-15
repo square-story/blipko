@@ -35,6 +35,9 @@ export class PrismaUserRepository implements IUserRepository {
         ...(data.onboardingStep !== undefined && {
           onboardingStep: data.onboardingStep,
         }),
+        ...(data.carryDecidedKey !== undefined && {
+          carryDecidedKey: data.carryDecidedKey,
+        }),
         ...(data.onboardingDraft !== undefined && {
           onboardingDraft:
             data.onboardingDraft === null
@@ -63,6 +66,20 @@ export class PrismaUserRepository implements IUserRepository {
         telegramId: { not: null },
       },
     });
+  }
+
+  async claimCarryCycle(userId: string, cycleKey: string): Promise<boolean> {
+    // `not: cycleKey` alone would skip rows where the column is still NULL —
+    // SQL's <> is not true for NULL — which is every user who has never been
+    // asked. The explicit OR puts them back in.
+    const { count } = await this.prisma.user.updateMany({
+      where: {
+        id: userId,
+        OR: [{ carryDecidedKey: null }, { carryDecidedKey: { not: cycleKey } }],
+      },
+      data: { carryDecidedKey: cycleKey },
+    });
+    return count === 1;
   }
 
   async linkTelegramByToken(

@@ -9,6 +9,7 @@ import { getBoxes } from "@/lib/actions/boxes";
 import { getWrappedStats } from "@/lib/actions/wrapped";
 import { NeedsReviewInbox } from "./_components/needs-review-inbox";
 import { WrappedLauncher } from "./_components/wrapped-launcher";
+import { CarryForwardPrompt } from "@/components/carry-forward-prompt";
 import { BoxesSummaryCard } from "./_components/boxes-summary-card";
 import { ConnectTelegramBanner } from "@/components/connect-telegram-banner";
 import {
@@ -61,6 +62,8 @@ async function OverviewSection({
         recentExpenses,
         categoryBreakdown,
         hasOnboarded,
+        carryPrompt,
+        locale,
     } = await overviewPromise;
 
     const taxonomy = hasOnboarded ? [] : await getOnboardingTaxonomy();
@@ -91,6 +94,14 @@ async function OverviewSection({
             {!hasOnboarded && <Onboarding taxonomy={taxonomy} />}
             {hasOnboarded && <ConnectTelegramBanner />}
             {wrapped && <WrappedLauncher stats={wrapped} />}
+            {hasOnboarded && carryPrompt && (
+                <CarryForwardPrompt
+                    prompt={carryPrompt}
+                    boxes={boxes}
+                    currency={currency}
+                    locale={locale}
+                />
+            )}
 
             <NeedsReviewInbox
                 expenses={needsReview} 

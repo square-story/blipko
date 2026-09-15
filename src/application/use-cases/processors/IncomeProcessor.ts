@@ -74,15 +74,20 @@ export class IncomeProcessor implements MessageProcessor {
     // Two sums, deliberately: gross is what landed and is what we report back;
     // earned is what the budget is built on. A refund moves the first, not the second.
     const { start, end } = currentBudgetPeriod(user.payday);
-    const [grossIncome, monthIncome] = await Promise.all([
+    const [grossIncome, monthIncome, carriedIncome] = await Promise.all([
       this.incomeRepository.sumForMonth(user.id, start, end),
       this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+      this.incomeRepository.sumCarryForMonth(user.id, start, end),
     ]);
     const config =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
     const expected = Number(user.monthlyIncome ?? 0);
-    const effective = effectiveMonthlyIncome(expected, monthIncome);
+    const effective = effectiveMonthlyIncome(
+      expected,
+      monthIncome,
+      carriedIncome,
+    );
 
     const label = parsed.note ? ` (${sanitizeMd(parsed.note)})` : "";
     // Say so explicitly, otherwise the budget line looks broken: money went in

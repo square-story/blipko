@@ -54,13 +54,15 @@ export class ReportProcessor implements MessageProcessor {
     // Gross for the line, earned for the budget — /report used to print the
     // earned figure under the label "Income logged", so a refund was invisible
     // here while /status called it out. The two now agree.
-    const [grossIncome, earnedIncome] = await Promise.all([
+    const [grossIncome, earnedIncome, carriedIncome] = await Promise.all([
       this.incomeRepository.sumForMonth(user.id, start, end),
       this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+      this.incomeRepository.sumCarryForMonth(user.id, start, end),
     ]);
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
       earnedIncome,
+      carriedIncome,
     );
     const monthName = new Intl.DateTimeFormat("en-IN", {
       timeZone: user.timezone,

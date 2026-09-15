@@ -35,6 +35,12 @@ export interface CycleReportUser {
 export interface CycleReport {
   text: string;
   endedKey: string; // period key of the ended cycle — idempotency scope
+  net: number; // budget − spend for the ended cycle, as printed in the report
+  // Money actually left over: logged income − spend. NOT `net`, which is built
+  // on the expected-salary floor. Offering `net` would invite the user to carry
+  // a salary they never received — and since the floor applies again next
+  // cycle, that phantom amount compounds every time they accept it.
+  cashLeftover: number;
 }
 
 // "May" for calendar-month cycles (payday=1), else "May 25 – Jun 25". Formats in
@@ -166,11 +172,12 @@ export async function buildCycleReport(
   // Gross for the line, earned for the budget. This used to print the earned
   // figure labelled "Income logged", so a refund vanished from the wrapped
   // report while /status named it.
-  const [endedGross, endedEarned] = await Promise.all([
+  const [endedGross, endedEarned, endedCarry] = await Promise.all([
     deps.incomeRepository.sumForMonth(user.id, ended.start, ended.end),
     deps.incomeRepository.sumEarnedForMonth(user.id, ended.start, ended.end),
+    deps.incomeRepository.sumCarryForMonth(user.id, ended.start, ended.end),
   ]);
-  const endedIncome = effectiveMonthlyIncome(expected, endedEarned);
+  const endedIncome = effectiveMonthlyIncome(expected, endedEarned, endedCarry);
 
   const lines: string[] = [];
   let totalSpent = 0;
@@ -227,7 +234,7 @@ export async function buildCycleReport(
   let text =
     `📊 ${label} wrapped\n\n` +
     headline +
-    `\n\n${incomeBasisLine(endedGross, endedEarned, endedIncome)}\n` +
+    `\n\n${incomeBasisLine(endedGross, endedEarned, endedIncome, endedCarry)}\n` +
     lines.join("\n") +
     // "budget − spend", not "income − spend": net is computed from the effective
     // figure, which carries the expected-salary floor. Saying "income" made the
@@ -238,5 +245,10 @@ export async function buildCycleReport(
     text += `\n\nBiggest movers: ${moverBits.join(" · ")}`;
   }
 
-  return { text, endedKey: zonedYmd(ended.start, tz) };
+  return {
+    text,
+    endedKey: zonedYmd(ended.start, tz),
+    net,
+    cashLeftover: endedGross - totalSpent,
+  };
 }

@@ -103,13 +103,14 @@ export class BatchProcessor implements MessageProcessor {
     const splitConfig =
       (await this.budgetConfigRepository.findByUserId(user.id)) ??
       DEFAULT_SPLIT;
+    const [batchEarned, batchCarried] = await Promise.all([
+      this.incomeRepository.sumEarnedForMonth(user.id, periodStart, periodEnd),
+      this.incomeRepository.sumCarryForMonth(user.id, periodStart, periodEnd),
+    ]);
     const batchIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
-      await this.incomeRepository.sumEarnedForMonth(
-        user.id,
-        periodStart,
-        periodEnd,
-      ),
+      batchEarned,
+      batchCarried,
     );
 
     for (const item of items) {
@@ -209,17 +210,17 @@ export class BatchProcessor implements MessageProcessor {
     let budgetLine = "";
     if (recordedIncome) {
       const { start, end } = currentBudgetPeriod(user.payday);
-      const monthIncome = await this.incomeRepository.sumEarnedForMonth(
-        user.id,
-        start,
-        end,
-      );
+      const [monthIncome, carriedIncome] = await Promise.all([
+        this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+        this.incomeRepository.sumCarryForMonth(user.id, start, end),
+      ]);
       const config =
         (await this.budgetConfigRepository.findByUserId(user.id)) ??
         DEFAULT_SPLIT;
       const effective = effectiveMonthlyIncome(
         Number(user.monthlyIncome ?? 0),
         monthIncome,
+        carriedIncome,
       );
       budgetLine = `Budget on ${formatMoney(effective)} → ${BUCKET_META.NEEDS.emoji} Needs ${formatMoney(bucketBudget(effective, config, "NEEDS"))} · ${BUCKET_META.WANTS.emoji} Wants ${formatMoney(bucketBudget(effective, config, "WANTS"))} · ${BUCKET_META.SAVINGS.emoji} Savings ${formatMoney(bucketBudget(effective, config, "SAVINGS"))}`;
     }
