@@ -108,6 +108,7 @@ export class PrismaBoxRepository implements IBoxRepository {
         source: data.source ?? "MANUAL",
         note: data.note ?? null,
         rawText: data.rawText ?? null,
+        sourceExpenseId: data.sourceExpenseId ?? null,
       },
     });
   }

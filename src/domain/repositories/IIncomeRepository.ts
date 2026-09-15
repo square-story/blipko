@@ -41,6 +41,14 @@ export interface IIncomeRepository {
     monthStart: Date,
     monthEnd: Date,
   ): Promise<number>;
+  // Money carried over from the previous cycle (the CARRY_INCOME_CATEGORY
+  // rows). Excluded from sumEarnedForMonth by countsAsEarnings:false, so the
+  // budget basis adds this back on top — see effectiveMonthlyIncome.
+  sumCarryForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number>;
   findById(id: string): Promise<Income | null>;
   findLastByUserId(userId: string): Promise<Income | null>;
   // Resolve the income behind a confirmation message the user replied to.

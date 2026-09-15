@@ -29,6 +29,15 @@ describe("budgetMath", () => {
     expect(effectiveMonthlyIncome(0, 8000)).toBe(8000); // gig worker, no baseline
   });
 
+  it("adds carried-forward money on top of the floor, not into it", () => {
+    // The whole point: a floor would swallow the carry whole for anyone whose
+    // expected salary still exceeds what they have logged this cycle.
+    expect(effectiveMonthlyIncome(50000, 0, 12700)).toBe(62700);
+    expect(effectiveMonthlyIncome(50000, 55000, 12700)).toBe(67700);
+    expect(effectiveMonthlyIncome(0, 0, 12700)).toBe(12700);
+    expect(effectiveMonthlyIncome(50000, 55000)).toBe(55000); // absent = 0
+  });
+
   it("computes per-bucket budgets from income and split", () => {
     expect(bucketBudget(50000, SPLIT, "NEEDS")).toBe(25000);
     expect(bucketBudget(50000, SPLIT, "WANTS")).toBe(15000);

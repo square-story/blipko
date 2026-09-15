@@ -46,6 +46,7 @@ describe("SendBudgetNudges", () => {
     const incomeRepository = {
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
     useCase = new SendBudgetNudgesUseCase(
       userRepository,

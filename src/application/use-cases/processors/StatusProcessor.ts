@@ -52,13 +52,15 @@ export class StatusProcessor implements MessageProcessor {
     const { day, daysInPeriod, remainingDays } = periodDayInfo(user.payday);
     // Gross is what landed; earned drives the budget. Showing only one of them
     // makes the other look wrong — "I got 69k, why is my budget 62k?"
-    const [loggedIncome, earnedIncome] = await Promise.all([
+    const [loggedIncome, earnedIncome, carriedIncome] = await Promise.all([
       this.incomeRepository.sumForMonth(user.id, start, end),
       this.incomeRepository.sumEarnedForMonth(user.id, start, end),
+      this.incomeRepository.sumCarryForMonth(user.id, start, end),
     ]);
     const monthlyIncome = effectiveMonthlyIncome(
       Number(user.monthlyIncome ?? 0),
       earnedIncome,
+      carriedIncome,
     );
 
     const lines: string[] = [];

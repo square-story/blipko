@@ -37,11 +37,20 @@ export const BoxMovePayload = z.object({
   note: z.string().max(200).optional(),
 });
 
+// The carry-forward prompt's "different amount" step. Nothing is written when
+// this is staged — it only says "the next bare number this user sends is the
+// leftover they want to carry", which is what lets a plain `12700` stop being
+// an expense for the 30 minutes after they tapped the button.
+export const CarryAmountPayload = z.object({
+  cycleKey: z.string().min(1).max(10),
+});
+
 export const PENDING_ACTION_SCHEMAS = {
   EDIT_EXPENSE: EditExpensePayload,
   DELETE_EXPENSE: DeleteExpensePayload,
   SET_RECURRING: SetRecurringPayload,
   BOX_MOVE: BoxMovePayload,
+  CARRY_AMOUNT: CarryAmountPayload,
 } as const;
 
 export type PendingActionKind = keyof typeof PENDING_ACTION_SCHEMAS;

@@ -13,6 +13,7 @@ import {
   categoryPacing,
   effectiveMonthlyIncome,
   EARNED_ONLY,
+  CARRY_ONLY,
   pctSpent,
   type BudgetSplit,
   type CategoryPacing,
@@ -264,7 +265,7 @@ export async function getOverviewAnalytics(
   const current = windows[windows.length - 1]!;
   const { gte, lt } = span(windows);
 
-  const [expenses, incomeAgg, categoryGroups] = await Promise.all([
+  const [expenses, incomeAgg, carryAgg, categoryGroups] = await Promise.all([
     prisma.expense.findMany({
       where: { userId: ctx.userId, isDeleted: false, date: { gte, lt } },
       select: { amount: true, date: true, bucket: true },
@@ -276,6 +277,15 @@ export async function getOverviewAnalytics(
         isDeleted: false,
         date: { gte: current.start, lt: current.end },
         ...EARNED_ONLY,
+      },
+    }),
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId: ctx.userId,
+        isDeleted: false,
+        date: { gte: current.start, lt: current.end },
+        ...CARRY_ONLY,
       },
     }),
     prisma.expense.groupBy({
@@ -335,9 +345,14 @@ export async function getOverviewAnalytics(
   );
 
   // The current cycle's budget follows the app's existing rule: expected salary
-  // is a floor, actual logged income lifts it. Zero income means no budget at
-  // all rather than a budget of zero, so nothing divides by it.
-  const monthlyIncome = effectiveMonthlyIncome(ctx.expectedIncome, income);
+  // is a floor, actual logged income lifts it, carried-forward money adds on
+  // top. Zero income means no budget at all rather than a budget of zero, so
+  // nothing divides by it.
+  const monthlyIncome = effectiveMonthlyIncome(
+    ctx.expectedIncome,
+    income,
+    Number(carryAgg._sum.amount ?? 0),
+  );
   const budget = monthlyIncome > 0 ? monthlyIncome : null;
 
   const wholePacing = categoryPacing({
@@ -907,7 +922,7 @@ export async function getCommitmentAnalytics(): Promise<CommitmentAnalytics> {
   const windows = windowsFor(ctx, 1);
   const current = windows[windows.length - 1]!;
 
-  const [rules, incomeAgg, spendAgg] = await Promise.all([
+  const [rules, incomeAgg, carryAgg, spendAgg] = await Promise.all([
     getRecurringRules(),
     prisma.income.aggregate({
       _sum: { amount: true },
@@ -916,6 +931,15 @@ export async function getCommitmentAnalytics(): Promise<CommitmentAnalytics> {
         isDeleted: false,
         date: { gte: current.start, lt: current.end },
         ...EARNED_ONLY,
+      },
+    }),
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId: ctx.userId,
+        isDeleted: false,
+        date: { gte: current.start, lt: current.end },
+        ...CARRY_ONLY,
       },
     }),
     prisma.expense.aggregate({
@@ -937,7 +961,11 @@ export async function getCommitmentAnalytics(): Promise<CommitmentAnalytics> {
   const committed = recurringExpense + recurringBox;
 
   const loggedIncome = Number(incomeAgg._sum.amount ?? 0);
-  const incomeBasis = effectiveMonthlyIncome(ctx.expectedIncome, loggedIncome);
+  const incomeBasis = effectiveMonthlyIncome(
+    ctx.expectedIncome,
+    loggedIncome,
+    Number(carryAgg._sum.amount ?? 0),
+  );
 
   const totals: CommitmentTotals = {
     recurringExpense,

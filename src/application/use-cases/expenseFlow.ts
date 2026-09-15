@@ -233,14 +233,14 @@ export async function recordExpenseAndReply(
   );
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
-  const monthIncome = await deps.incomeRepository.sumEarnedForMonth(
-    user.id,
-    start,
-    end,
-  );
+  const [monthIncome, carried] = await Promise.all([
+    deps.incomeRepository.sumEarnedForMonth(user.id, start, end),
+    deps.incomeRepository.sumCarryForMonth(user.id, start, end),
+  ]);
   const income = effectiveMonthlyIncome(
     Number(user.monthlyIncome ?? 0),
     monthIncome,
+    carried,
   );
   const budget = bucketBudget(income, config, bucket);
   const remaining = budget - spent;

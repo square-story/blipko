@@ -50,6 +50,7 @@ describe("BatchProcessor", () => {
       create: vi.fn().mockResolvedValue({ id: "inc1" }),
       sumForMonth: vi.fn().mockResolvedValue(50000),
       sumEarnedForMonth: vi.fn().mockResolvedValue(50000),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
     messageService = {
       sendMessage: vi.fn().mockResolvedValue("summary-msg"),

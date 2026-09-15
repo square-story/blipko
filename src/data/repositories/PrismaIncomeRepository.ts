@@ -5,6 +5,7 @@ import {
   IIncomeRepository,
 } from "../../domain/repositories/IIncomeRepository";
 import { TxClient } from "../../domain/repositories/UnitOfWork";
+import { CARRY_INCOME_CATEGORY } from "../../domain/incomeCategoryTemplate";
 
 export class PrismaIncomeRepository implements IIncomeRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -35,6 +36,23 @@ export class PrismaIncomeRepository implements IIncomeRepository {
         userId,
         isDeleted: false,
         date: { gte: monthStart, lt: monthEnd },
+      },
+    });
+    return Number(result._sum.amount ?? 0);
+  }
+
+  async sumCarryForMonth(
+    userId: string,
+    monthStart: Date,
+    monthEnd: Date,
+  ): Promise<number> {
+    const result = await this.prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: monthStart, lt: monthEnd },
+        category: { name: CARRY_INCOME_CATEGORY },
       },
     });
     return Number(result._sum.amount ?? 0);

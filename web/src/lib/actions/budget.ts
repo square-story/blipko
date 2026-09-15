@@ -14,9 +14,12 @@ import {
   periodDayInfo,
   effectiveMonthlyIncome,
   EARNED_ONLY,
+  CARRY_ONLY,
   pctSpent,
   type BudgetSplit,
 } from "@/lib/budget";
+import { DEFAULT_TZ, cycleLabel, zonedPreviousCycles } from "@/lib/time";
+import { shouldPromptCarry } from "@/lib/carry";
 
 export type BucketOverview = {
   bucket: Bucket;
@@ -40,52 +43,104 @@ export async function getBudgetOverview() {
       locale: true,
       hasOnboarded: true,
       payday: true,
+      // For the carry-forward prompt: which cycle was settled, and whether the
+      // account is old enough to have a previous cycle worth asking about.
+      timezone: true,
+      carryDecidedKey: true,
+      createdAt: true,
     },
   });
+  const tz = user?.timezone ?? DEFAULT_TZ;
+  const ended = zonedPreviousCycles(user?.payday ?? 1, 1, tz)[0]!;
   const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
   const { day, daysInPeriod, remainingDays } = periodDayInfo(user?.payday ?? 1);
 
-  const [config, grouped, recent, categoryGroups, incomeAgg, earnedAgg] =
-    await Promise.all([
-      prisma.budgetConfig.findUnique({ where: { userId } }),
-      prisma.expense.groupBy({
-        by: ["bucket"],
-        _sum: { amount: true },
-        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-      }),
-      prisma.expense.findMany({
-        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-        include: { category: { select: { name: true } } },
-        orderBy: { date: "desc" },
-        take: 8,
-      }),
-      prisma.expense.groupBy({
-        by: ["categoryId"],
-        _sum: { amount: true },
-        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-      }),
-      prisma.income.aggregate({
-        _sum: { amount: true },
-        where: { userId, isDeleted: false, date: { gte: start, lt: end } },
-      }),
-      prisma.income.aggregate({
-        _sum: { amount: true },
-        where: {
-          userId,
-          isDeleted: false,
-          date: { gte: start, lt: end },
-          ...EARNED_ONLY,
-        },
-      }),
-    ]);
+  const [
+    config,
+    grouped,
+    recent,
+    categoryGroups,
+    incomeAgg,
+    earnedAgg,
+    carryAgg,
+    endedGrossAgg,
+    endedSpendAgg,
+  ] = await Promise.all([
+    prisma.budgetConfig.findUnique({ where: { userId } }),
+    prisma.expense.groupBy({
+      by: ["bucket"],
+      _sum: { amount: true },
+      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+    }),
+    prisma.expense.findMany({
+      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+      include: { category: { select: { name: true } } },
+      orderBy: { date: "desc" },
+      take: 8,
+    }),
+    prisma.expense.groupBy({
+      by: ["categoryId"],
+      _sum: { amount: true },
+      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+    }),
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: { userId, isDeleted: false, date: { gte: start, lt: end } },
+    }),
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: start, lt: end },
+        ...EARNED_ONLY,
+      },
+    }),
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: start, lt: end },
+        ...CARRY_ONLY,
+      },
+    }),
+    // The ended cycle, for the carry-forward prompt's suggested figure.
+    // GROSS income, deliberately: the suggestion is cash the user actually
+    // has, so it must not inherit the expected-salary floor that the budget
+    // basis carries. Same figure the bot's cycle report offers.
+    prisma.income.aggregate({
+      _sum: { amount: true },
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: ended.start, lt: ended.end },
+      },
+    }),
+    prisma.expense.aggregate({
+      _sum: { amount: true },
+      _count: true,
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: ended.start, lt: ended.end },
+      },
+    }),
+  ]);
 
   const expectedIncome = Number(user?.monthlyIncome ?? 0);
   // Gross (what landed) is what the Income card shows; earned (refunds excluded)
   // is what budgets are built on.
   const incomeThisMonth = Number(incomeAgg._sum.amount ?? 0);
   const earnedThisMonth = Number(earnedAgg._sum.amount ?? 0);
-  // Budgets track earned income this month, floored at the expected salary.
-  const monthlyIncome = effectiveMonthlyIncome(expectedIncome, earnedThisMonth);
+  const carriedThisMonth = Number(carryAgg._sum.amount ?? 0);
+  // Budgets track earned income this month, floored at the expected salary,
+  // plus anything carried in from last cycle.
+  const monthlyIncome = effectiveMonthlyIncome(
+    expectedIncome,
+    earnedThisMonth,
+    carriedThisMonth,
+  );
   const currency = user?.currency ?? "INR";
   const locale = user?.locale ?? "en-IN";
   const split: BudgetSplit = config
@@ -154,6 +209,31 @@ export async function getBudgetOverview() {
   });
   const periodLabel = `${fmt.format(start)} – ${fmt.format(new Date(end.getTime() - 86400000))}`;
 
+  // Carry-forward prompt: the cash the ended cycle left over, if it is still
+  // this user's to decide. Logged income minus spend — never the budget basis,
+  // which is floored at the expected salary and would offer money that never
+  // arrived. Mirrors the bot's cashLeftover so the two surfaces agree.
+  const endedSpend = Number(endedSpendAgg._sum.amount ?? 0);
+  const endedGross = Number(endedGrossAgg._sum.amount ?? 0);
+  const endedNet = Math.round(endedGross - endedSpend);
+  const carryCycleKey = shouldPromptCarry({
+    carryDecidedKey: user?.carryDecidedKey ?? null,
+    payday: user?.payday ?? 1,
+    tz,
+    userCreatedAt: user?.createdAt ?? new Date(),
+    hadActivity: endedSpendAgg._count > 0 || endedGross > 0,
+  });
+  const carryPrompt = carryCycleKey
+    ? {
+        cycleKey: carryCycleKey,
+        // Overspent cycles have nothing to carry, but the user may still want
+        // to file cash they have in hand — so prompt with a blank amount
+        // rather than a negative one.
+        suggested: Math.max(0, endedNet),
+        endedLabel: cycleLabel(ended.start, tz, locale),
+      }
+    : null;
+
   return {
     monthlyIncome,
     expectedIncome,
@@ -175,6 +255,7 @@ export async function getBudgetOverview() {
     recentExpenses,
     categoryBreakdown,
     hasOnboarded: user?.hasOnboarded ?? false,
+    carryPrompt,
   };
 }
 

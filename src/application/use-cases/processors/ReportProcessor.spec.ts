@@ -36,6 +36,7 @@ describe("ReportProcessor", () => {
     incomeRepository = {
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
     processor = new ReportProcessor(
       expenseRepository,

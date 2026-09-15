@@ -200,6 +200,8 @@ Pre-parse (button callbacks and commands — run before AI):
 |---|---|
 | `PendingActionProcessor` | `act:<id>:y\|n` — confirms an assistant-proposed write (only when the assistant lane is on) |
 | `TransactionActionProcessor` | `txn:` callbacks — delete/edit/restore |
+| `CarryPromptProcessor` | `car:` — cycle-start carry-forward (savings / opening balance) |
+| `CarryAmountProcessor` | a bare number, but only while a `CARRY_AMOUNT` `PendingAction` is live |
 | `ConfirmBucketProcessor` | `bkt:` inline-keyboard bucket disambiguation |
 | `RecurringConfirmProcessor` | `rec:` recurring confirm buttons |
 | `ConnectAccountProcessor` | hands unlinked users to the web dashboard |
@@ -317,6 +319,10 @@ Every incoming Telegram update ID is written to `ProcessedMessage` (in `Telegram
 ### Schema highlights (`prisma/schema.prisma`)
 
 - Core financial models: `Expense`, `Income`, `BudgetConfig` (per-bucket + per-category budgets), `Category` (user taxonomy), `RecurringRule`.
+- `User.carryDecidedKey` — the cycle key (`periodKey`, a cycle start date) the
+  user last settled the carry-forward prompt for. Written by a conditional
+  `updateMany` so the Telegram buttons and the dashboard modal cannot both carry
+  the same leftover.
 - `BudgetNudge` + `NotificationDosage` enum (`OFF | GENTLE | AGGRESSIVE | RELENTLESS`) — dosage-aware reminders; sent by `SendBudgetNudges`.
 - `Bucket` enum: `NEEDS | WANTS | SAVINGS`. `ExpenseSource`, `NudgeKind`, `RecurringKind` enums.
 - `ConversationMessage` — rolling chat history fed back to the AI. Ordered by

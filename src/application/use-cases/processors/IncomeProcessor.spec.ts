@@ -23,6 +23,7 @@ describe("IncomeProcessor", () => {
       // After creating, this month's income totals 55,000 (50k salary + 5k freelance).
       sumForMonth: vi.fn().mockResolvedValue(55000),
       sumEarnedForMonth: vi.fn().mockResolvedValue(55000),
+      sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
     budgetConfigRepository = {
       findByUserId: vi

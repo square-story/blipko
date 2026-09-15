@@ -91,6 +91,12 @@ model User {
   onboardingStep  String?
   onboardingDraft Json?
 
+  // Cycle key (periodKey — the cycle start date, e.g. "2026-10-01") the user
+  // last settled the carry-forward prompt for. Null = never settled. One column
+  // rather than a ledger: "did we settle this cycle" is the only fact that has
+  // to survive, and both surfaces read and write the same answer.
+  carryDecidedKey String?
+
   // Reminder dosage (opt-in; default OFF).
   notificationDosage NotificationDosage @default(OFF)
 

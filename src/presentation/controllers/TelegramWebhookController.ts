@@ -125,7 +125,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   runInTransaction,
   env.WEB_APP_URL,
   assistantAgent,
-  assistantEnabled ? pendingActionRepository : null,
+  pendingActionRepository,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(
