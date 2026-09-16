@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { rememberCategoryChoice } from "@/lib/category-memory";
 import { auth } from "@/auth";
 import { Bucket, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -278,6 +279,15 @@ export async function assignExpenseCategory(
     date: expense.date,
   });
 
+  // The highest-signal correction in the product: the AI was unsure (or landed
+  // on Miscellaneous/null) and the user said what it actually was. Learn it
+  // before the update below overwrites confidence and erases the evidence.
+  // Groups are rejected — a mapping onto one would land every future match
+  // uncategorized, since expenses never attach to a container.
+  if (!category.isGroup) {
+    await rememberCategoryChoice(session.user.id, expense.note, category.id);
+  }
+
   if (!transfer.transferred) {
     await prisma.expense.update({
       where: { id: expenseId },
@@ -322,6 +332,12 @@ export async function updateExpense(id: string, input: ExpenseEditInput) {
       where: { id: categoryId, userId: session.user.id },
     });
     if (!category) return { success: false, message: "Category not found" };
+
+    // Key on the note the expense had BEFORE this edit — the same call can
+    // replace the note, and the phrase the user will type again is the old one.
+    if (!category.isGroup) {
+      await rememberCategoryChoice(session.user.id, expense.note, category.id);
+    }
 
     // Category feeds a box → transfer the (edited) transaction into it.
     const transfer = await divertExpenseToLinkedBox(session.user.id, {

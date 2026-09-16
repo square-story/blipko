@@ -3,8 +3,10 @@ import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
+import { ICategoryMemoryRepository } from "../../domain/repositories/ICategoryMemoryRepository";
 import { InlineButtonRows } from "../interfaces/IMessagingPlatform";
 import { resolveExpenseCategory } from "./expenseFlow";
+import { rememberCategoryChoice, rememberedLine } from "./categoryMemory";
 import { TxnKind, txnCb } from "./txnCallback";
 import {
   BUCKET_META,
@@ -22,6 +24,8 @@ export interface TxnActionDeps {
   incomeRepository: IIncomeRepository;
   categoryRepository: ICategoryRepository;
   budgetConfigRepository: IBudgetConfigRepository;
+  // Null only if the composition root has not wired it; capture is skipped.
+  categoryMemoryRepository: ICategoryMemoryRepository | null;
 }
 
 // A resolved transaction the user is acting on, tagged by table.
@@ -222,12 +226,25 @@ export async function applyExpenseEdit(
   if (changes.amount != null) data.amount = changes.amount;
   if (changes.note !== undefined) data.note = changes.note;
 
+  // A category correction is the user teaching us. Key it on the note they
+  // ORIGINALLY typed — this call can change note and category together, so
+  // reading it after the update would key on the replacement phrase.
+  const learned = changes.categoryName
+    ? await rememberCategoryChoice(
+        deps.categoryMemoryRepository,
+        user.id,
+        expense.note,
+        data.categoryId,
+      )
+    : null;
+
   await deps.expenseRepository.update(expense.id, data);
 
   const amount = changes.amount ?? Number(expense.amount);
   const remaining = await bucketRemaining(deps, user, bucket);
   const meta = BUCKET_META[bucket];
-  return `✅ Updated → ${formatMoney(amount)} ${meta.label} · ${sanitizeMd(categoryLabel)}\n${meta.label} left this month: ${formatMoney(remaining)}`;
+  const memo = learned ? `\n${rememberedLine(learned, categoryLabel)}` : "";
+  return `✅ Updated → ${formatMoney(amount)} ${meta.label} · ${sanitizeMd(categoryLabel)}\n${meta.label} left this month: ${formatMoney(remaining)}${memo}`;
 }
 
 export interface IncomeEditChanges {

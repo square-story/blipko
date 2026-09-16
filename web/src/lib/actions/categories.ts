@@ -566,7 +566,7 @@ export type UnusedCategory = { id: string; name: string; bucket: Bucket };
 // Deliberately NOT `_count: { expenses: true }` — that counts soft-deleted rows
 // too, so a category whose only spend was deleted would look used forever.
 async function findUnusedCategories(userId: string): Promise<UnusedCategory[]> {
-  const [leaves, spent, ruled, boxed] = await Promise.all([
+  const [leaves, spent, ruled, boxed, taught] = await Promise.all([
     prisma.category.findMany({
       where: { userId, isGroup: false },
       select: { id: true, name: true, bucket: true },
@@ -586,12 +586,19 @@ async function findUnusedCategories(userId: string): Promise<UnusedCategory[]> {
       where: { userId, categoryId: { not: null } },
       select: { categoryId: true },
     }),
+    // A category the user TAUGHT the bot is in use even with no spend yet —
+    // offering to delete it would silently throw the lesson away.
+    prisma.categoryMemory.findMany({
+      where: { userId },
+      select: { categoryId: true },
+      distinct: ["categoryId"],
+    }),
   ]);
 
   // Archived boxes count as used too — un-archiving one must not find its
   // category deleted underneath it.
   const used = new Set(
-    [...spent, ...ruled, ...boxed]
+    [...spent, ...ruled, ...boxed, ...taught]
       .map((r) => r.categoryId)
       .filter((id): id is string => id !== null),
   );

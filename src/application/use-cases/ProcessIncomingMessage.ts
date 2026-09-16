@@ -57,6 +57,8 @@ import { CarryPromptProcessor } from "./processors/CarryPromptProcessor";
 import { CarryAmountProcessor } from "./processors/CarryAmountProcessor";
 import { parseBareAmount } from "./carryFlow";
 import { uniqueLeafCategories } from "./categoryHints";
+import { ICategoryMemoryRepository } from "../../domain/repositories/ICategoryMemoryRepository";
+import { applyCategoryMemory } from "./categoryMemory";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -104,6 +106,7 @@ export class ProcessIncomingMessageUseCase {
     // NOT gated on the assistant lane: pending actions also back the
     // carry-forward "different amount" step, which ships either way.
     private readonly pendingActionRepository: IPendingActionRepository | null = null,
+    private readonly categoryMemoryRepository: ICategoryMemoryRepository | null = null,
   ) {
     this.preParseProcessors = [
       // Confirmations for assistant-proposed writes. First, and before any AI:
@@ -119,6 +122,7 @@ export class ProcessIncomingMessageUseCase {
               recurringRuleRepository,
               messageService,
               incomeCategoryRepository,
+              categoryMemoryRepository,
             ),
           ]
         : []),
@@ -149,6 +153,7 @@ export class ProcessIncomingMessageUseCase {
         budgetConfigRepository,
         parseLogRepository,
         messageService,
+        categoryMemoryRepository,
       ),
       new ConfirmBucketProcessor(
         parseLogRepository,
@@ -200,6 +205,7 @@ export class ProcessIncomingMessageUseCase {
         budgetConfigRepository,
         parseLogRepository,
         messageService,
+        categoryMemoryRepository,
       ),
       new StatusProcessor(
         expenseRepository,
@@ -296,6 +302,8 @@ export class ProcessIncomingMessageUseCase {
             incomeRepository: this.incomeRepository,
             categoryRepository: this.categoryRepository,
             budgetConfigRepository: this.budgetConfigRepository,
+            // Lookup only — this path never edits a category, so nothing to learn.
+            categoryMemoryRepository: null,
           },
           user.id,
           payload.replyToMessageId,
@@ -350,6 +358,17 @@ export class ProcessIncomingMessageUseCase {
       today: zonedYmd(new Date(), user.timezone),
       assistantMode: this.assistantAgent !== null,
     });
+
+    // Apply what the user taught us by correcting a category before anything
+    // branches. context.parsed below is the SAME object as transactions[0], so
+    // mutating here reaches both the single and batch paths with no duplicate
+    // code — and ExpenseProcessor/BatchProcessor then resolve the corrected
+    // name against the DB exactly as if the model had produced it.
+    await applyCategoryMemory(
+      this.categoryMemoryRepository,
+      user.id,
+      batch.transactions,
+    );
 
     if (batch.transactions.length >= 2) {
       // Multiple transactions in one message → BatchProcessor.
