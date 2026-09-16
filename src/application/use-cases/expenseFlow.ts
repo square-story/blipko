@@ -156,14 +156,16 @@ export async function recordExpense(
   expense: Expense;
   categoryLabel: string;
   createdCategory: boolean;
+  bucket: Bucket;
 }> {
   const { user, amount, bucket } = args;
 
   // Use a known leaf id when the caller already resolved one; otherwise
-  // find-or-create by name (bucket stays the caller-supplied one).
+  // find-or-create by name.
   let categoryId = args.categoryId;
   let categoryLabel = args.categoryName ?? "General";
   let createdCategory = false;
+  let resolvedBucket = bucket;
   if (!categoryId && args.categoryName) {
     const resolved = await resolveExpenseCategory(
       deps.categoryRepository,
@@ -174,12 +176,18 @@ export async function recordExpense(
     categoryId = resolved.categoryId;
     categoryLabel = resolved.categoryLabel;
     createdCategory = resolved.createdCategory;
+    // A resolved LEAF owns the bucket — the same rule already stated in
+    // ExpenseProcessor, RecurringSetupProcessor and PendingActionProcessor.
+    // Without this, tapping "Wants" on a bkt: prompt saved bucket=WANTS against
+    // a NEEDS category. Rare before, systematic once category memory makes the
+    // category confidently non-null on exactly those low-confidence parses.
+    if (resolved.categoryId) resolvedBucket = resolved.bucket;
   }
 
   const expense = await deps.expenseRepository.create({
     userId: user.id,
     amount,
-    bucket,
+    bucket: resolvedBucket,
     note: args.note,
     rawText: args.rawText,
     confidence: args.confidence,
@@ -189,7 +197,7 @@ export async function recordExpense(
     batchId: args.batchId,
   });
 
-  return { expense, categoryLabel, createdCategory };
+  return { expense, categoryLabel, createdCategory, bucket: resolvedBucket };
 }
 
 // Shown once when a spend invents a category, so the user can fix it while it's
@@ -204,12 +212,10 @@ export async function recordExpenseAndReply(
   deps: ExpenseFlowDeps,
   args: RecordExpenseArgs,
 ): Promise<string> {
-  const { user, amount, bucket } = args;
+  const { user, amount } = args;
 
-  const { expense, categoryLabel, createdCategory } = await recordExpense(
-    deps,
-    args,
-  );
+  const { expense, categoryLabel, createdCategory, bucket } =
+    await recordExpense(deps, args);
 
   const { start, end } = currentBudgetPeriod(user.payday);
 

@@ -9,6 +9,8 @@ import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepos
 import { IBoxRepository } from "../../../domain/repositories/IBoxRepository";
 import { IRecurringRuleRepository } from "../../../domain/repositories/IRecurringRuleRepository";
 import { IIncomeCategoryRepository } from "../../../domain/repositories/IIncomeCategoryRepository";
+import { ICategoryMemoryRepository } from "../../../domain/repositories/ICategoryMemoryRepository";
+import { rememberCategoryChoice } from "../categoryMemory";
 import { resolveIncomeCategory } from "../../../domain/incomeCategoryTemplate";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { parseActCallback } from "../actCallback";
@@ -37,6 +39,7 @@ export class PendingActionProcessor implements MessageProcessor {
     private readonly recurringRuleRepository: IRecurringRuleRepository,
     private readonly messageService: IMessagingPlatform,
     private readonly incomeCategoryRepository: IIncomeCategoryRepository,
+    private readonly categoryMemoryRepository: ICategoryMemoryRepository | null = null,
   ) {}
 
   canHandle(context: ProcessContext): boolean {
@@ -217,6 +220,16 @@ export class PendingActionProcessor implements MessageProcessor {
         // (same rule as resolveExpenseCategory) but must never become the
         // categoryId — expenses and rules never hang off a container.
         const leaf = category && !category.isGroup ? category : null;
+        // Learn from the correction, keyed on the note the expense had BEFORE
+        // this edit — p.note may replace it with different wording.
+        if (p.categoryName) {
+          await rememberCategoryChoice(
+            this.categoryMemoryRepository,
+            userId,
+            expense.note,
+            leaf?.id,
+          );
+        }
         await this.expenseRepository.update(expense.id, {
           amount: p.amount,
           bucket: category?.bucket ?? p.bucket,

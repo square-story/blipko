@@ -12,6 +12,7 @@ import { OpenAiQueryAgent } from "../../data/ai/OpenAiQueryAgent";
 import { ClaudeAssistantAgent } from "../../data/ai/ClaudeAssistantAgent";
 import { AssistantWriteTools } from "../../application/use-cases/query/AssistantWriteTools";
 import { PrismaPendingActionRepository } from "../../data/repositories/PrismaPendingActionRepository";
+import { PrismaCategoryMemoryRepository } from "../../data/repositories/PrismaCategoryMemoryRepository";
 import { FinancialDataTools } from "../../application/use-cases/query/FinancialDataTools";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
 import { PrismaUserRepository } from "../../data/repositories/PrismaUserRepository";
@@ -76,6 +77,7 @@ const boxRepository = new PrismaBoxRepository(prisma);
 const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
+const categoryMemoryRepository = new PrismaCategoryMemoryRepository(prisma);
 
 // Runs multiple repository writes atomically (e.g. recurring post + markPosted).
 const runInTransaction: RunInTransaction = (fn) => prisma.$transaction(fn);
@@ -126,6 +128,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   env.WEB_APP_URL,
   assistantAgent,
   pendingActionRepository,
+  categoryMemoryRepository,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(

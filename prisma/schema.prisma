@@ -112,6 +112,7 @@ model User {
   budgetConfig     BudgetConfig?
   categories       Category[]
   incomeCategories IncomeCategory[]
+  categoryMemories CategoryMemory[]
   logs             ParseLog[]
   budgetNudges     BudgetNudge[]
   recurringRules   RecurringRule[]
@@ -188,6 +189,7 @@ model Category {
 
   expenses       Expense[]
   recurringRules RecurringRule[]
+  memories       CategoryMemory[]
 
   // A category may be linked to at most one Box; when linked, transactions in
   // this category divert into that box (see Box.categoryId).
@@ -196,6 +198,37 @@ model Category {
   createdAt DateTime @default(now())
 
   @@unique([userId, name])
+}
+
+// What the user taught us by correcting a category. Keyed on the normalized
+// phrase they typed ("chai 30" -> "chai"), so the next "chai 30" is filed the
+// way they said rather than re-guessed by the model.
+//
+// Cascade on category, never SetNull: a mapping pointing at a deleted category
+// would resolve to nothing on the hot path. Deleting a category unlearns it.
+model CategoryMemory {
+  id String @id @default(cuid())
+
+  // Normalized, amount-stripped lookup key. Unicode-aware, so Malayalam and
+  // Hindi phrases key distinctly instead of collapsing onto one empty string.
+  phraseKey String
+  // First-seen original, kept only so the bot can quote it back to the user.
+  phrase    String
+
+  // Times this mapping has been reinforced by another correction.
+  hits       Int      @default(1)
+  lastUsedAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, phraseKey])
+  @@index([userId, hits])
 }
 
 // A repeating income/expense the scheduler auto-posts each month on dayOfMonth.

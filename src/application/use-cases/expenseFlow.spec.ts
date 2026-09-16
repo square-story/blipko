@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   buildCategoryBudgetLine,
   buildBucketBudgetLine,
+  recordExpense,
   resolveExpenseCategory,
 } from "./expenseFlow";
-import { Category } from "@prisma/client";
+import { Category, Expense } from "@prisma/client";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 
 // Minimal stub — resolveExpenseCategory only ever calls these three methods.
@@ -197,5 +198,78 @@ describe("resolveExpenseCategory system-row materialization", () => {
     expect(created).toHaveLength(0);
     expect(result.categoryId).toBeUndefined();
     expect(result.bucket).toBe("NEEDS"); // still adopts the group's bucket
+  });
+});
+
+// Tapping a bucket on a bkt: prompt used to save that bucket even when the
+// category resolved to a leaf in a different one. Rare before category memory,
+// systematic after it — memory makes the category confidently non-null on
+// exactly the low-confidence parses that show the bucket prompt.
+describe("recordExpense bucket precedence", () => {
+  function deps(existing: Partial<Category> | null) {
+    const { repo } = stubCategoryRepo(existing);
+    const created: any[] = [];
+    return {
+      created,
+      deps: {
+        categoryRepository: repo,
+        expenseRepository: {
+          create: async (data: any) => {
+            created.push(data);
+            return { id: "e1", ...data } as Expense;
+          },
+        },
+      } as any,
+    };
+  }
+
+  const user = { id: "u1", payday: 1 } as any;
+
+  it("lets a resolved leaf's bucket win over the caller's", async () => {
+    const { deps: d, created } = deps({
+      id: "c1",
+      name: "Groceries",
+      bucket: "NEEDS",
+      isGroup: false,
+      userId: "u1",
+    });
+
+    const result = await recordExpense(d, {
+      user,
+      platformUserId: "123",
+      amount: 200,
+      bucket: "WANTS", // what the user tapped
+      rawText: "groceries 200",
+      confidence: 0.3,
+      categoryName: "Groceries",
+    } as any);
+
+    expect(created[0].bucket).toBe("NEEDS");
+    expect(result.bucket).toBe("NEEDS");
+  });
+
+  it("keeps the caller's bucket when nothing resolves to a leaf", async () => {
+    const { deps: d, created } = deps({
+      id: "g1",
+      name: "Essentials",
+      bucket: "NEEDS",
+      isGroup: true,
+      userId: "u1",
+    });
+
+    await recordExpense(d, {
+      user,
+      platformUserId: "123",
+      amount: 200,
+      bucket: "WANTS",
+      rawText: "something 200",
+      confidence: 0.3,
+      categoryName: "Essentials",
+    } as any);
+
+    // A group lends its bucket to resolveExpenseCategory but yields no
+    // categoryId, so the expense keeps the bucket the caller supplied.
+    expect(created[0].categoryId).toBeUndefined();
+    expect(created[0].bucket).toBe("WANTS");
   });
 });

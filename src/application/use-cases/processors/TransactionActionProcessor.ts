@@ -7,6 +7,7 @@ import { IExpenseRepository } from "../../../domain/repositories/IExpenseReposit
 import { IIncomeRepository } from "../../../domain/repositories/IIncomeRepository";
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IBudgetConfigRepository } from "../../../domain/repositories/IBudgetConfigRepository";
+import { ICategoryMemoryRepository } from "../../../domain/repositories/ICategoryMemoryRepository";
 import { IParseLogRepository } from "../../../domain/repositories/IParseLogRepository";
 import {
   IMessagingPlatform,
@@ -43,12 +44,14 @@ export class TransactionActionProcessor implements MessageProcessor {
     budgetConfigRepository: IBudgetConfigRepository,
     private readonly parseLogRepository: IParseLogRepository,
     private readonly messageService: IMessagingPlatform,
+    categoryMemoryRepository: ICategoryMemoryRepository | null,
   ) {
     this.deps = {
       expenseRepository,
       incomeRepository,
       categoryRepository,
       budgetConfigRepository,
+      categoryMemoryRepository,
     };
   }
 

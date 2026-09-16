@@ -35,6 +35,8 @@ export class UndoProcessor implements MessageProcessor {
       incomeRepository,
       categoryRepository,
       budgetConfigRepository,
+      // Undo deletes; it never changes a category, so there is nothing to learn.
+      categoryMemoryRepository: null,
     };
   }
 
