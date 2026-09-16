@@ -56,6 +56,7 @@ import { resolveByConfirmationMessage } from "./transactionActions";
 import { CarryPromptProcessor } from "./processors/CarryPromptProcessor";
 import { CarryAmountProcessor } from "./processors/CarryAmountProcessor";
 import { parseBareAmount } from "./carryFlow";
+import { uniqueLeafCategories } from "./categoryHints";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -399,7 +400,10 @@ export class ProcessIncomingMessageUseCase {
 
   private async loadCategoryHints(userId: string): Promise<CategoryHint[]> {
     const categories = await this.categoryRepository.findAllForUser(userId);
-    return categories.map((c) => ({
+    // Same leaves-only, one-per-name rule the assistant's tool schema uses. A
+    // raw map here offered the model group rows and every name twice, which is
+    // where half the duplicate categories came from.
+    return uniqueLeafCategories(categories, userId).map((c) => ({
       name: c.name,
       bucket: c.bucket as ParsedBucket,
     }));

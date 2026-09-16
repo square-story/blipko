@@ -7,17 +7,26 @@ import {
 import { Category } from "@prisma/client";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 
-// Minimal stub — resolveExpenseCategory only ever calls these two methods.
+// Minimal stub — resolveExpenseCategory only ever calls these three methods.
 function stubCategoryRepo(existing: Partial<Category> | null) {
   const created: Array<{ name: string; bucket: string }> = [];
+  const materialized: string[] = [];
   const repo = {
     findByNameForUser: async () => existing as Category | null,
     create: async (data: { name: string; bucket: string }) => {
       created.push({ name: data.name, bucket: data.bucket });
       return { id: "new-cat", name: data.name, isGroup: false } as Category;
     },
+    materializeForUser: async (userId: string, systemId: string) => {
+      materialized.push(systemId);
+      return {
+        ...(existing as Category),
+        id: "own-cat",
+        userId,
+      } as Category;
+    },
   } as unknown as ICategoryRepository;
-  return { repo, created };
+  return { repo, created, materialized };
 }
 
 describe("buildCategoryBudgetLine", () => {
@@ -133,5 +142,60 @@ describe("resolveExpenseCategory", () => {
     expect(result.categoryId).toBeUndefined();
     expect(result.bucket).toBe("NEEDS"); // adopts the group's bucket
     expect(result.createdCategory).toBe(false);
+  });
+});
+
+// Onboarding no longer pre-clones the taxonomy, so a first spend usually matches
+// a shared system row. Attaching an expense to one leaves a userId=null
+// categoryId that the web ownership checks reject.
+describe("resolveExpenseCategory system-row materialization", () => {
+  it("materializes a system match into the user's own row", async () => {
+    const { repo, created, materialized } = stubCategoryRepo({
+      id: "sys-1",
+      name: "Fuel",
+      bucket: "NEEDS",
+      isGroup: false,
+      userId: null,
+    });
+    const result = await resolveExpenseCategory(repo, "u1", "WANTS", "fuel");
+    expect(materialized).toEqual(["sys-1"]);
+    expect(result.categoryId).toBe("own-cat");
+    expect(result.bucket).toBe("NEEDS");
+    // Materializing is not inventing — the user is not told "new category".
+    expect(result.createdCategory).toBe(false);
+    expect(created).toHaveLength(0);
+  });
+
+  it("leaves a row the user already owns alone", async () => {
+    const { repo, materialized } = stubCategoryRepo({
+      id: "own-1",
+      name: "Fuel",
+      bucket: "NEEDS",
+      isGroup: false,
+      userId: "u1",
+    });
+    const result = await resolveExpenseCategory(repo, "u1", "WANTS", "Fuel");
+    expect(materialized).toEqual([]);
+    expect(result.categoryId).toBe("own-1");
+  });
+
+  it("does not materialize a system GROUP", async () => {
+    const { repo, created, materialized } = stubCategoryRepo({
+      id: "sys-grp",
+      name: "Essentials",
+      bucket: "NEEDS",
+      isGroup: true,
+      userId: null,
+    });
+    const result = await resolveExpenseCategory(
+      repo,
+      "u1",
+      "WANTS",
+      "Essentials",
+    );
+    expect(materialized).toEqual([]);
+    expect(created).toHaveLength(0);
+    expect(result.categoryId).toBeUndefined();
+    expect(result.bucket).toBe("NEEDS"); // still adopts the group's bucket
   });
 });

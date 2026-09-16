@@ -26,6 +26,7 @@ import { getBudgetOverview } from "@/lib/actions/budget";
 import { BUCKETS, BUCKET_META, formatMoney } from "@/lib/budget";
 import { toast } from "@/lib/toast";
 import { AddCategoryForm } from "./_components/add-category-form";
+import { UnusedCategoriesCard } from "./_components/unused-categories-card";
 import { BucketSection } from "./_components/bucket-section";
 import { EditCategoryModal } from "./_components/edit-category-modal";
 
@@ -148,6 +149,8 @@ export default function CategoriesPage() {
         </div>
 
         <AddCategoryForm onAdded={load} />
+
+        <UnusedCategoriesCard onCleaned={load} />
 
         {leaves.length === 0 && !isPending && (
           <Card>

@@ -124,9 +124,17 @@ export async function resolveExpenseCategory(
   if (name) {
     const existing = await categoryRepository.findByNameForUser(userId, name);
     if (existing && !existing.isGroup) {
-      categoryId = existing.id;
-      categoryLabel = existing.name;
-      resolvedBucket = existing.bucket;
+      // A match can be the shared system row — onboarding no longer pre-clones
+      // the taxonomy, so most first spends land there. Give the user their own
+      // copy (under their own group) before attaching anything to it; a system
+      // categoryId is one the web ownership checks reject.
+      const own =
+        existing.userId === null
+          ? await categoryRepository.materializeForUser(userId, existing.id)
+          : existing;
+      categoryId = own.id;
+      categoryLabel = own.name;
+      resolvedBucket = own.bucket;
     } else if (existing && existing.isGroup) {
       resolvedBucket = existing.bucket; // group → uncategorized, adopt its bucket
     } else {

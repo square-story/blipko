@@ -179,7 +179,7 @@ export class BatchProcessor implements MessageProcessor {
           rawText: textMessage,
           confidence: item.confidence,
           note: item.note,
-          categoryId: leaf?.id,
+          // Name only — see ExpenseProcessor. `leaf` may be a system row.
           categoryName: leaf?.name ?? item.category,
           batchId,
         },

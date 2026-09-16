@@ -51,10 +51,6 @@ export default function Onboarding({
 }: {
   taxonomy: OnboardingGroup[];
 }) {
-  // Leaf names of the default-selected groups (pre-checked on first render).
-  const defaultLeafNames = taxonomy
-    .filter((g) => g.defaultSelected)
-    .flatMap((g) => g.children.map((c) => c.name));
   const [step, setStep] = useState(1);
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(true);
@@ -62,10 +58,11 @@ export default function Onboarding({
   // Step 1
   const [income, setIncome] = useState("");
   const [currency, setCurrency] = useState("INR");
-  // Step 2 — selected leaf names + which group cards are expanded
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(defaultLeafNames),
-  );
+  // Step 2 — selected leaf names + which group cards are expanded.
+  // Starts EMPTY on purpose. Pre-checking the "default" groups handed every new
+  // user ~21 categories they never asked for; the step suggests now, and the bot
+  // creates the rest from real spending.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   // Step 3
   const [dosage, setDosage] = useState<NotificationDosage>("GENTLE");
@@ -89,21 +86,29 @@ export default function Onboarding({
     });
   };
 
-  // Expand/collapse a group's chips. Expanding a group with nothing selected
-  // auto-selects all its leaves (the "I spend on this → here are the parts"
-  // bloom); collapsing keeps the selection.
-  const toggleGroup = (key: string, leafNames: string[]) => {
+  // Expand/collapse a group's chips. Expanding used to auto-select every leaf
+  // in the group — the opposite of suggesting. Now it only expands; picking is
+  // always an explicit act, via the chips or the header checkbox.
+  const toggleGroup = (key: string) => {
     playSound("tick");
     setExpanded((prev) => {
       const next = new Set(prev);
-      const willExpand = !next.has(key);
-      if (willExpand) {
-        next.add(key);
-        if (leafNames.every((n) => !selected.has(n))) {
-          setSelected((s) => new Set([...s, ...leafNames]));
-        }
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // The header checkbox: all-on → clear the group, otherwise select all of it.
+  // Without this, opting into a group means tapping every chip by hand.
+  const toggleGroupSelection = (leafNames: string[]) => {
+    playSound("tick");
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (leafNames.every((n) => next.has(n))) {
+        for (const n of leafNames) next.delete(n);
       } else {
-        next.delete(key);
+        for (const n of leafNames) next.add(n);
       }
       return next;
     });
@@ -239,8 +244,8 @@ export default function Onboarding({
                 <DialogHeader>
                   <DialogTitle>What do you spend on?</DialogTitle>
                   <DialogDescription>
-                    Tap a group to see what&apos;s inside — pick the bits that
-                    fit. We&apos;ll suggest a budget for each.
+                    Pick any you already know you&apos;ll use — or skip this
+                    entirely. Categories appear on their own as you log spends.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="-mx-1 max-h-80 space-y-2 overflow-y-auto px-1">
@@ -256,12 +261,12 @@ export default function Onboarding({
                           count > 0 ? "border-primary/60" : "border-border",
                         )}
                       >
-                        <button
-                          type="button"
-                          onClick={() => toggleGroup(g.key, leafNames)}
-                          className="flex w-full items-center gap-2 p-3 text-left text-sm"
-                        >
-                          <span
+                        <div className="flex w-full items-center gap-2 p-3 text-sm">
+                          <button
+                            type="button"
+                            onClick={() => toggleGroupSelection(leafNames)}
+                            aria-label={`Select all in ${g.name}`}
+                            aria-pressed={count === leafNames.length}
                             className={cn(
                               "flex size-4 shrink-0 items-center justify-center rounded-sm border",
                               count > 0
@@ -270,20 +275,24 @@ export default function Onboarding({
                             )}
                           >
                             {count > 0 && <CheckIcon className="size-3" />}
-                          </span>
-                          <span className="flex-1 font-medium">{g.name}</span>
-                          {count > 0 && (
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(g.key)}
+                            className="flex flex-1 items-center gap-2 text-left"
+                          >
+                            <span className="flex-1 font-medium">{g.name}</span>
                             <span className="text-xs text-muted-foreground">
                               {count}/{leafNames.length}
                             </span>
-                          )}
-                          <ChevronDown
-                            className={cn(
-                              "size-4 text-muted-foreground transition-transform",
-                              isExpanded && "rotate-180",
-                            )}
-                          />
-                        </button>
+                            <ChevronDown
+                              className={cn(
+                                "size-4 text-muted-foreground transition-transform",
+                                isExpanded && "rotate-180",
+                              )}
+                            />
+                          </button>
+                        </div>
                         <AnimatePresence initial={false}>
                           {isExpanded && (
                             <motion.div

@@ -57,8 +57,10 @@ export async function getCategories(): Promise<CategoryStat[]> {
     for (const { category } of systemLinkedExpenses) {
       if (!category) continue;
 
+      // Case-insensitive: the bot writes whatever case the model produced, so an
+      // exact lookup misses the user's own "biriyani" and clones a second row.
       let userCat = await prisma.category.findFirst({
-        where: { userId, name: category.name },
+        where: { userId, name: { equals: category.name, mode: "insensitive" } },
       });
 
       if (!userCat) {
@@ -68,6 +70,13 @@ export async function getCategories(): Promise<CategoryStat[]> {
             bucket: category.bucket,
             isGroup: category.isGroup,
             userId,
+            // Carry these across. Dropping them is why a recurring burst on day
+            // 1 surfaced a pile of bare, budget-less rows the next time the
+            // dashboard loaded. parentId stays null on purpose — it would point
+            // at a system group the user does not own.
+            monthlyBudget: category.monthlyBudget,
+            icon: category.icon,
+            weight: category.weight,
           },
         });
       }
@@ -221,8 +230,14 @@ export async function createCategory(
   const icon =
     opts?.icon != null ? (iconSchema.safeParse(opts.icon).data ?? null) : null;
 
+  // Case-insensitive so "food" cannot be added beside an existing "Food".
+  // Deliberately NOT the bot's looser match key: these names are typed by the
+  // user, and refusing "Food" because "Food & Drinks" exists is wrong.
   const existing = await prisma.category.findFirst({
-    where: { userId: session.user.id, name: parsedName.data },
+    where: {
+      userId: session.user.id,
+      name: { equals: parsedName.data, mode: "insensitive" },
+    },
   });
   if (existing)
     return { success: false, message: "A category with that name exists" };
@@ -270,8 +285,14 @@ export async function createInlineCategory(
   const resolvedIcon =
     icon != null ? (iconSchema.safeParse(icon).data ?? null) : null;
 
+  // Case-insensitive so "food" cannot be added beside an existing "Food".
+  // Deliberately NOT the bot's looser match key: these names are typed by the
+  // user, and refusing "Food" because "Food & Drinks" exists is wrong.
   const existing = await prisma.category.findFirst({
-    where: { userId: session.user.id, name: parsedName.data },
+    where: {
+      userId: session.user.id,
+      name: { equals: parsedName.data, mode: "insensitive" },
+    },
   });
   if (existing)
     return { success: false, message: "A category with that name exists" };
@@ -401,7 +422,10 @@ export async function rebalanceBucket(
   if (unpinned.length === 0)
     return {
       success: false,
-      message: "No unpinned categories to balance in this bucket.",
+      message:
+        leaves.length === 0
+          ? "No categories in this bucket yet — log a spend or add one above."
+          : "No unpinned categories to balance in this bucket.",
     };
   if (bucketBudget <= 0)
     return {
@@ -531,6 +555,79 @@ export async function deleteCategory(
 
   revalidatePath("/dashboard/categories");
   return { success: true };
+}
+
+export type UnusedCategory = { id: string; name: string; bucket: Bucket };
+
+// Leaf categories the user owns that nothing references: no live expense, no
+// recurring rule, no linked box. Onboarding used to create ~21 of these for
+// every new account, so most existing users are carrying a pile of them.
+//
+// Deliberately NOT `_count: { expenses: true }` — that counts soft-deleted rows
+// too, so a category whose only spend was deleted would look used forever.
+async function findUnusedCategories(userId: string): Promise<UnusedCategory[]> {
+  const [leaves, spent, ruled, boxed] = await Promise.all([
+    prisma.category.findMany({
+      where: { userId, isGroup: false },
+      select: { id: true, name: true, bucket: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.expense.findMany({
+      where: { userId, isDeleted: false, categoryId: { not: null } },
+      select: { categoryId: true },
+      distinct: ["categoryId"],
+    }),
+    prisma.recurringRule.findMany({
+      where: { userId, categoryId: { not: null } },
+      select: { categoryId: true },
+      distinct: ["categoryId"],
+    }),
+    prisma.box.findMany({
+      where: { userId, categoryId: { not: null } },
+      select: { categoryId: true },
+    }),
+  ]);
+
+  // Archived boxes count as used too — un-archiving one must not find its
+  // category deleted underneath it.
+  const used = new Set(
+    [...spent, ...ruled, ...boxed]
+      .map((r) => r.categoryId)
+      .filter((id): id is string => id !== null),
+  );
+  return leaves.filter((c) => !used.has(c.id));
+}
+
+export async function getUnusedCategories(): Promise<UnusedCategory[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
+  return findUnusedCategories(session.user.id);
+}
+
+// Deletes only the ids that are STILL unused when this runs — the client's list
+// can be stale (a spend logged over Telegram between render and confirm), and
+// deleting on the client's word would drop a category that just got used.
+export async function deleteUnusedCategories(
+  ids: string[],
+): Promise<{ success: boolean; deleted: number; message?: string }> {
+  const session = await auth();
+  if (!session?.user?.id)
+    return { success: false, deleted: 0, message: "Unauthorized" };
+
+  const stillUnused = new Set(
+    (await findUnusedCategories(session.user.id)).map((c) => c.id),
+  );
+  const verified = ids.filter((id) => stillUnused.has(id));
+  if (verified.length === 0)
+    return { success: true, deleted: 0, message: "Nothing left to remove" };
+
+  // No expense detach needed — being unused is what qualified them.
+  const { count } = await prisma.category.deleteMany({
+    where: { id: { in: verified }, userId: session.user.id },
+  });
+
+  revalidatePath("/dashboard/categories");
+  return { success: true, deleted: count };
 }
 
 export type CategoryDetail = CategoryStat & {

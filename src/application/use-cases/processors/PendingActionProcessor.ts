@@ -137,6 +137,10 @@ export class PendingActionProcessor implements MessageProcessor {
               p.categoryName,
             )
           : null;
+        // Only a leaf may be attached. A group match still lends its bucket
+        // (same rule as resolveExpenseCategory) but must never become the
+        // categoryId — expenses and rules never hang off a container.
+        const leaf = category && !category.isGroup ? category : null;
         await this.recurringRuleRepository.create({
           userId,
           kind: p.kind,
@@ -145,7 +149,7 @@ export class PendingActionProcessor implements MessageProcessor {
           // A named category's own bucket is authoritative, exactly as when
           // logging an expense.
           bucket: category?.bucket ?? p.bucket,
-          categoryId: category?.id,
+          categoryId: leaf?.id,
           note: p.note,
         });
         return `🔁 Set up: ${formatMoney(p.amount)} expense on day ${p.dayOfMonth} every month.`;
@@ -209,16 +213,20 @@ export class PendingActionProcessor implements MessageProcessor {
               p.categoryName,
             )
           : null;
+        // Only a leaf may be attached. A group match still lends its bucket
+        // (same rule as resolveExpenseCategory) but must never become the
+        // categoryId — expenses and rules never hang off a container.
+        const leaf = category && !category.isGroup ? category : null;
         await this.expenseRepository.update(expense.id, {
           amount: p.amount,
           bucket: category?.bucket ?? p.bucket,
-          categoryId: category?.id,
+          categoryId: leaf?.id,
           note: p.note,
         });
 
         const bits = [
           p.amount !== undefined ? formatMoney(p.amount) : null,
-          category ? category.name : null,
+          leaf ? leaf.name : null,
           (category?.bucket ?? p.bucket)
             ? BUCKET_META[(category?.bucket ?? p.bucket)!].label
             : null,
