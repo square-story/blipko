@@ -42,8 +42,13 @@ describe("CarryPromptProcessor", () => {
           .mockResolvedValue([{ id: "ic1", name: "Opening Balance" }]),
       },
       categoryRepository: {
-        findByNameForUser: vi.fn().mockResolvedValue({ id: "c1" }),
-        create: vi.fn().mockResolvedValue({ id: "c1" }),
+        // Name matters: carryExpenseCategoryId accepts an EXACT hit only.
+        findByNameForUser: vi
+          .fn()
+          .mockResolvedValue({ id: "c1", name: "Carried Forward" }),
+        create: vi
+          .fn()
+          .mockResolvedValue({ id: "c1", name: "Carried Forward" }),
       },
       boxRepository: {
         listWithBalances: vi.fn().mockResolvedValue([]),

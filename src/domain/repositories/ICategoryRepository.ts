@@ -23,11 +23,23 @@ export interface CloneGroupInput {
 export interface ICategoryRepository {
   // System categories (userId null) plus the user's custom categories.
   findAllForUser(userId: string): Promise<Category[]>;
-  // Case-insensitive match. Prefers the user's OWN row over the system template
-  // when both exist (so per-user budgets/renames win).
+  // Reuse-first lookup. Tier 1 is an exact case-insensitive name match over all
+  // rows; tier 2 loosens to a normalized key (punctuation, "&"/"and", plurals)
+  // over LEAVES ONLY, so a group can never be reached by a loose name. Prefers
+  // the user's OWN row over the system template WITHIN a tier (so per-user
+  // budgets/renames win), never across one.
   findByNameForUser(userId: string, name: string): Promise<Category | null>;
   findById(id: string): Promise<Category | null>;
+  // Returns the existing row instead of throwing if a concurrent write already
+  // created this (userId, name).
   create(data: CreateCategoryDTO): Promise<Category>;
+  // Clone a shared system row (userId null) into one the user owns, together
+  // with its parent group. Idempotent. Returns the row unchanged if it is
+  // already user-owned.
+  materializeForUser(
+    userId: string,
+    systemCategoryId: string,
+  ): Promise<Category>;
   // Clone selected template groups (+ leaves) into per-user rows. Skips groups
   // the user already has (idempotent re-runs). Returns created leaf count.
   cloneGroupsForUser(

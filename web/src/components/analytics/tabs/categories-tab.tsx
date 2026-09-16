@@ -60,8 +60,9 @@ export async function CategoriesTab() {
       {hasUncategorized && (
         <p className="text-sm text-muted-foreground">
           Uncategorised spending has no category to filter by, so it is shown but
-          not clickable. It appears when a category is deleted — its past
-          expenses stay, but lose their label.
+          not clickable. It is normal early on, before the bot has learnt what
+          you spend on — and it also appears when a category is deleted, since
+          its past expenses stay but lose their label.
         </p>
       )}
     </>

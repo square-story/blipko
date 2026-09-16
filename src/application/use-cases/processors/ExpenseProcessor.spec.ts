@@ -261,4 +261,59 @@ describe("ExpenseProcessor", () => {
     expect(messageService.sendInteractiveMessage).toHaveBeenCalled();
     expect(expenseRepository.create).not.toHaveBeenCalled();
   });
+
+  // Category resolution must stay BEHIND the confirmation gate. Resolving up
+  // front — next to the read-only lookup that feeds the bucket and the box
+  // check — would mint a category for a spend the user has not confirmed yet.
+  it("creates no category while still asking which bucket", async () => {
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "biriyani 500",
+      parsed: {
+        intent: "EXPENSE",
+        amount: 500,
+        category: "Biriyani",
+        bucket: "WANTS",
+        confidence: 0.3,
+      },
+    } as any);
+
+    expect(messageService.sendInteractiveMessage).toHaveBeenCalled();
+    expect(categoryRepository.create).not.toHaveBeenCalled();
+    expect(expenseRepository.create).not.toHaveBeenCalled();
+  });
+
+  // A match can be the shared system row; the expense must never keep its id.
+  it("materializes a system category before attaching the expense", async () => {
+    categoryRepository.findByNameForUser.mockResolvedValue({
+      id: "sys-1",
+      name: "Fuel",
+      bucket: "NEEDS",
+      isGroup: false,
+      userId: null,
+    });
+    categoryRepository.materializeForUser = vi
+      .fn()
+      .mockResolvedValue({ id: "own-1", name: "Fuel", bucket: "NEEDS" });
+
+    await processor.process({
+      user,
+      platformUserId: "123",
+      textMessage: "petrol 500",
+      parsed: {
+        intent: "EXPENSE",
+        amount: 500,
+        category: "Fuel",
+        bucket: "NEEDS",
+        confidence: 0.9,
+      },
+    } as any);
+
+    expect(categoryRepository.materializeForUser).toHaveBeenCalledWith(
+      "u1",
+      "sys-1",
+    );
+    expect(expenseRepository.create.mock.calls[0]![0].categoryId).toBe("own-1");
+  });
 });

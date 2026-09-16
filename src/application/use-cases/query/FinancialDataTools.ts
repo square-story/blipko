@@ -35,6 +35,7 @@ import {
   previousCycles,
 } from "../budgetMath";
 import { zonedParts, zonedStartOfDayUtc, zonedYmd } from "../../../utils/time";
+import { uniqueLeafCategories } from "../categoryHints";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
@@ -212,22 +213,7 @@ export class FinancialDataTools implements IFinancialDataTools {
 
   async getCategories(userId: string): Promise<Categories> {
     const all = await this.categoryRepository.findAllForUser(userId);
-    // Leaves only. Groups are containers — an expense can never attach to one,
-    // so offering them to the model just invites uncategorized spends.
-    const leaves = all.filter((c) => !c.isGroup);
-
-    // One entry per NAME, preferring the user's own row over the shared system
-    // template. findAllForUser returns both, so without this most names appear
-    // twice — duplicated in the tool schema's enum and in the list the model
-    // reads back to the user.
-    const byName = new Map<string, (typeof leaves)[number]>();
-    for (const c of leaves) {
-      const existing = byName.get(c.name);
-      if (!existing || (existing.userId === null && c.userId === userId)) {
-        byName.set(c.name, c);
-      }
-    }
-    const unique = [...byName.values()];
+    const unique = uniqueLeafCategories(all, userId);
 
     const result: Categories = {
       categories: unique.map((c) => ({

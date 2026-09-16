@@ -114,7 +114,11 @@ export class ExpenseProcessor implements MessageProcessor {
         rawText: textMessage,
         confidence: parsed.confidence,
         note: parsed.note,
-        categoryId: leaf?.id,
+        // Name only, never leaf.id. recordExpense skips resolveExpenseCategory
+        // entirely when given an id, and `leaf` here can be a shared system row
+        // — passing it through is how a userId=null categoryId reached the DB.
+        // Resolving by name at record time also keeps creation AFTER the
+        // needsConfirm gate above.
         categoryName: leaf?.name ?? parsed.category,
       },
     );

@@ -78,8 +78,15 @@ export async function createRecurringRule(
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
     if (data.categoryId) {
+      // OR, not a bare ownership check: a rule set up over Telegram can carry a
+      // system category id (userId null). A strict check missed it, left
+      // categoryId null, and pressing Save silently dropped the rule's category.
+      // Same reason the income branch below does it.
       const existing = await prisma.category.findFirst({
-        where: { id: data.categoryId, userId },
+        where: {
+          id: data.categoryId,
+          OR: [{ userId: null }, { userId }],
+        },
       });
       if (existing) {
         categoryId = existing.id;
@@ -165,8 +172,15 @@ export async function updateRecurringRule(
   if (data.kind === "EXPENSE") {
     bucket = (data.bucket as Bucket | undefined) ?? "NEEDS";
     if (data.categoryId) {
+      // OR, not a bare ownership check: a rule set up over Telegram can carry a
+      // system category id (userId null). A strict check missed it, left
+      // categoryId null, and pressing Save silently dropped the rule's category.
+      // Same reason the income branch below does it.
       const existing = await prisma.category.findFirst({
-        where: { id: data.categoryId, userId },
+        where: {
+          id: data.categoryId,
+          OR: [{ userId: null }, { userId }],
+        },
       });
       if (existing) {
         categoryId = existing.id;

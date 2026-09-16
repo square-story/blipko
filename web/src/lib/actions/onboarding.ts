@@ -12,16 +12,6 @@ import {
   type SelectedLeaf,
 } from "@/lib/budget";
 
-// Groups pre-checked on first render of the wizard. Small list (not the whole
-// taxonomy) — the taxonomy itself comes from the DB system categories.
-const DEFAULT_GROUP_NAMES = new Set([
-  "Essentials",
-  "Food & Drinks",
-  "Transportation",
-  "Health & Wellness",
-  "Savings",
-]);
-
 export interface OnboardingLeaf {
   name: string;
   bucket: Bucket;
@@ -32,7 +22,6 @@ export interface OnboardingGroup {
   key: string; // system group row id
   name: string;
   bucket: Bucket;
-  defaultSelected: boolean;
   children: OnboardingLeaf[];
 }
 
@@ -61,7 +50,6 @@ export async function getOnboardingTaxonomy(): Promise<OnboardingGroup[]> {
       key: g.id,
       name: g.name,
       bucket: g.bucket,
-      defaultSelected: DEFAULT_GROUP_NAMES.has(g.name),
       children: rows
         .filter((r) => !r.isGroup && r.parentId === g.id)
         .map((r) => ({ name: r.name, bucket: r.bucket, weight: r.weight })),

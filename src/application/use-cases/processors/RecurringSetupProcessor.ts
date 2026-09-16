@@ -1,4 +1,3 @@
-import { Bucket } from "@prisma/client";
 import {
   MessageProcessor,
   ProcessContext,
@@ -8,9 +7,8 @@ import { IRecurringRuleRepository } from "../../../domain/repositories/IRecurrin
 import { ICategoryRepository } from "../../../domain/repositories/ICategoryRepository";
 import { IMessagingPlatform } from "../../interfaces/IMessagingPlatform";
 import { BUCKET_META, formatMoney, sanitizeMd } from "../budgetMath";
-import { normalizeCategoryName } from "../categoryName";
 import { resolveIncomeCategory } from "../../../domain/incomeCategoryTemplate";
-import { NEW_CATEGORY_LINE } from "../expenseFlow";
+import { NEW_CATEGORY_LINE, resolveExpenseCategory } from "../expenseFlow";
 
 const MAX_AMOUNT = 1_000_000_000;
 
@@ -77,25 +75,17 @@ export class RecurringSetupProcessor implements MessageProcessor {
     }
 
     // EXPENSE: resolve category; a known category's bucket is authoritative.
-    // An unusable name is dropped rather than written to the DB.
-    const name = normalizeCategoryName(parsed.category);
-    const matched = name
-      ? await this.categoryRepository.findByNameForUser(user.id, name)
-      : null;
-    const bucket: Bucket = matched?.bucket ?? parsed.bucket ?? "NEEDS";
-    let categoryId = matched?.id;
-    let categoryName = matched?.name ?? name;
-    let createdCategory = false;
-    if (!categoryId && name) {
-      const created = await this.categoryRepository.create({
-        userId: user.id,
-        name,
-        bucket,
-      });
-      categoryId = created.id;
-      categoryName = created.name;
-      createdCategory = true;
-    }
+    // Shares expenseFlow's resolver rather than repeating it — the inline copy
+    // this replaces had no isGroup guard, so "rent 8000 monthly" could file the
+    // rule under the GROUP "Essentials", which no expense may attach to.
+    const { categoryId, categoryLabel, bucket, createdCategory } =
+      await resolveExpenseCategory(
+        this.categoryRepository,
+        user.id,
+        parsed.bucket ?? "NEEDS",
+        parsed.category,
+      );
+    const categoryName = categoryId ? categoryLabel : undefined;
 
     const rule = await this.recurringRuleRepository.create({
       userId: user.id,

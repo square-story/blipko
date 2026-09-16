@@ -50,7 +50,15 @@ async function carryExpenseCategoryId(
     userId,
     CARRY_EXPENSE_CATEGORY,
   );
-  if (existing) return existing.id;
+  // Reserved name, so accept an EXACT hit only. findByNameForUser also matches
+  // on a loosened key, and a box-linked row keying to "carried forward" would
+  // trip the double-post described above.
+  if (
+    existing &&
+    existing.name.toLowerCase() === CARRY_EXPENSE_CATEGORY.toLowerCase()
+  ) {
+    return existing.id;
+  }
   const created = await categoryRepository.create({
     userId,
     name: CARRY_EXPENSE_CATEGORY,

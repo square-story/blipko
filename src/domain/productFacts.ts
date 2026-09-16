@@ -131,7 +131,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       whatItIsFor:
         "Charts and trends, the full transaction list with CSV export, editing categories and their monthly limits, changing which category an income is filed under, managing recurring rules, and all settings including income and reminder intensity.",
       howToConnect:
-        "Sign in on the dashboard, then tap Connect Telegram there to link this chat. Setting up income and categories happens on the dashboard, not in chat.",
+        "Sign in on the dashboard, then tap Connect Telegram there to link this chat. Income and reminder settings are set up on the dashboard, not in chat. Categories do not have to be set up at all — the bot creates one the first time you spend on something, and the dashboard is where you rename them or give them a monthly limit.",
     },
 
     dataHandling: [
