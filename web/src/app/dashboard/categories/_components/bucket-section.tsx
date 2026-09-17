@@ -84,6 +84,7 @@ export const BucketSection = ({
                   ? TONE.positive
                   : TONE.neutral,
             )}
+            data-money
           >
             {isSavings
               ? remaining > 0
@@ -100,7 +101,7 @@ export const BucketSection = ({
           orientation="linear"
           ariaLabel={`${meta.label} budget used`}
         />
-        <p className="text-xs text-muted-foreground tabular-nums">
+        <p className="text-xs text-muted-foreground tabular-nums" data-money>
           {money(spent)} {isSavings ? "saved" : "spent"} of {money(budget)}
           {budget > 0 &&
             (isSavings ? (
@@ -118,7 +119,7 @@ export const BucketSection = ({
       {/* Allocation (informational) + apply data-driven suggestions */}
       {categories.length > 0 && budget > 0 && (
         <div className="flex items-center justify-between gap-2 border-t pt-2 pb-3">
-          <p className="text-xs tabular-nums text-muted-foreground">
+          <p className="text-xs tabular-nums text-muted-foreground" data-money>
             {money(allocated)} allocated ·{" "}
             <span className={cn(overAllocated && TONE.negative)}>
               {overAllocated
@@ -176,7 +177,8 @@ export const BucketSection = ({
 
       {uncategorized > 0 && (
         <p className="pt-2 text-xs text-muted-foreground tabular-nums">
-          Uncategorized · {money(uncategorized)} {isSavings ? "saved" : "spent"}
+          Uncategorized · <span data-money>{money(uncategorized)}</span>{" "}
+          {isSavings ? "saved" : "spent"}
         </p>
       )}
     </div>

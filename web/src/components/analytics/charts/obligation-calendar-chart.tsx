@@ -15,7 +15,7 @@ import { BarChart } from "@/components/charts/bar-chart";
 import { Bar } from "@/components/charts/bar";
 import { Grid } from "@/components/charts/grid";
 import { BarXAxis } from "@/components/charts/bar-x-axis";
-import { ChartTooltip } from "@/components/charts/tooltip";
+import { ChartTooltip, type TooltipRow } from "@/components/charts/tooltip";
 import { FLOW, SERIES } from "@/lib/chart-palette";
 import { formatMoney } from "@/lib/budget";
 import type { ObligationRow } from "@/lib/actions/analytics";
@@ -43,7 +43,7 @@ export function ObligationCalendarChart({
       <BarXAxis maxLabels={8} />
       <ChartTooltip
         rows={(point) => {
-          const rows: { color: string; label: string; value: string }[] = [];
+          const rows: TooltipRow[] = [];
           if (Number(point.income ?? 0) > 0) {
             rows.push({ color: FLOW.in, label: "Income", value: money(point.income) });
           }
@@ -58,6 +58,7 @@ export function ObligationCalendarChart({
               color: "var(--chart-foreground-muted)",
               label: `Day ${point.cycleDay}`,
               value: "nothing due",
+              plain: true,
             });
           }
           return rows;

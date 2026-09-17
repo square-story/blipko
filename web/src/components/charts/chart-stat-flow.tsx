@@ -100,7 +100,12 @@ export function ChartStatFlow({
           {icon}
         </div>
       ) : null}
-      <span className={cn("text-foreground tabular-nums", valueClassName)}>
+      {/* Privacy mode blurs this wrapper when the stat is money — NumberFlow is a
+          custom element with a shadow root, so nothing inside it is targetable. */}
+      <span
+        className={cn("text-foreground tabular-nums", valueClassName)}
+        data-money={formatOptions.style === "currency" ? "" : undefined}
+      >
         {numberFlowReady ? (
           <NumberFlow
             format={formatOptions}

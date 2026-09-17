@@ -16,12 +16,12 @@ export function DataTableAmountTotals({
   return (
     <span className="whitespace-nowrap tabular-nums">
       Page{" "}
-      <span className="font-medium text-foreground">
+      <span className="font-medium text-foreground" data-money>
         {formatMoney(pageTotal)}
       </span>
       {" · "}
       All {total}{" "}
-      <span className="font-medium text-foreground">
+      <span className="font-medium text-foreground" data-money>
         {formatMoney(totalAmount)}
       </span>
     </span>

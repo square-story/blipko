@@ -67,7 +67,7 @@ export function BoxDetailHeader({
               </Badge>
             )}
           </div>
-          <div className="text-2xl font-bold text-foreground mt-0.5">
+          <div className="text-2xl font-bold text-foreground mt-0.5" data-money>
             {money(box.balance)}
           </div>
           <div
@@ -75,6 +75,7 @@ export function BoxDetailHeader({
               "text-xs font-medium",
               reached ? TONE.positive : TONE.neutral,
             )}
+            data-money={hasTarget ? "" : undefined}
           >
             {hasTarget
               ? reached
@@ -84,7 +85,7 @@ export function BoxDetailHeader({
           </div>
           {box.tracked > 0 && (
             <div className="text-[11px] text-muted-foreground mt-0.5">
-              incl. {money(box.tracked)} tracked from budget
+              incl. <span data-money>{money(box.tracked)}</span> tracked from budget
             </div>
           )}
         </div>

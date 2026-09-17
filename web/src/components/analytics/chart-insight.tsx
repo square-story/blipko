@@ -6,7 +6,7 @@
 
 import { cn } from "@/lib/utils";
 import { TONE_BG, toneForInsight } from "@/lib/chart-palette";
-import type { Insight } from "@/lib/insights";
+import { MONEY_MARK, type Insight } from "@/lib/insights";
 
 export function ChartInsight({
   insight,
@@ -35,7 +35,19 @@ export function ChartInsight({
           TONE_BG[tone],
         )}
       />
-      <span>{insight.text}</span>
+      <span>
+        {/* Odd segments are money figures (fenced by insightMoney), so privacy
+            mode blurs the amount without hiding the category name around it. */}
+        {insight.text.split(MONEY_MARK).map((part, i) =>
+          i % 2 ? (
+            <span data-money key={i}>
+              {part}
+            </span>
+          ) : (
+            part
+          ),
+        )}
+      </span>
     </p>
   );
 }

@@ -66,6 +66,7 @@ export function CommitmentLoadChart({
               color: "var(--chart-foreground-muted)",
               label: "Due",
               value: `day ${point.cycleDay} of the cycle`,
+              plain: true,
             },
           ];
         }}

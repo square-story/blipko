@@ -77,7 +77,7 @@ export function CategoryDonutChart({
         <PieCenter>
           {({ value, label, isHovered }) => (
             <div className="text-center">
-              <div className="font-mono text-xl font-semibold tabular-nums">
+              <div className="font-mono text-xl font-semibold tabular-nums" data-money>
                 {formatMoney(isHovered ? value : total, currency, locale)}
               </div>
               <div className="mt-0.5 max-w-[10ch] truncate text-xs text-muted-foreground">
@@ -101,7 +101,8 @@ export function CategoryDonutChart({
                   <span className="truncate font-medium">{c.name}</span>
                 </span>
                 <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
-                  {formatMoney(c.value, currency, locale)} · {Math.round(c.pct)}%
+                  <span data-money>{formatMoney(c.value, currency, locale)}</span> ·{" "}
+                  {Math.round(c.pct)}%
                 </span>
               </div>
               <Meter

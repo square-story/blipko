@@ -31,7 +31,7 @@ export function CategoryTopNotes({ detail }: { detail: CategoryDetail }) {
             <span className="truncate">{n.note}</span>
             <span className="shrink-0 text-muted-foreground">
               <span className="text-xs">{n.count}×</span>{" "}
-              <span className="font-mono tabular-nums text-foreground">
+              <span className="font-mono tabular-nums text-foreground" data-money>
                 {money(n.total)}
               </span>
             </span>

@@ -55,6 +55,7 @@ export function WeekdaySpendChart({
             color: "var(--chart-foreground-muted)",
             label: "Transactions",
             value: String(point.txnCount ?? 0),
+            plain: true,
           },
         ]}
       />

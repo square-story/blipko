@@ -28,7 +28,7 @@ export function CategoryStats({ detail }: { detail: CategoryDetail }) {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <Stat>
         <StatLabel>Spent this cycle</StatLabel>
-        <StatValue className={MONEY_VALUE}>{money(detail.spend)}</StatValue>
+        <StatValue className={MONEY_VALUE} data-money>{money(detail.spend)}</StatValue>
       </Stat>
 
       <Stat>
@@ -38,10 +38,10 @@ export function CategoryStats({ detail }: { detail: CategoryDetail }) {
 
       <Stat>
         <StatLabel>Average</StatLabel>
-        <StatValue className={MONEY_VALUE}>{money(detail.avgTxn)}</StatValue>
+        <StatValue className={MONEY_VALUE} data-money>{money(detail.avgTxn)}</StatValue>
         {detail.largest && (
           <StatDescription className="truncate">
-            largest {money(detail.largest.amount)}
+            largest <span data-money>{money(detail.largest.amount)}</span>
             {detail.largest.note ? ` · ${detail.largest.note}` : ""}
           </StatDescription>
         )}
@@ -75,7 +75,9 @@ export function CategoryStats({ detail }: { detail: CategoryDetail }) {
               {up ? "+" : ""}
               {Math.round(detail.deltaPct)}%
             </StatValue>
-            <StatDescription>was {money(detail.prevSpend)}</StatDescription>
+            <StatDescription>
+              was <span data-money>{money(detail.prevSpend)}</span>
+            </StatDescription>
           </>
         )}
       </Stat>

@@ -136,12 +136,12 @@ export function CategoryCard({
             {/* truncate matters: without it this sets a min-content width the
                 flex row cannot shrink below, and a long amount runs into the
                 gauge at the 4-up breakpoint. */}
-            <div className="text-lg font-bold text-foreground truncate">
+            <div className="text-lg font-bold text-foreground truncate" data-money>
               {hasLimit ? money(limit) : money(cat.spend)}
             </div>
             
             {hasLimit ? (
-               <div className={cn("text-xs font-medium", colorClass)}>
+               <div className={cn("text-xs font-medium", colorClass)} data-money>
                  {isSavings ? (
                    left! <= 0 ? `${money(Math.abs(left!))} beyond target` : `${money(left!)} to go`
                  ) : (
@@ -183,7 +183,8 @@ export function CategoryCard({
                 </DropdownMenuItem>
                 {suggest && (
                   <DropdownMenuItem onClick={() => onApplyBudget(cat.id, suggest.amount!, suggest.basis === "recurring")}>
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Apply {money(suggest.amount!)}
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Apply{" "}
+                    <span data-money>{money(suggest.amount!)}</span>
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />

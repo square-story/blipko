@@ -56,7 +56,7 @@ export function getExpenseColumns(
             </div>
         ),
         cell: ({ row }) => (
-            <div className="text-right font-medium">
+            <div className="text-right font-medium" data-money>
                 {formatMoney(row.getValue("amount"))}
             </div>
         ),

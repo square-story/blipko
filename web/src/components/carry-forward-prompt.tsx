@@ -92,9 +92,17 @@ export function CarryForwardPrompt({
         <DialogHeader>
           <DialogTitle>New cycle</DialogTitle>
           <DialogDescription>
-            {prompt.suggested > 0
-              ? `${prompt.endedLabel} left you ${formatMoney(prompt.suggested, currency, locale)}. Where should it go?`
-              : `${prompt.endedLabel} has wrapped. Carrying anything into this cycle?`}
+            {prompt.suggested > 0 ? (
+              <>
+                {prompt.endedLabel} left you{" "}
+                <span data-money>
+                  {formatMoney(prompt.suggested, currency, locale)}
+                </span>
+                . Where should it go?
+              </>
+            ) : (
+              `${prompt.endedLabel} has wrapped. Carrying anything into this cycle?`
+            )}
           </DialogDescription>
         </DialogHeader>
 

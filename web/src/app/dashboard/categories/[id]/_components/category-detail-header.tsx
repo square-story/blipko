@@ -96,7 +96,7 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
               )}
             </div>
 
-            <div className="text-2xl font-bold font-mono tabular-nums text-foreground mt-0.5">
+            <div className="text-2xl font-bold font-mono tabular-nums text-foreground mt-0.5" data-money>
               {money(detail.spend)}
               {hasLimit && (
                 <span className="text-sm font-normal text-muted-foreground">
@@ -106,7 +106,7 @@ export function CategoryDetailHeader({ detail }: { detail: CategoryDetail }) {
               )}
             </div>
 
-            <div className={cn("text-xs font-medium", toneClass)}>
+            <div className={cn("text-xs font-medium", toneClass)} data-money={hasLimit ? "" : undefined}>
               {hasLimit
                 ? isSavings
                   ? left <= 0

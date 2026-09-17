@@ -3,6 +3,7 @@
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant privacy (&:is(html[data-privacy="on"] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -327,4 +328,17 @@
   --tw-prose-pre-bg: var(--muted);
   --tw-prose-th-borders: var(--border);
   --tw-prose-td-borders: var(--border);
+}
+
+/* Privacy mode: blur every money figure so the dashboard is safe to open in
+   public. `filter` is paint-only, so nothing reflows. The radius is em-relative
+   so one rule reads right on a text-xs chart legend and on a text-3xl hero —
+   and so it stays inside the chart tooltip's 12px padding, which clips a halo
+   (charts/tooltip/tooltip-box.tsx sets overflow-hidden).
+
+   Inputs are deliberately never blurred: you cannot edit what you cannot read. */
+html[data-privacy="on"] [data-money]:not([data-peek]) {
+  filter: blur(0.35em);
+  user-select: none;
+  transition: filter 150ms var(--ease-out);
 }

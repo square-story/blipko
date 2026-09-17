@@ -60,7 +60,7 @@ export function getIncomeColumns(
         </div>
       ),
       cell: ({ row }) => (
-        <div className="text-right font-medium text-green-600">
+        <div className="text-right font-medium text-green-600" data-money>
           +{formatMoney(row.getValue("amount"))}
         </div>
       ),
