@@ -33,10 +33,16 @@ jobs:
       with:
         node-version: lts/*
         cache: 'pnpm'
-    - name: Install dependencies
-      run: pnpm install
+    # BEFORE install, deliberately. web/ is a pnpm workspace member, so a root
+    # install runs web's postinstall -> sync-prisma-schema.mjs -> copies the root
+    # schema over the committed one. Run after install, this compared two files
+    # install had just made identical and could never fail: a stale web schema
+    # sailed through CI and broke the Railway web build, which generates its
+    # client from the committed copy.
     - name: Web Prisma schema in sync with root
       run: diff -q prisma/schema.prisma web/prisma/schema.prisma
+    - name: Install dependencies
+      run: pnpm install
     - name: Generate Prisma Client
       run: pnpm prisma generate
     - name: Unit tests
