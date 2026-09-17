@@ -31,7 +31,7 @@ function Group({
             <h2 className="text-sm font-medium">{title}</h2>
             <p className="text-xs text-muted-foreground">{hint}</p>
           </div>
-          <span className="text-sm font-medium tabular-nums">
+          <span className="text-sm font-medium tabular-nums" data-money>
             {money(total)}
           </span>
         </div>
@@ -44,7 +44,7 @@ function Group({
             >
               {item.name}
               {item.total > 0 && (
-                <span className="text-muted-foreground tabular-nums">
+                <span className="text-muted-foreground tabular-nums" data-money>
                   {money(item.total)}
                 </span>
               )}

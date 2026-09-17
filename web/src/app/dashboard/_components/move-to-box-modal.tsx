@@ -118,9 +118,17 @@ export function MoveToBoxModal({
         <ResponsiveModalHeader>
           <ResponsiveModalTitle>Move or track</ResponsiveModalTitle>
           <ResponsiveModalDescription>
-            {mode === "move"
-              ? `Moving ${formatMoney(amount)} out of your budget and into a box.`
-              : `Tracking ${formatMoney(amount)} against a box — it stays in your budget and counts toward the goal.`}
+            {mode === "move" ? (
+              <>
+                Moving <span data-money>{formatMoney(amount)}</span> out of your
+                budget and into a box.
+              </>
+            ) : (
+              <>
+                Tracking <span data-money>{formatMoney(amount)}</span> against a
+                box — it stays in your budget and counts toward the goal.
+              </>
+            )}
           </ResponsiveModalDescription>
         </ResponsiveModalHeader>
 
@@ -187,10 +195,13 @@ export function MoveToBoxModal({
                   {boxes.map((b) => (
                     <SelectItem key={b.id} value={b.id}>
                       {b.icon ? `${b.icon} ` : ""}
-                      {b.name} · {formatMoney(b.balance)}
-                      {b.targetAmount
-                        ? ` / ${formatMoney(b.targetAmount)}`
-                        : ""}
+                      {b.name} ·{" "}
+                      <span data-money>
+                        {formatMoney(b.balance)}
+                        {b.targetAmount
+                          ? ` / ${formatMoney(b.targetAmount)}`
+                          : ""}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

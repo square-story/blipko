@@ -153,7 +153,7 @@ export function WrappedStory({ stats }: { stats: WrappedStats }) {
                       transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
                     />
                   </div>
-                  <span className="text-xs tabular-nums text-white/40">
+                  <span className="text-xs tabular-nums text-white/40" data-money>
                     {money(s.amount)}
                   </span>
                 </div>
@@ -177,7 +177,7 @@ export function WrappedStory({ stats }: { stats: WrappedStats }) {
               {tc.name}
             </h2>
             <p className="text-sm text-white/55">
-              <span className="tabular-nums font-medium text-white/80">
+              <span className="tabular-nums font-medium text-white/80" data-money>
                 {money(tc.amount)}
               </span>{" "}
               spent here
@@ -198,7 +198,9 @@ export function WrappedStory({ stats }: { stats: WrappedStats }) {
             <h2 className="text-xl font-medium leading-snug tracking-tight text-white/85 sm:text-2xl">
               {be.label}
             </h2>
-            <Hero>{money(be.amount)}</Hero>
+            <Hero>
+              <span data-money>{money(be.amount)}</span>
+            </Hero>
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
               {be.category}
             </p>
@@ -229,7 +231,9 @@ export function WrappedStory({ stats }: { stats: WrappedStats }) {
           ) : (
             <>
               <Label>You outspent income by</Label>
-              <Hero>{money(Math.abs(saved))}</Hero>
+              <Hero>
+                <span data-money>{money(Math.abs(saved))}</span>
+              </Hero>
               <p className="text-sm text-white/55">
                 Next month&apos;s the comeback.
               </p>
@@ -255,8 +259,9 @@ export function WrappedStory({ stats }: { stats: WrappedStats }) {
           </div>
 
           <div className="flex flex-col divide-y divide-white/10">
-            <FinalRow label="Spent" value={money(stats.totalSpent)} />
+            <FinalRow isMoney label="Spent" value={money(stats.totalSpent)} />
             <FinalRow
+              isMoney
               label="Saved"
               value={
                 stats.netSaved >= 0
@@ -456,11 +461,22 @@ export function WrappedStory({ stats }: { stats: WrappedStats }) {
   );
 }
 
-function FinalRow({ label, value }: { label: string; value: string }) {
+function FinalRow({
+  label,
+  value,
+  isMoney,
+}: {
+  label: string;
+  value: string;
+  isMoney?: boolean;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-2.5">
       <span className="text-sm text-white/50">{label}</span>
-      <span className="truncate text-right text-sm font-medium text-white/90">
+      <span
+        className="truncate text-right text-sm font-medium text-white/90"
+        data-money={isMoney ? "" : undefined}
+      >
         {value}
       </span>
     </div>

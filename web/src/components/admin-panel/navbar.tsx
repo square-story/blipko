@@ -1,4 +1,5 @@
 import { ModeToggle } from "@/components/mode-toggle";
+import { PrivacyToggle } from "@/components/admin-panel/privacy-toggle";
 import { UserNav } from "@/components/admin-panel/user-nav";
 import { SheetMenu } from "@/components/admin-panel/sheet-menu";
 import { CommandMenu } from "@/components/admin-panel/command-menu";
@@ -19,6 +20,7 @@ export function Navbar({ title }: NavbarProps) {
         <div className="flex flex-1 items-center justify-end space-x-2">
           <CommandMenu />
           <WhatsNew />
+          <PrivacyToggle />
           <ModeToggle />
           <UserNav />
         </div>

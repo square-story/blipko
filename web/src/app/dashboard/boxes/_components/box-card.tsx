@@ -177,12 +177,13 @@ export function BoxCard({ box, categories, onChanged }: BoxCardProps) {
       />
 
       <div>
-        <div className="text-2xl font-bold text-foreground">{money(box.balance)}</div>
+        <div className="text-2xl font-bold text-foreground" data-money>{money(box.balance)}</div>
         <div
           className={cn(
             "text-xs font-medium mt-0.5",
             reached ? TONE.positive : TONE.neutral,
           )}
+          data-money={hasTarget ? "" : undefined}
         >
           {hasTarget
             ? reached
@@ -192,7 +193,7 @@ export function BoxCard({ box, categories, onChanged }: BoxCardProps) {
         </div>
         {box.tracked > 0 && (
           <div className="text-[11px] text-muted-foreground mt-0.5">
-            incl. {money(box.tracked)} tracked from budget
+            incl. <span data-money>{money(box.tracked)}</span> tracked from budget
           </div>
         )}
       </div>

@@ -53,6 +53,7 @@ export const boxEntriesColumns: ColumnDef<BoxEntryView>[] = [
       return (
         <div
           className={`text-right font-medium ${isIn ? "text-green-600" : "text-red-600"}`}
+          data-money
         >
           {isIn ? "+" : "−"}
           {formatMoney(row.getValue("amount"))}

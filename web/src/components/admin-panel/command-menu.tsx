@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
+    Eye,
+    EyeOff,
     Search,
 } from "lucide-react";
 
@@ -18,11 +20,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getMenuList } from "@/lib/menu-list";
+import { usePrivacyStore } from "@/hooks/use-privacy-store";
 
 export function CommandMenu() {
     const [open, setOpen] = React.useState(false);
     const router = useRouter();
     const menuList = getMenuList();
+    const privacyOn = usePrivacyStore((s) => s.on);
+    const setPrivacyOn = usePrivacyStore((s) => s.setOn);
 
     React.useEffect(() => {
         const down = (e: KeyboardEvent) => {
@@ -79,6 +84,23 @@ export function CommandMenu() {
                             {index < menuList.length - 1 && <CommandSeparator />}
                         </React.Fragment>
                     ))}
+                    <CommandSeparator />
+                    <CommandGroup heading="Settings">
+                        <CommandItem
+                            onSelect={() => {
+                                runCommand(() => setPrivacyOn(!privacyOn));
+                            }}
+                        >
+                            {privacyOn ? (
+                                <EyeOff className="mr-2 h-4 w-4" />
+                            ) : (
+                                <Eye className="mr-2 h-4 w-4" />
+                            )}
+                            <span>
+                                {privacyOn ? "Show amounts" : "Hide amounts"}
+                            </span>
+                        </CommandItem>
+                    </CommandGroup>
                 </CommandList>
             </CommandDialog>
         </>

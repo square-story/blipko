@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/responsive-modal";
 import { TimezoneSelect } from "@/components/timezone-select";
 import { useSoundStore } from "@/hooks/use-sound-store";
+import { usePrivacyStore } from "@/hooks/use-privacy-store";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { updateBudgetSettings } from "@/lib/actions/budget";
@@ -254,7 +255,14 @@ function BudgetRow({ initial }: { initial: BudgetSettings }) {
             <SettingRow
                 label="Budget"
                 description="Monthly income, payday, and how it splits."
-                value={`${money.format(Number(committed.income) || 0)} · Day ${committed.payday} · ${committed.needs}/${committed.wants}/${committed.savings}`}
+                value={
+                    <>
+                        <span data-money>
+                            {money.format(Number(committed.income) || 0)}
+                        </span>
+                        {` · Day ${committed.payday} · ${committed.needs}/${committed.wants}/${committed.savings}`}
+                    </>
+                }
                 onEdit={openModal}
             />
             <EditModal
@@ -574,6 +582,8 @@ export function AppearanceCard() {
     const { theme, setTheme } = useTheme();
     const soundEnabled = useSoundStore((s) => s.enabled);
     const setSoundEnabled = useSoundStore((s) => s.setEnabled);
+    const privacyOn = usePrivacyStore((s) => s.on);
+    const setPrivacyOn = usePrivacyStore((s) => s.setOn);
     const [mounted, setMounted] = useState(false);
     // next-themes: render only after mount to avoid a hydration mismatch.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -609,6 +619,20 @@ export function AppearanceCard() {
                         id="sound"
                         checked={soundEnabled}
                         onCheckedChange={(v) => setSoundEnabled(v)}
+                    />
+                </div>
+            </InlineRow>
+
+            <InlineRow
+                htmlFor="privacy"
+                label="Privacy mode"
+                description="Blur every amount so the dashboard is safe to open in public. Click a figure to reveal it briefly. This device only."
+            >
+                <div className="flex sm:justify-end">
+                    <Switch
+                        id="privacy"
+                        checked={privacyOn}
+                        onCheckedChange={(v) => setPrivacyOn(v)}
                     />
                 </div>
             </InlineRow>

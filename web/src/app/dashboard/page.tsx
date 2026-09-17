@@ -118,10 +118,14 @@ async function OverviewSection({
                             <AnimatedNumber value={incomeThisMonth} format={currencyFormat} />
                         </StatValue>
                         <StatDescription>
-                            Logged this cycle · budget on {formatMoney(monthlyIncome, currency)}
-                            {monthlyIncome > incomeThisMonth
-                                ? ` (expected ${formatMoney(expectedIncome, currency)})`
-                                : ""}
+                            Logged this cycle · budget on{" "}
+                            <span data-money>{formatMoney(monthlyIncome, currency)}</span>
+                            {monthlyIncome > incomeThisMonth ? (
+                                <>
+                                    {" "}(expected{" "}
+                                    <span data-money>{formatMoney(expectedIncome, currency)}</span>)
+                                </>
+                            ) : null}
                         </StatDescription>
                         <StatIndicator color="success">
                             <Wallet className="h-4 w-4" />
@@ -157,7 +161,8 @@ async function OverviewSection({
                             <AnimatedNumber value={balance} format={currencyFormat} />
                         </StatValue>
                         <StatDescription>
-                            {formatMoney(incomeThisMonth, currency)} in − {formatMoney(totalSpent, currency)} out
+                            <span data-money>{formatMoney(incomeThisMonth, currency)}</span> in −{" "}
+                            <span data-money>{formatMoney(totalSpent, currency)}</span> out
                         </StatDescription>
                         <StatIndicator color={balance < 0 ? "error" : "success"}>
                             <Scale className="h-4 w-4" />
@@ -207,9 +212,12 @@ async function OverviewSection({
                                         ariaLabel={`${meta.label} budget used`}
                                     />
                                     <div className="text-sm text-muted-foreground">
-                                        of {formatMoney(b.budget, currency)}
+                                        of <span data-money>{formatMoney(b.budget, currency)}</span>
                                     </div>
-                                    <p className={`text-xs text-center ${savingsWin ? TONE.positive : "text-muted-foreground"}`}>
+                                    <p
+                                        className={`text-xs text-center ${savingsWin ? TONE.positive : "text-muted-foreground"}`}
+                                        data-money={isSavings && b.remaining === 0 ? undefined : ""}
+                                    >
                                         {isSavings
                                             ? b.remaining < 0
                                                 ? `🎉 ${formatMoney(Math.abs(b.remaining), currency)} above target`
@@ -262,7 +270,7 @@ async function OverviewSection({
                                             )}
                                         </div>
                                         <div className="shrink-0 text-right">
-                                            <div className="text-sm font-medium">
+                                            <div className="text-sm font-medium" data-money>
                                                 {formatMoney(e.amount, currency)}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
@@ -307,7 +315,7 @@ async function OverviewSection({
                                 </div>
 
                                 <p className="text-pretty mt-2 flex items-baseline gap-2">
-                                    <span className="text-xl text-foreground">{formatMoney(totalSpent, currency)}</span>
+                                    <span className="text-xl text-foreground" data-money>{formatMoney(totalSpent, currency)}</span>
                                     <span className="text-sm text-muted-foreground">total spent</span>
                                 </p>
 
@@ -343,7 +351,7 @@ async function OverviewSection({
                                                         />
                                                         <span className="text-foreground flex-1">{c.name}</span>
                                                         <span className="text-muted-foreground">
-                                                            {formatMoney(c.value, currency)} / {pct.toFixed(1)}%
+                                                            <span data-money>{formatMoney(c.value, currency)}</span> / {pct.toFixed(1)}%
                                                         </span>
                                                     </li>
                                                 );

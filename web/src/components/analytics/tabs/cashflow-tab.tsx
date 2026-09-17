@@ -8,7 +8,7 @@ import { CumulativeCashflowChart } from "@/components/analytics/charts/cumulativ
 import { SavingsRateChart } from "@/components/analytics/charts/savings-rate-chart";
 import { InOutBarChart } from "@/components/analytics/charts/in-out-bar-chart";
 import { getBudgetSettings } from "@/lib/actions/budget";
-import { formatMoney } from "@/lib/budget";
+import { insightMoney } from "@/lib/insights";
 import { expensesHref } from "@/lib/analytics/drilldown";
 
 export async function CashflowTab({ range }: { range: number }) {
@@ -51,8 +51,8 @@ export async function CashflowTab({ range }: { range: number }) {
             : {
                 text:
                   ending >= 0
-                    ? `You're ${formatMoney(ending, meta.currency, meta.locale)} ahead over this window.`
-                    : `You're ${formatMoney(Math.abs(ending), meta.currency, meta.locale)} behind over this window.`,
+                    ? `You're ${insightMoney(ending, meta.currency, meta.locale)} ahead over this window.`
+                    : `You're ${insightMoney(Math.abs(ending), meta.currency, meta.locale)} behind over this window.`,
                 tone: ending >= 0 ? "positive" : "negative",
               }
         }

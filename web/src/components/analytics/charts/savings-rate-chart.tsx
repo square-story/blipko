@@ -68,11 +68,13 @@ export function SavingsRateChart({
             color: "var(--chart-flow-in)",
             label: "Saved",
             value: pct(point.trueSavingsRatePct),
+            plain: true,
           },
           {
             color: "var(--chart-foreground-muted)",
             label: "Unspent",
             value: pct(point.unspentRatePct),
+            plain: true,
           },
         ]}
       />

@@ -47,7 +47,7 @@ export async function OverviewTab({ range }: { range: number }) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat>
           <StatLabel>Income</StatLabel>
-          <StatValue className={cn("font-mono tabular-nums", TONE.positive)}>
+          <StatValue className={cn("font-mono tabular-nums", TONE.positive)} data-money>
             {money(current.income)}
           </StatValue>
           <StatDescription>this cycle</StatDescription>
@@ -55,7 +55,7 @@ export async function OverviewTab({ range }: { range: number }) {
 
         <Stat>
           <StatLabel>Spent</StatLabel>
-          <StatValue className="font-mono tabular-nums">
+          <StatValue className="font-mono tabular-nums" data-money>
             {money(current.spend)}
           </StatValue>
           <StatDescription>
@@ -70,6 +70,7 @@ export async function OverviewTab({ range }: { range: number }) {
               "font-mono tabular-nums",
               current.net >= 0 ? TONE.positive : TONE.negative,
             )}
+            data-money
           >
             {money(current.net)}
           </StatValue>
@@ -80,7 +81,7 @@ export async function OverviewTab({ range }: { range: number }) {
 
         <Stat>
           <StatLabel>Safe daily spend</StatLabel>
-          <StatValue className="font-mono tabular-nums">
+          <StatValue className="font-mono tabular-nums" data-money>
             {wholeBudget.budget === null ? "—" : money(wholeBudget.safeDaily)}
           </StatValue>
           <StatDescription>
@@ -140,7 +141,10 @@ export async function OverviewTab({ range }: { range: number }) {
                   size={132}
                   ariaLabel={`${b.label} budget used`}
                 />
-                <span className="text-center font-mono text-xs tabular-nums text-muted-foreground">
+                <span
+                  className="text-center font-mono text-xs tabular-nums text-muted-foreground"
+                  data-money={b.budget === null ? undefined : ""}
+                >
                   {b.budget === null ? "no budget" : `of ${money(b.budget)}`}
                 </span>
               </Link>
@@ -173,7 +177,7 @@ export async function OverviewTab({ range }: { range: number }) {
                         />
                         <span className="truncate font-medium">{c.name}</span>
                       </span>
-                      <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
+                      <span className="shrink-0 font-mono tabular-nums text-muted-foreground" data-money>
                         {money(c.value)}
                       </span>
                     </div>

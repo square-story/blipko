@@ -46,7 +46,7 @@ export function IncomeTableFloatingBar({ table }: IncomeTableFloatingBarProps) {
   return (
     <DataTableActionBar table={table}>
       <DataTableActionBarSelection table={table} />
-      <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+      <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground" data-money>
         {formatMoney(selectedTotal)}
       </span>
       <DataTableActionBarAction

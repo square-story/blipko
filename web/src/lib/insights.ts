@@ -15,6 +15,23 @@
 
 import { formatMoney, type CategoryPacing } from "@/lib/budget";
 
+/**
+ * Zero-width fence around every money figure in an insight sentence, so
+ * ChartInsight can blur each figure on its own in privacy mode. Blurring the
+ * whole line would hide the category name and the weekday, which privacy mode
+ * is not meant to hide. Invisible everywhere else — it is U+2063.
+ */
+export const MONEY_MARK = "\u2063";
+
+/** formatMoney, fenced for privacy mode. Use this inside insight text. */
+export function insightMoney(
+  amount: number,
+  currency: string,
+  locale: string,
+): string {
+  return `${MONEY_MARK}${formatMoney(amount, currency, locale)}${MONEY_MARK}`;
+}
+
 export type InsightTone = "positive" | "negative" | "neutral" | "warning";
 
 export interface Insight {
@@ -66,7 +83,7 @@ export function deltaInsight(args: DeltaInsightArgs): Insight | null {
   }
 
   const up = delta > 0;
-  const amount = formatMoney(Math.abs(delta), currency, locale);
+  const amount = insightMoney(Math.abs(delta), currency, locale);
   const worse = up === higherIsWorse;
 
   return {
@@ -93,7 +110,7 @@ export function pacingInsight(args: PacingInsightArgs): Insight | null {
   if (budget === null || budget <= 0) return null;
 
   if (pacing.overSpent) {
-    const over = formatMoney(spent - budget, currency, locale);
+    const over = insightMoney(spent - budget, currency, locale);
     return {
       text: `You're ${over} over budget for this cycle.`,
       tone: "negative",
@@ -102,10 +119,10 @@ export function pacingInsight(args: PacingInsightArgs): Insight | null {
 
   if (!pacing.reliable) return null;
 
-  const safeDaily = formatMoney(pacing.safeDaily, currency, locale);
+  const safeDaily = insightMoney(pacing.safeDaily, currency, locale);
 
   if (pacing.overPace) {
-    const projected = formatMoney(pacing.projectedMonth, currency, locale);
+    const projected = insightMoney(pacing.projectedMonth, currency, locale);
     return {
       text: `At this rate you'll finish the cycle around ${projected} — over budget. Keep it under ${safeDaily} a day for the remaining ${remainingDays} days.`,
       tone: "warning",
@@ -179,7 +196,7 @@ export function commitmentLoadInsight(
   const { committed, incomeBasis, committedPct } = totals;
   if (committed <= 0) return null;
 
-  const amount = formatMoney(committed, currency, locale);
+  const amount = insightMoney(committed, currency, locale);
 
   if (committedPct === null || incomeBasis <= 0) {
     return {
@@ -189,7 +206,7 @@ export function commitmentLoadInsight(
   }
 
   const pct = Math.round(committedPct);
-  const free = formatMoney(
+  const free = insightMoney(
     Math.max(0, incomeBasis - committed),
     currency,
     locale,
@@ -229,7 +246,7 @@ export function weekdayInsight(
   }
 
   const share = Math.round((peak.total / total) * 100);
-  const amount = formatMoney(peak.total, currency, locale);
+  const amount = insightMoney(peak.total, currency, locale);
 
   return {
     text: `${peak.weekday} is your heaviest day — ${amount}, ${share}% of the period's spending.`,

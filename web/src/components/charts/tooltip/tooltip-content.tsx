@@ -7,6 +7,12 @@ export interface TooltipRow {
   color: string;
   label: string;
   value: string | number;
+  /**
+   * Opt out of privacy-mode blurring. Rows are treated as money by default —
+   * most charts here are 100% money — so set this on counts, percentages and
+   * dates, which privacy mode is not meant to hide.
+   */
+  plain?: boolean;
 }
 
 export interface TooltipContentProps {
@@ -40,7 +46,10 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
                   {row.label}
                 </span>
               </div>
-              <span className="font-medium text-chart-tooltip-foreground text-sm tabular-nums">
+              <span
+                className="font-medium text-chart-tooltip-foreground text-sm tabular-nums"
+                data-money={row.plain ? undefined : ""}
+              >
                 {typeof row.value === "number" ? intFmt(row.value) : row.value}
               </span>
             </div>

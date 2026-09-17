@@ -101,6 +101,11 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         what: "Charts, trends, a filterable and exportable transaction list, and all settings.",
         why: "Chat is best for capture and quick answers; the dashboard is where you review a month properly and change how things are set up.",
       },
+      {
+        name: "Privacy mode",
+        what: "A toggle in the dashboard's top bar (also under Appearance in Account, and in the ⌘K menu) that blurs every amount on screen. Category names, dates and charts stay readable. Click any blurred figure to reveal it for a few seconds. It is remembered per device, not per account, and it is a dashboard feature — it does not change anything the bot says in chat.",
+        why: "So the dashboard can be opened on a laptop in a cafe, or handed to someone, without every balance being readable over your shoulder.",
+      },
     ],
 
     commands: [

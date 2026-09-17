@@ -63,7 +63,7 @@ export function NeedsReviewInbox({ expenses, categories, currency }: NeedsReview
             <div key={e.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-background rounded-lg border">
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{formatMoney(e.amount, currency)}</span>
+                  <span className="font-semibold" data-money>{formatMoney(e.amount, currency)}</span>
                   <Badge variant="outline" className="text-xs">
                     {e.categoryName || "Uncategorized"}
                   </Badge>

@@ -223,7 +223,7 @@ export default function Onboarding({
                       {BUCKETS.map((b) => (
                         <span key={b}>
                           {BUCKET_META[b].emoji} {BUCKET_META[b].label}{" "}
-                          <strong>
+                          <strong data-money>
                             {formatMoney(
                               bucketBudget(incomeNum, DEFAULT_SPLIT, b),
                               currency,

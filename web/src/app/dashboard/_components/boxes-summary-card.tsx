@@ -53,7 +53,7 @@ export function BoxesSummaryCard({
                     {b.icon && <span className="shrink-0">{b.icon}</span>}
                     <span className="truncate text-sm font-medium">{b.name}</span>
                   </div>
-                  <div className="shrink-0 text-right text-sm font-medium">
+                  <div className="shrink-0 text-right text-sm font-medium" data-money>
                     {formatMoney(b.balance, currency)}
                     {b.targetAmount != null && (
                       <span className="text-muted-foreground">

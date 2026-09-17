@@ -131,7 +131,7 @@ export default function RecurringPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="font-medium text-emerald-600 dark:text-emerald-500">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-500" data-money>
                         +₹{r.amount.toLocaleString("en-IN")}
                       </span>
                       <div className="flex items-center gap-1">
@@ -206,7 +206,7 @@ export default function RecurringPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
-                      <span className="font-medium text-foreground">
+                      <span className="font-medium text-foreground" data-money>
                         ₹{r.amount.toLocaleString("en-IN")}
                       </span>
                       <div className="flex items-center gap-1">
@@ -274,7 +274,7 @@ export default function RecurringPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
-                      <span className="font-medium text-emerald-600 dark:text-emerald-500">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-500" data-money>
                         +₹{r.amount.toLocaleString("en-IN")}
                       </span>
                       <div className="flex items-center gap-1">

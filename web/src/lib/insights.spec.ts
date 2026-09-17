@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MONEY_MARK,
   commitmentLoadInsight,
   deltaInsight,
   pacingInsight,
@@ -261,5 +262,24 @@ describe("weekdayInsight", () => {
     const out = weekdayInsight(spiky, MONEY.currency, MONEY.locale);
     expect(out?.text).toContain("Fri");
     expect(out?.text).toContain("heaviest day");
+  });
+});
+
+describe("MONEY_MARK fencing", () => {
+  // Privacy mode blurs each money figure on its own. If the fence is dropped or
+  // widened to the whole sentence, the category name goes with it.
+  it("fences the figure and nothing else", () => {
+    const out = deltaInsight({
+      label: "Groceries",
+      ...MONEY,
+      current: 4000,
+      previous: 2000,
+    });
+    const parts = out!.text.split(MONEY_MARK);
+
+    expect(parts).toHaveLength(3);
+    expect(parts[1]).toContain("\u20b9");
+    expect(parts[0] + parts[2]).toContain("Groceries");
+    expect(parts[0] + parts[2]).not.toContain("\u20b9");
   });
 });

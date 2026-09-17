@@ -44,7 +44,7 @@ export async function CommitmentsTab() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat>
           <StatLabel>Committed each month</StatLabel>
-          <StatValue className="font-mono tabular-nums">
+          <StatValue className="font-mono tabular-nums" data-money>
             {money(totals.committed)}
           </StatValue>
           <StatDescription>charges plus standing transfers</StatDescription>
@@ -57,6 +57,7 @@ export async function CommitmentsTab() {
               "font-mono tabular-nums",
               totals.discretionary > 0 ? TONE.positive : TONE.negative,
             )}
+            data-money
           >
             {totals.incomeBasis > 0 ? money(totals.discretionary) : "—"}
           </StatValue>
@@ -69,7 +70,7 @@ export async function CommitmentsTab() {
 
         <Stat>
           <StatLabel>Recurring income</StatLabel>
-          <StatValue className={cn("font-mono tabular-nums", TONE.positive)}>
+          <StatValue className={cn("font-mono tabular-nums", TONE.positive)} data-money>
             {money(totals.recurringIncome)}
           </StatValue>
           <StatDescription>expected each month</StatDescription>
@@ -98,7 +99,7 @@ export async function CommitmentsTab() {
               },
             ]}
           />
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground" data-money>
             {money(totals.committed)} committed · {money(totals.discretionary)}{" "}
             free
           </p>
