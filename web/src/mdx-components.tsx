@@ -4,6 +4,7 @@ import { MdxCallout } from "@/components/changelog/mdx-callout";
 import { MdxDetails } from "@/components/changelog/mdx-details";
 import { MdxImage } from "@/components/changelog/mdx-image";
 import { MdxVideo } from "@/components/changelog/mdx-video";
+import { MediaFallback } from "@/components/changelog/media-fallback";
 
 // Required by @next/mdx for the App Router, and it must live at the project
 // root or in src/ — this path is resolved by the bundler, not by our imports.
@@ -19,5 +20,9 @@ export function useMDXComponents(): MDXComponents {
     Video: MdxVideo,
     Callout: MdxCallout,
     Details: MdxDetails,
+    // Draft-only screenshot slot. Reuses the Cloudinary fallback box so an
+    // unshot section reads as a labelled gap instead of a broken <Img>.
+    // A published entry should contain none.
+    Shot: MediaFallback,
   };
 }
