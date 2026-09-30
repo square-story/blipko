@@ -19,12 +19,24 @@ export class FallbackAiParser implements IAiParser {
   ) {}
 
   async parseText(text: string, ctx: ParseContext): Promise<ParsedBatch> {
+    const startedAt = Date.now();
+    // Wall time across the whole chain, and which provider actually produced
+    // the answer. The per-provider lines only see their own call, so a message
+    // that burned a 12s timeout before Gemini answered is invisible there.
+    const done = (provider: "openai" | "gemini" | "stub") =>
+      log.info("parse.chain", {
+        provider,
+        latencyMs: Date.now() - startedAt,
+      });
+
     try {
-      return await withTimeout(
+      const result = await withTimeout(
         this.primary.parseText(text, ctx),
         PARSE_TIMEOUT_MS,
         "OpenAI parser",
       );
+      done("openai");
+      return result;
     } catch (error) {
       log.warn("primary parser failed, falling back", {
         provider: "openai",
@@ -32,16 +44,19 @@ export class FallbackAiParser implements IAiParser {
         err: describeError(error),
       });
       try {
-        return await withTimeout(
+        const result = await withTimeout(
           this.secondary.parseText(text, ctx),
           PARSE_TIMEOUT_MS,
           "Gemini parser",
         );
+        done("gemini");
+        return result;
       } catch (secondaryError) {
         log.error("secondary parser also failed", {
           provider: "gemini",
           err: describeError(secondaryError),
         });
+        done("stub");
         // Both failed — return a safe, low-confidence UNKNOWN so the bot can
         // ask the user to try again rather than crashing.
         return {

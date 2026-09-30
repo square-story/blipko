@@ -24,6 +24,7 @@ export class OpenAIParser implements IAiParser {
   async parseText(text: string, ctx: ParseContext): Promise<ParsedBatch> {
     const promptText = `[Today: ${ctx.today}]\n${text}`;
 
+    const startedAt = Date.now();
     const completion = await this.client.chat.completions.create({
       model: env.OPENAI_PARSER_MODEL,
       // History lives inside the system prompt as a bounded data block, not as
@@ -52,6 +53,16 @@ export class OpenAIParser implements IAiParser {
         },
       },
       temperature: 0.1,
+    });
+
+    // The only record of what a parse costs. Tokens come straight off the
+    // response; the rupee figure is computed offline from these, so a price
+    // change never means a code change.
+    log.info("parse.done", {
+      model: env.OPENAI_PARSER_MODEL,
+      latencyMs: Date.now() - startedAt,
+      inputTokens: completion.usage?.prompt_tokens,
+      outputTokens: completion.usage?.completion_tokens,
     });
 
     const responseText = completion.choices[0]?.message?.content ?? "";
