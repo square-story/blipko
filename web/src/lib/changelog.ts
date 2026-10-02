@@ -18,6 +18,8 @@ import * as editAnywhere from "../../content/changelog/2026-07-07-edit-anywhere.
 import * as boxesWrapped from "../../content/changelog/2026-07-30-boxes-wrapped.mdx";
 import * as analytics from "../../content/changelog/2026-08-09-analytics.mdx";
 import * as assistant from "../../content/changelog/2026-08-09-assistant.mdx";
+import * as incomeCategories from "../../content/changelog/2026-09-10-income-categories.mdx";
+import * as carryForwardPrivacy from "../../content/changelog/2026-09-17-carry-forward-privacy.mdx";
 
 const modules = [
   telegram,
@@ -28,6 +30,8 @@ const modules = [
   boxesWrapped,
   analytics,
   assistant,
+  incomeCategories,
+  carryForwardPrivacy,
 ];
 
 // ── The `meta` contract ────────────────────────────────────────────────────

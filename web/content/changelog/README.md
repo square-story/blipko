@@ -85,12 +85,21 @@ must.
   posterOffset={1.5}   {/* seconds; Cloudinary public IDs only */}
 />
 
+<Shot label="SHOT — what to capture. Draft only." />
+
 <Callout variant="info">Also: success, warning, error.</Callout>
 
 <Details summary="The full fix list">
   Collapsed by default.
 </Details>
 ```
+
+`<Shot>` is a drafting placeholder: it renders the same labelled grey box
+`<Img>` falls back to when Cloudinary isn't configured, so a section whose
+screenshot hasn't been taken yet reads as a deliberate gap rather than a broken
+image. Write the entry with one per feature, then replace each with the real
+`<Img>`. **A published entry should contain no `<Shot>`** — nothing fails the
+build if one survives, so grep for it before you push.
 
 Both `<Img>` and `<Video>` take either a **Cloudinary public ID**
 (`blipko/changelog/boxes.mp4`) or something already resolvable — an absolute

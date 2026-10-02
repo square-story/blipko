@@ -1,0 +1,90 @@
+export const meta = {
+  slug: "income-that-knows-what-it-is",
+  title: "Income that knows what it is",
+  date: "2026-09-10",
+  summary:
+    "A refund isn't a raise. Income now gets a category, and only what you actually earned raises your budget.",
+  tags: ["Feature", "Fix"],
+};
+
+A friend paying back ₹1,500. A purchase you returned. A work expense reimbursed.
+Every one of those used to widen your budget by that much — even though the
+original spend had already eaten it. Money the budget had spent once got handed
+back to you to spend again.
+
+### Not every rupee is income
+
+<Img
+  src="/blipko.income.category.section.png"
+  alt="Income cards visible with their cycle totals"
+  width={3840}
+  height={2880}
+  caption="Income cards visible with their cycle totals"
+/>
+
+Income now files under one of thirteen categories, in two groups.
+
+- **Counts as income** — Salary, Freelance, Business Income, Dividend &
+  Interest, Rent Received, Bonus, Gift, Other Income.
+- **Doesn't raise your budget** — Reimbursement, Refund, Money Lent Returned,
+  Loan / Advance Received, Transfer Between Accounts.
+
+The second group is still recorded and still shows in your income total. It just
+stops pretending you earned it. The list is fixed rather than something else to
+set up, and income you logged before today still counts as earnings — nobody's
+numbers moved when this shipped.
+
+### See it, and fix it
+
+<Img
+  src="/blipko.edit.modal.income.dashboard.png"
+  alt="Income side edit modal with existing/predictable categories"
+  width={3840}
+  height={2880}
+  caption="Income side edit modal with existing/predictable categories"
+/>
+
+Income has a **Category** column, a multi-select filter, and a picker in the edit
+dialog — so a refund the bot read as salary is now a two-click correction rather
+than something you live with. It's in the CSV export too.
+
+### The bot tells you which is which
+
+<Img
+  src="/blipko.telegram.status.checking.png"
+  alt="Telegram /status reply showing the income basis line"
+  width={3840}
+  height={2880}
+  caption="Telegram /status reply showing the income basis line"
+/>
+
+Log a refund and the reply says so: *↩️ Money coming back, not new income — your
+budget is unchanged.* And `/status`, `/report` and the cycle report all carry the
+same line — what landed, what the budget is actually built on, and the gap
+between them, named rather than left for you to work out.
+
+Telegram and the dashboard now quote the same budget. They used to disagree, by
+exactly the refunds.
+
+### Recurring income, filed right
+
+<Img
+  src="/blipko.recurring.category.section.edit.png"
+  alt="Rule form open on Income, the grouped income-category select expanded"
+  width={3840}
+  height={2880}
+  caption="Rule form open on Income, the grouped income-category select expanded"
+/>
+
+A recurring income rule picks from the income categories instead of the spending
+ones. A reimbursement that arrives every month stops inflating the budget every
+month.
+
+### Fixed
+
+- **Savings rate** in Analytics and in Wrapped divides by what you earned, not by
+  everything that landed. A month with a purchase later refunded used to score
+  worse than the same month with neither transaction in it.
+- `/report` no longer hides refunds while `/status` names them.
+- Income inside a multi-item message gets categorised too — "chai 30, nadha
+  returned 1500" comes back as a mixed ✅ / ↩️ list.
