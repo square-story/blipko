@@ -17,7 +17,11 @@ import { IConversationRepository } from "../../domain/repositories/IConversation
 import { RunInTransaction } from "../../domain/repositories/UnitOfWork";
 import { IFinancialQueryAgent } from "../../domain/services/IFinancialQueryAgent";
 import { IMessagingPlatform } from "../interfaces/IMessagingPlatform";
-import { ParsedData, ParsedBucket } from "../../domain/entities/ParsedData";
+import {
+  ParsedData,
+  ParsedBatch,
+  ParsedBucket,
+} from "../../domain/entities/ParsedData";
 import {
   MessageProcessor,
   ProcessContext,
@@ -56,6 +60,7 @@ import { resolveByConfirmationMessage } from "./transactionActions";
 import { CarryPromptProcessor } from "./processors/CarryPromptProcessor";
 import { CarryAmountProcessor } from "./processors/CarryAmountProcessor";
 import { parseBareAmount } from "./carryFlow";
+import { parsePhraseAmount } from "./fastPath";
 import { uniqueLeafCategories } from "./categoryHints";
 import { ICategoryMemoryRepository } from "../../domain/repositories/ICategoryMemoryRepository";
 import { applyCategoryMemory } from "./categoryMemory";
@@ -351,13 +356,19 @@ export class ProcessIncomingMessageUseCase {
       this.incomeCategoryRepository.findAllForUser(user.id),
     ]);
     context.incomeCategories = incomeCategories;
-    const batch = await this.aiParser.parseText(payload.textMessage, {
-      categories,
-      incomeCategories: incomeCategories.map((c) => c.name),
-      history,
-      today: zonedYmd(new Date(), user.timezone),
-      assistantMode: this.assistantAgent !== null,
-    });
+
+    // A phrase the user has already corrected once needs no model: the answer
+    // is in CategoryMemory, and parsing "chai 30" again costs ~2k input tokens
+    // and a round-trip to rebuild it. Everything else goes to the parser.
+    const batch =
+      (await this.rememberedExpense(user.id, payload.textMessage)) ??
+      (await this.aiParser.parseText(payload.textMessage, {
+        categories,
+        incomeCategories: incomeCategories.map((c) => c.name),
+        history,
+        today: zonedYmd(new Date(), user.timezone),
+        assistantMode: this.assistantAgent !== null,
+      }));
 
     // Apply what the user taught us by correcting a category before anything
     // branches. context.parsed below is the SAME object as transactions[0], so
@@ -393,6 +404,50 @@ export class ProcessIncomingMessageUseCase {
     throw new Error(
       `No processor handled intent: ${context.parsed?.intent ?? "BATCH"}`,
     );
+  }
+
+  // The reflex path. Both halves are firmer than a model's guess — the amount
+  // comes from a strict regex, the category from a correction the user made by
+  // hand — so the result is shaped to look exactly like a parse and flows
+  // through the same processors, with no branch of its own downstream.
+  //
+  // Null means "not this shape, or never taught": parse it normally. The
+  // repository already refuses group and box-linked categories on our behalf,
+  // so a hit here can never mis-file box money.
+  private async rememberedExpense(
+    userId: string,
+    text: string,
+  ): Promise<ParsedBatch | null> {
+    if (!this.categoryMemoryRepository) return null;
+
+    const match = parsePhraseAmount(text);
+    if (!match) return null;
+
+    const hit = await this.categoryMemoryRepository.findForPhrase(
+      userId,
+      match.phraseKey,
+    );
+    if (!hit) return null;
+
+    // Counted against the parser's own log line to get a hit rate.
+    logger.info("parse.memory_hit", { phraseKey: match.phraseKey });
+
+    return {
+      transactions: [
+        {
+          intent: "EXPENSE",
+          amount: match.amount,
+          currency: "INR",
+          category: hit.categoryName,
+          bucket: hit.bucket,
+          note: match.phrase,
+          // Nothing here was guessed, so this clears ExpenseProcessor's
+          // confirmation gate deliberately: re-asking for a bucket the user
+          // already chose is the behaviour this path exists to remove.
+          confidence: 1,
+        },
+      ],
+    };
   }
 
   // Fire-and-forget: history is context, not correctness, so a failed write

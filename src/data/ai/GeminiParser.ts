@@ -104,6 +104,7 @@ export class GeminiParser implements IAiParser {
   async parseText(text: string, ctx: ParseContext): Promise<ParsedBatch> {
     const promptText = `[Today: ${ctx.today}]\n${text}`;
 
+    const startedAt = Date.now();
     const response = await this.client.models.generateContent({
       model: this.modelName,
       // History lives inside the system instruction as a bounded data block,
@@ -120,6 +121,13 @@ export class GeminiParser implements IAiParser {
         responseSchema: budgetSchema,
         temperature: 0.1,
       },
+    });
+
+    log.info("parse.done", {
+      model: this.modelName,
+      latencyMs: Date.now() - startedAt,
+      inputTokens: response?.usageMetadata?.promptTokenCount,
+      outputTokens: response?.usageMetadata?.candidatesTokenCount,
     });
 
     const responseText = response?.text;

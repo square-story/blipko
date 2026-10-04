@@ -527,4 +527,147 @@ describe("ProcessIncomingMessage (budget flow)", () => {
       "Text me a spend",
     );
   });
+
+  // A phrase the user has already corrected once is answered from
+  // CategoryMemory. The assertion that matters in every case below is whether
+  // aiParser.parseText was called at all — that call is the cost this path
+  // exists to remove, and the cases it must NOT skip are the ones that would
+  // silently log the wrong thing.
+  describe("remembered phrases", () => {
+    let categoryMemoryRepository: any;
+    let memoUseCase: ProcessIncomingMessageUseCase;
+
+    beforeEach(() => {
+      categoryMemoryRepository = {
+        findForPhrase: vi.fn().mockResolvedValue(null),
+        remember: vi.fn().mockResolvedValue(undefined),
+      };
+      memoUseCase = new ProcessIncomingMessageUseCase(
+        aiParser,
+        userRepository,
+        expenseRepository,
+        categoryRepository,
+        budgetConfigRepository,
+        parseLogRepository,
+        incomeRepository,
+        incomeCategoryRepository,
+        recurringRuleRepository,
+        boxRepository,
+        conversationRepository,
+        messageService,
+        queryAgent,
+        async (fn: any) => fn({}),
+        "https://blipko.lol",
+        null,
+        null,
+        categoryMemoryRepository,
+      );
+    });
+
+    it("records the expense without calling the parser", async () => {
+      categoryMemoryRepository.findForPhrase.mockResolvedValue({
+        categoryId: "c1",
+        categoryName: "Food",
+        bucket: "WANTS",
+      });
+      categoryRepository.findByNameForUser.mockResolvedValue({
+        id: "c1",
+        name: "Food",
+        bucket: "WANTS",
+      });
+
+      await memoUseCase.execute({
+        platformUserId: "123",
+        textMessage: "chai 30",
+      });
+
+      expect(aiParser.parseText).not.toHaveBeenCalled();
+      expect(categoryMemoryRepository.findForPhrase).toHaveBeenCalledWith(
+        "u1",
+        "chai",
+      );
+      expect(expenseRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: "u1",
+          amount: 30,
+          bucket: "WANTS",
+          categoryId: "c1",
+        }),
+      );
+    });
+
+    // A remembered category is one the user picked by hand, so re-asking which
+    // bucket it belongs to is exactly the friction this removes.
+    it("does not ask for a bucket on a remembered phrase", async () => {
+      categoryMemoryRepository.findForPhrase.mockResolvedValue({
+        categoryId: "c1",
+        categoryName: "Food",
+        bucket: "WANTS",
+      });
+      categoryRepository.findByNameForUser.mockResolvedValue({
+        id: "c1",
+        name: "Food",
+        bucket: "WANTS",
+      });
+
+      await memoUseCase.execute({
+        platformUserId: "123",
+        textMessage: "chai 30",
+      });
+
+      expect(parseLogRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("parses normally when the phrase was never taught", async () => {
+      aiParser.parseText.mockResolvedValue({
+        transactions: [
+          {
+            intent: "EXPENSE",
+            amount: 30,
+            category: "Food",
+            bucket: "WANTS",
+            note: "chai",
+            confidence: 0.9,
+          },
+        ],
+      });
+
+      await memoUseCase.execute({
+        platformUserId: "123",
+        textMessage: "chai 30",
+      });
+
+      expect(aiParser.parseText).toHaveBeenCalledTimes(1);
+    });
+
+    // A bare number is the carry flow's shape, not a spend.
+    it("never fires on a bare number", async () => {
+      aiParser.parseText.mockResolvedValue({
+        transactions: [{ intent: "UNKNOWN", confidence: 0 }],
+      });
+
+      await memoUseCase.execute({ platformUserId: "123", textMessage: "500" });
+
+      expect(categoryMemoryRepository.findForPhrase).not.toHaveBeenCalled();
+    });
+
+    // Collapsing this into one expense would drop the second transaction
+    // entirely, and the user would never see that it went missing.
+    it("sends a multi-transaction message to the parser", async () => {
+      aiParser.parseText.mockResolvedValue({
+        transactions: [
+          { intent: "EXPENSE", amount: 30, confidence: 0.9 },
+          { intent: "EXPENSE", amount: 80, confidence: 0.9 },
+        ],
+      });
+
+      await memoUseCase.execute({
+        platformUserId: "123",
+        textMessage: "chai 30, auto 80",
+      });
+
+      expect(categoryMemoryRepository.findForPhrase).not.toHaveBeenCalled();
+      expect(aiParser.parseText).toHaveBeenCalledTimes(1);
+    });
+  });
 });
