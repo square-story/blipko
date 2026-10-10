@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SoundProvider } from "@/components/providers/sound-provider";
+import { StaleDeployReload } from "@/components/providers/stale-deploy-reload";
 import { Toaster } from "@/components/ui/sonner";
 import {
   constructMetadata,
@@ -96,6 +97,7 @@ export default function RootLayout({
             {children}
           </NuqsAdapter>
           <SoundProvider />
+          <StaleDeployReload />
           <Analytics />
           <Toaster />
         </ThemeProvider>

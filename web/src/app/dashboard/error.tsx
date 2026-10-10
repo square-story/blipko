@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { unstable_isUnrecognizedActionError } from "next/navigation";
 
 export default function Error({
   error,
@@ -10,7 +11,10 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    // Stale tab after a deploy: reset() re-renders the same old bundle, so only
+    // a full reload recovers.
+    if (unstable_isUnrecognizedActionError(error)) window.location.reload();
+    else console.error(error);
   }, [error]);
 
   return (
