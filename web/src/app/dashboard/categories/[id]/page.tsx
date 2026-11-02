@@ -43,11 +43,11 @@ export default async function CategoryDetailPage({
   const showAll = sp.all === "1";
   const scoped = !showAll && !sp.from && !sp.to;
   const end = detail.periodEnd;
-  // buildWhere widens `to` to end-of-day, so `to` is the cycle's last day. Built
-  // via the Date constructor rather than end - 86400000: subtracting a fixed day
-  // lands on 23:00 of the wrong day across a DST shift, which would drop that
-  // hour's expenses.
-  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 1);
+  // buildWhere widens `to` to end-of-day, so `to` is the cycle's last day. Fixed
+  // 24h step, matching the dashboard's cycleTo: `end` is the user's midnight, so
+  // server-local date parts would land on the wrong day on a UTC server.
+  // (DST zones can lose up to an hour; IST has none.)
+  const lastDay = new Date(end.getTime() - 86_400_000);
   const from = scoped ? String(detail.periodStart.getTime()) : sp.from || "";
   const to = scoped ? String(lastDay.getTime()) : sp.to || "";
 
