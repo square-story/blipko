@@ -36,43 +36,6 @@ export function currentMonthRange(now: Date = new Date()): {
   return { start, end };
 }
 
-// The current budget cycle [start, end): most recent payday on/before `now` to
-// the next payday. payday=1 reproduces the calendar month. Mirrors the backend.
-export function currentBudgetPeriod(
-  payday: number,
-  now: Date = new Date(),
-): { start: Date; end: Date } {
-  const d = Math.min(Math.max(Math.floor(payday) || 1, 1), 28);
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  if (now.getDate() >= d) {
-    return { start: new Date(y, m, d), end: new Date(y, m + 1, d) };
-  }
-  return { start: new Date(y, m - 1, d), end: new Date(y, m, d) };
-}
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-// The `n` most recent COMPLETE budget cycles (excludes the current partial one),
-// newest first. Used to estimate a category's typical monthly spend.
-export function previousCycles(
-  payday: number,
-  n: number,
-  now: Date = new Date(),
-): { start: Date; end: Date }[] {
-  const out: { start: Date; end: Date }[] = [];
-  let ref = currentBudgetPeriod(payday, now).start; // start of the current cycle
-  for (let i = 0; i < n; i++) {
-    const prev = currentBudgetPeriod(
-      payday,
-      new Date(ref.getTime() - MS_PER_DAY),
-    );
-    out.push(prev);
-    ref = prev.start;
-  }
-  return out;
-}
-
 // Median of a list (0 for empty). Robust central estimate — unlike the mean it
 // isn't dragged up by one lumpy month.
 export function median(nums: number[]): number {
@@ -80,30 +43,6 @@ export function median(nums: number[]): number {
   const s = [...nums].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-}
-
-export interface PeriodDayInfo {
-  day: number; // 1-based day within the cycle
-  daysInPeriod: number;
-  remainingDays: number; // days left including today (>= 1)
-}
-
-// Where we are in the current budget cycle. Mirrors the backend
-// `budgetMath.periodDayInfo`.
-export function periodDayInfo(
-  payday: number,
-  now: Date = new Date(),
-): PeriodDayInfo {
-  const { start, end } = currentBudgetPeriod(payday, now);
-  const daysInPeriod = Math.round(
-    (end.getTime() - start.getTime()) / MS_PER_DAY,
-  );
-  const day = Math.floor((now.getTime() - start.getTime()) / MS_PER_DAY) + 1;
-  return {
-    day,
-    daysInPeriod,
-    remainingDays: Math.max(1, daysInPeriod - day + 1),
-  };
 }
 
 export interface CategoryPacing {

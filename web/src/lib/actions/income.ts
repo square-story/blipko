@@ -8,7 +8,7 @@ import {
   incomeEditSchema,
   type IncomeEditInput,
 } from "@/lib/validations/income";
-import { currentBudgetPeriod } from "@/lib/budget";
+import { DEFAULT_TZ, zonedBudgetPeriod } from "@/lib/time";
 
 export type IncomeData = {
   id: string;
@@ -304,9 +304,12 @@ export async function getIncomeCategoryTotals(): Promise<IncomeCategoryTotals> {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { payday: true, currency: true, locale: true },
+    select: { payday: true, currency: true, locale: true, timezone: true },
   });
-  const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
+  const { start, end } = zonedBudgetPeriod(
+    user?.payday ?? 1,
+    user?.timezone ?? DEFAULT_TZ,
+  );
 
   const [categories, grouped] = await Promise.all([
     prisma.incomeCategory.findMany({

@@ -53,8 +53,8 @@ describe("zonedStartOfDayUtc", () => {
 });
 
 describe("zonedBudgetPeriod", () => {
-  // This is the regression the whole module exists for. `lib/budget.ts` builds
-  // these bounds with new Date(y, m, d), which on a UTC server yields
+  // This is the regression the whole module exists for. The old
+  // `lib/budget.ts` built these bounds with new Date(y, m, d), which on a UTC server yields
   // 2026-07-25T00:00:00Z — 5h30m late. Everything an IST user logged between
   // midnight and 05:30 on payday fell into the previous cycle.
   it("anchors the cycle to IST midnight, not server midnight", () => {

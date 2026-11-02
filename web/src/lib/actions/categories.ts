@@ -5,13 +5,14 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Bucket } from "@prisma/client";
+import { median, allocateByWeight } from "@/lib/budget";
 import {
-  currentBudgetPeriod,
-  periodDayInfo,
-  previousCycles,
-  median,
-  allocateByWeight,
-} from "@/lib/budget";
+  DEFAULT_TZ,
+  cycleLabel,
+  zonedBudgetPeriod,
+  zonedPeriodDayInfo,
+  zonedPreviousCycles,
+} from "@/lib/time";
 import { getBudgetOverview } from "@/lib/actions/budget";
 
 export type CategoryStat = {
@@ -37,9 +38,12 @@ export async function getCategories(): Promise<CategoryStat[]> {
   const userId = session.user.id;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { payday: true },
+    select: { payday: true, timezone: true },
   });
-  const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
+  const { start, end } = zonedBudgetPeriod(
+    user?.payday ?? 1,
+    user?.timezone ?? DEFAULT_TZ,
+  );
 
   // Self-healing: If expenses were logged against system categories (userId = null),
   // clone them to user-owned categories so they can be managed.
@@ -140,9 +144,10 @@ export async function getCategorySuggestions(): Promise<CategorySuggestion[]> {
   const userId = session.user.id;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { payday: true },
+    select: { payday: true, timezone: true },
   });
   const payday = user?.payday ?? 1;
+  const tz = user?.timezone ?? DEFAULT_TZ;
 
   const [cats, rules] = await Promise.all([
     prisma.category.findMany({
@@ -171,7 +176,7 @@ export async function getCategorySuggestions(): Promise<CategorySuggestion[]> {
   }
 
   // History: per-category totals across the last 3 complete cycles.
-  const cycles = previousCycles(payday, 3); // newest first
+  const cycles = zonedPreviousCycles(payday, 3, tz); // newest first
   const oldest = cycles[cycles.length - 1]?.start;
   const newestEnd = cycles[0]?.end; // == start of the current (partial) cycle
   const perCatPerCycle = new Map<string, number[]>();
@@ -669,12 +674,13 @@ export async function getCategoryDetail(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { payday: true, currency: true, locale: true },
+    select: { payday: true, currency: true, locale: true, timezone: true },
   });
   const payday = user?.payday ?? 1;
-  const { start, end } = currentBudgetPeriod(payday);
-  const { day, daysInPeriod, remainingDays } = periodDayInfo(payday);
-  const prev = previousCycles(payday, 1)[0];
+  const tz = user?.timezone ?? DEFAULT_TZ;
+  const { start, end } = zonedBudgetPeriod(payday, tz);
+  const { day, daysInPeriod, remainingDays } = zonedPeriodDayInfo(payday, tz);
+  const prev = zonedPreviousCycles(payday, 1, tz)[0];
 
   const [rows, prevAgg] = await Promise.all([
     prisma.expense.findMany({
@@ -723,6 +729,7 @@ export async function getCategoryDetail(
   const prevSpend = Number(prevAgg._sum.amount ?? 0);
   const locale = user?.locale ?? "en-IN";
   const fmt = new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
     day: "numeric",
     month: "short",
   });
@@ -780,12 +787,13 @@ export async function getCategorySpendTrend(
   const n = Math.min(Math.max(Math.floor(cycles) || 6, 1), 24);
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { payday: true, locale: true },
+    select: { payday: true, locale: true, timezone: true },
   });
   const payday = user?.payday ?? 1;
+  const tz = user?.timezone ?? DEFAULT_TZ;
   const windows = [
-    ...previousCycles(payday, n - 1).reverse(),
-    currentBudgetPeriod(payday),
+    ...zonedPreviousCycles(payday, n - 1, tz).reverse(),
+    zonedBudgetPeriod(payday, tz),
   ];
 
   const rows = await prisma.expense.findMany({
@@ -798,11 +806,11 @@ export async function getCategorySpendTrend(
     select: { amount: true, date: true },
   });
 
-  const fmt = new Intl.DateTimeFormat(user?.locale ?? "en-IN", {
-    month: "short",
-    year: "2-digit",
-  });
-  const series = windows.map((w) => ({ label: fmt.format(w.start), spend: 0 }));
+  const locale = user?.locale ?? "en-IN";
+  const series = windows.map((w) => ({
+    label: cycleLabel(w.start, tz, locale),
+    spend: 0,
+  }));
   for (const r of rows) {
     const i = windows.findIndex((w) => r.date >= w.start && r.date < w.end);
     if (i >= 0) series[i].spend += Number(r.amount);

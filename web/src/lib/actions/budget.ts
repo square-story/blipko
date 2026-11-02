@@ -10,15 +10,19 @@ import {
   BUCKETS,
   DEFAULT_SPLIT,
   bucketBudget,
-  currentBudgetPeriod,
-  periodDayInfo,
   effectiveMonthlyIncome,
   EARNED_ONLY,
   CARRY_ONLY,
   pctSpent,
   type BudgetSplit,
 } from "@/lib/budget";
-import { DEFAULT_TZ, cycleLabel, zonedPreviousCycles } from "@/lib/time";
+import {
+  DEFAULT_TZ,
+  cycleLabel,
+  zonedBudgetPeriod,
+  zonedPeriodDayInfo,
+  zonedPreviousCycles,
+} from "@/lib/time";
 import { shouldPromptCarry } from "@/lib/carry";
 
 export type BucketOverview = {
@@ -52,8 +56,11 @@ export async function getBudgetOverview() {
   });
   const tz = user?.timezone ?? DEFAULT_TZ;
   const ended = zonedPreviousCycles(user?.payday ?? 1, 1, tz)[0]!;
-  const { start, end } = currentBudgetPeriod(user?.payday ?? 1);
-  const { day, daysInPeriod, remainingDays } = periodDayInfo(user?.payday ?? 1);
+  const { start, end } = zonedBudgetPeriod(user?.payday ?? 1, tz);
+  const { day, daysInPeriod, remainingDays } = zonedPeriodDayInfo(
+    user?.payday ?? 1,
+    tz,
+  );
 
   const [
     config,
@@ -204,6 +211,7 @@ export async function getBudgetOverview() {
 
   // Human label for the current cycle, e.g. "Jun 25 – Jul 24".
   const fmt = new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
     day: "numeric",
     month: "short",
   });
