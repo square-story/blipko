@@ -26,16 +26,6 @@ export const DEFAULT_SPLIT: BudgetSplit = {
   savingsPct: 20,
 };
 
-// First day of the current month (inclusive) to first day of next month (exclusive).
-export function currentMonthRange(now: Date = new Date()): {
-  start: Date;
-  end: Date;
-} {
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return { start, end };
-}
-
 // Median of a list (0 for empty). Robust central estimate — unlike the mean it
 // isn't dragged up by one lumpy month.
 export function median(nums: number[]): number {

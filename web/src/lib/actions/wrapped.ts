@@ -4,13 +4,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Bucket } from "@prisma/client";
+import { BUCKETS, BUCKET_META, EARNED_ONLY } from "@/lib/budget";
 import {
-  BUCKETS,
-  BUCKET_META,
-  currentMonthRange,
-  EARNED_ONLY,
-} from "@/lib/budget";
-import { DEFAULT_TZ, isMonthEndWindow, zonedParts } from "@/lib/time";
+  DEFAULT_TZ,
+  isMonthEndWindow,
+  zonedBudgetPeriod,
+  zonedParts,
+} from "@/lib/time";
 
 export type WrappedBucketSlice = {
   bucket: Bucket;
@@ -57,7 +57,8 @@ export async function getWrappedStats(): Promise<WrappedStats | null> {
   // Name the card's month with the same clock that decided to show it.
   const { year, month } = zonedParts(now, tz);
 
-  const { start, end } = currentMonthRange(now);
+  // payday=1 is the calendar month, bounded at the user's midnight.
+  const { start, end } = zonedBudgetPeriod(1, tz, now);
   const where = { userId, isDeleted: false, date: { gte: start, lt: end } };
 
   const [
