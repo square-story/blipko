@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { useTheme } from "next-themes";
+import { switchTheme } from "@/lib/theme-transition";
 import { Wallet, Globe, Bell, Palette, type LucideIcon } from "lucide-react";
 import {
     Card,
@@ -597,7 +598,7 @@ export function AppearanceCard() {
             description="Customize the look and feel of the dashboard."
         >
             <InlineRow htmlFor="theme" label="Theme">
-                <Select value={theme} onValueChange={setTheme}>
+                <Select value={theme} onValueChange={(v) => switchTheme(() => setTheme(v))}>
                     <SelectTrigger id="theme" className="w-full">
                         <SelectValue placeholder="Select theme" />
                     </SelectTrigger>

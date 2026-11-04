@@ -303,6 +303,29 @@
   }
 }
 
+/* Theme switch: new theme grows as a soft-edged circle from the toggle (see lib/theme-transition.ts).
+   The blur is a radial-gradient mask, not filter: blur or an SVG feGaussianBlur, so frames stay cheap. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  mask-image: radial-gradient(closest-side, #000 70%, transparent);
+  mask-repeat: no-repeat;
+  animation: theme-reveal 800ms var(--ease-out) both;
+}
+@keyframes theme-reveal {
+  from {
+    mask-size: 0 0;
+    mask-position: var(--vt-x, 100vw) var(--vt-y, 0px);
+  }
+  to {
+    mask-size: calc(var(--vt-r) * 2) calc(var(--vt-r) * 2);
+    mask-position: calc(var(--vt-x) - var(--vt-r)) calc(var(--vt-y) - var(--vt-r));
+  }
+}
+
 /* Point @tailwindcss/typography at our shadcn tokens. The plugin ships
    Tailwind's `gray` palette, which in v4 carries chroma (oklch(… 0.013 …)) —
    next to our zero-chroma tokens that reads as a blue cast, worst in dark mode.
