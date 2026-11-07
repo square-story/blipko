@@ -144,6 +144,8 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       "Your spending records live in your own Blipko account and are only ever used to answer your questions.",
       "Every number reported is calculated by the app from your records, not made up by the AI. The AI chooses which figures to look up; the maths is done in code.",
       "Reminders are off by default and you choose how insistent they are.",
+      "Export everything Blipko stores about you as a file from the dashboard's Account page.",
+      "Delete your account from the Account page — every expense, message and log is erased permanently.",
     ],
 
     creator: {

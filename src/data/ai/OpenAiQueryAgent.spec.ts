@@ -259,6 +259,14 @@ describe("OpenAiQueryAgent", () => {
     expect(create).toHaveBeenCalledTimes(5);
   });
 
+  it("declines investment advice and points to a SEBI-registered adviser", async () => {
+    create.mockResolvedValueOnce(text("ok"));
+    await agent.answer("q", ctx);
+
+    const system = create.mock.calls[0]![0].messages[0].content;
+    expect(system).toContain("SEBI-registered investment adviser");
+  });
+
   it("puts today's date and the cycle window in the system prompt", async () => {
     create.mockResolvedValueOnce(text("ok"));
     await agent.answer("q", ctx);

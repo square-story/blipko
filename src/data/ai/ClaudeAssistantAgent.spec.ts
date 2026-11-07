@@ -358,6 +358,14 @@ describe("ClaudeAssistantAgent", () => {
     });
   });
 
+  it("declines investment advice and points to a SEBI-registered adviser", async () => {
+    create.mockResolvedValueOnce(says("ok"));
+    await agent.answer("q", ctx);
+
+    const system = create.mock.calls[0]![0].system[0].text;
+    expect(system).toContain("SEBI-registered investment adviser");
+  });
+
   it("anchors the prompt to the user's local date and cycle", async () => {
     create.mockResolvedValueOnce(says("ok"));
     await agent.answer("q", ctx);
