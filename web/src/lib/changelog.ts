@@ -22,6 +22,7 @@ import * as incomeCategories from "../../content/changelog/2026-09-10-income-cat
 import * as carryForwardPrivacy from "../../content/changelog/2026-09-17-carry-forward-privacy.mdx";
 import * as yourDataYourCall from "../../content/changelog/2026-11-07-your-data-your-call.mdx";
 import * as closingTheLoop from "../../content/changelog/2026-11-07-closing-the-loop.mdx";
+import * as headsUp from "../../content/changelog/2026-11-07-heads-up.mdx";
 
 const modules = [
   telegram,
@@ -36,6 +37,7 @@ const modules = [
   carryForwardPrivacy,
   yourDataYourCall,
   closingTheLoop,
+  headsUp,
 ];
 
 // ── The `meta` contract ────────────────────────────────────────────────────
