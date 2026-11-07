@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Ellipsis, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { getMenuList } from "@/lib/menu-list";
@@ -24,6 +25,45 @@ interface MenuProps {
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
   const menuList = getMenuList();
+  const router = useRouter();
+  const [showKeys, setShowKeys] = useState(false);
+  const hrefs = menuList
+    .flatMap((g) => g.menus)
+    .filter((m) => !m.submenus || m.submenus.length === 0)
+    .map((m) => m.href)
+    .slice(0, 9);
+  const hrefsKey = hrefs.join("|");
+
+  // Hold ⌃ to reveal shortcut tags, ⌃1–⌃9 to jump. ⌘ digits are reserved by browsers.
+  useEffect(() => {
+    const targets = hrefsKey.split("|");
+    const hide = () => setShowKeys(false);
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Control") return setShowKeys(true);
+      if (e.ctrlKey && /^[1-9]$/.test(e.key)) {
+        const href = targets[Number(e.key) - 1];
+        if (href) {
+          e.preventDefault();
+          router.push(href);
+        }
+        return;
+      }
+      hide();
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Control") hide();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", hide);
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", hide);
+      document.removeEventListener("visibilitychange", hide);
+    };
+  }, [router, hrefsKey]);
 
   return (
     <ScrollArea className="[&>div>div[style]]:!block">
@@ -69,7 +109,7 @@ export function Menu({ isOpen }: MenuProps) {
                               className="w-full justify-start h-10 mb-1 group"
                               asChild
                             >
-                              <Link href={href}>
+                              <Link href={href} className="relative">
                                 <span
                                   className={cn(isOpen === false ? "" : "mr-4")}
                                 >
@@ -77,14 +117,30 @@ export function Menu({ isOpen }: MenuProps) {
                                 </span>
                                 <p
                                   className={cn(
-                                    "max-w-[200px] truncate",
+                                    "max-w-[200px] truncate transition-opacity duration-150 ease-[var(--ease-out)] motion-reduce:transition-none",
                                     isOpen === false
                                       ? "-translate-x-96 opacity-0"
-                                      : "translate-x-0 opacity-100"
+                                      : showKeys
+                                        ? "translate-x-0 opacity-0"
+                                        : "translate-x-0 opacity-100"
                                   )}
                                 >
                                   {label}
                                 </p>
+                                {hrefs.includes(href) && (
+                                  <kbd
+                                    aria-hidden
+                                    className={cn(
+                                      "pointer-events-none absolute right-2 top-1/2 flex h-5 -translate-y-1/2 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground transition-[opacity,filter,scale] duration-200 ease-[var(--ease-out)] motion-reduce:transition-none",
+                                      showKeys
+                                        ? "scale-100 opacity-100 blur-0"
+                                        : "scale-95 opacity-0 blur-[4px]"
+                                    )}
+                                  >
+                                    <span className="text-xs">⌃</span>
+                                    {hrefs.indexOf(href) + 1}
+                                  </kbd>
+                                )}
                               </Link>
                             </Button>
                           </TooltipTrigger>
