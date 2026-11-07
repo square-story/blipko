@@ -71,7 +71,7 @@ describe("SendBudgetNudges", () => {
       expect.any(String),
     );
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "gone over Wants by ₹1,200",
+      "🟠 Wants is ₹1,200 past this cycle's budget",
     );
   });
 

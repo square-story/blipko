@@ -105,7 +105,7 @@ export class ReportProcessor implements MessageProcessor {
       const leakLines = realLeaks
         .map((l) => `  ${sanitizeMd(l.name)}  ${formatMoney(l.total)}`)
         .join("\n");
-      body += `\n\nBiggest leaks in Wants:\n${leakLines}`;
+      body += `\n\nTop Wants spends:\n${leakLines}`;
     }
 
     await this.messageService.sendMessage({ to: platformUserId, body });
@@ -135,7 +135,7 @@ export class ReportProcessor implements MessageProcessor {
       status =
         delta >= 0
           ? `✅ under by ${formatMoney(delta)}`
-          : `❌ over by ${formatMoney(-delta)}`;
+          : `↗ ${formatMoney(-delta)} past budget`;
     }
     return `${meta.emoji} ${meta.label}  ${amounts}  ${status}${vsLastSuffix(spent, prevSpent)}`;
   }

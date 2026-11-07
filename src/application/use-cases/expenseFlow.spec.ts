@@ -59,14 +59,14 @@ describe("buildBucketBudgetLine", () => {
 
   it("warns when a spend bucket is over budget", () => {
     expect(buildBucketBudgetLine("WANTS", -300, 2000, 10)).toBe(
-      "⚠️ Wants: ₹300 over budget",
+      "🟠 Wants: ₹300 past budget",
     );
   });
 
   it("treats overshooting savings as beyond target, not a warning", () => {
     const line = buildBucketBudgetLine("SAVINGS", -300, 2000, 10);
     expect(line).toContain("beyond target");
-    expect(line).not.toContain("over budget");
+    expect(line).not.toContain("past budget");
   });
 
   it("compact form is a terse sub-line", () => {

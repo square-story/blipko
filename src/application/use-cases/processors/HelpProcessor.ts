@@ -21,7 +21,7 @@ Or send a *voice note* — I'll transcribe and log it.
 
 *Commands*
 • /status — budget health & safe daily spend
-• /report — this month's summary + top leaks
+• /report — this month's summary + top spends
 • /recurring — repeating income/expenses (rent, salary…)
 • /settings — reminder style (off / gentle / aggressive)
 • /start — connect your dashboard

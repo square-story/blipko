@@ -185,7 +185,7 @@ export class SendBudgetNudgesUseCase {
         ) {
           await this.send(
             user.telegramId,
-            `🔴 You've gone over ${meta.label} by ${formatMoney(spent - budget)} this cycle.`,
+            `🟠 ${meta.label} is ${formatMoney(spent - budget)} past this cycle's budget — the rest of the cycle can still balance it.`,
           );
           sent++;
         }

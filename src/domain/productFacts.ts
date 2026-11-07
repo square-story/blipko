@@ -115,7 +115,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       },
       {
         command: "/report",
-        what: "This cycle's summary and biggest spending leaks.",
+        what: "This cycle's summary and top spends.",
       },
       {
         command: "/recurring",

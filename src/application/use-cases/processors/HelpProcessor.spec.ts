@@ -28,5 +28,6 @@ describe("HelpProcessor", () => {
     expect(body).toContain("/settings");
     expect(body).toContain("voice");
     expect(body).toContain("can I afford");
+    expect(body).toContain("top spends");
   });
 });

@@ -111,7 +111,7 @@ function bucketLine(
     status =
       delta >= 0
         ? `✅ under by ${formatMoney(delta)}`
-        : `❌ over by ${formatMoney(-delta)}`;
+        : `↗ ${formatMoney(-delta)} past budget`;
   }
   return `${meta.emoji} ${meta.label}  ${amounts}  ${status}${vs}`;
 }
@@ -238,7 +238,7 @@ export async function buildCycleReport(
     // "budget − spend", not "income − spend": net is computed from the effective
     // figure, which carries the expected-salary floor. Saying "income" made the
     // arithmetic on screen fail to add up whenever the floor applied.
-    `\n\n${net >= 0 ? "Net saved" : "Net overspent"} ${formatMoney(Math.abs(net))} (budget − spend)`;
+    `\n\n${net >= 0 ? "Net saved" : "Spent beyond budget"} ${formatMoney(Math.abs(net))} (budget − spend)`;
 
   if (moverBits.length > 0) {
     text += `\n\nBiggest movers: ${moverBits.join(" · ")}`;

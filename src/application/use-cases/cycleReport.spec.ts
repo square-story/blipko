@@ -173,4 +173,19 @@ describe("buildCycleReport", () => {
     const { text } = await buildCycleReport(deps(), user, NOW);
     expect(text).not.toContain("Last cycle's goal");
   });
+
+  it("words an overrun as past budget, without shaming", async () => {
+    expenseRepository.sumByBucketForMonth = vi.fn(
+      (_u: string, bucket: string, start: Date) =>
+        Promise.resolve(
+          isEnded(start)
+            ? ({ NEEDS: 30000, WANTS: 25000, SAVINGS: 5000 } as any)[bucket]
+            : 0,
+        ),
+    );
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).toContain("↗ ₹10,000 past budget");
+    expect(text).toContain("Spent beyond budget ₹10,000");
+    expect(text).not.toMatch(/❌|overspent/);
+  });
 });
