@@ -76,11 +76,12 @@ export class SendCycleReportUseCase {
       return 0;
     if (periodDayInfo(user.payday, now, tz).day !== 1) return 0;
 
-    const { text, endedKey, cashLeftover } = await buildCycleReport(
+    const { text, endedKey, cashLeftover, target } = await buildCycleReport(
       {
         expenseRepository: this.expenseRepository,
         budgetConfigRepository: this.budgetConfigRepository,
         incomeRepository: this.incomeRepository,
+        nudgeRepository: this.nudgeRepository,
       },
       user,
       now,
@@ -107,6 +108,8 @@ export class SendCycleReportUseCase {
       "NEEDS",
       "CYCLE_REPORT",
       endedKey,
+      // The goal this report shows; the next report follows up on it.
+      { target },
     );
     if (!isNew) return 0;
 

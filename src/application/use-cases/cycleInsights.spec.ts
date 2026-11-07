@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   followUpLine,
+  parseActionTarget,
   movers,
   nextCycleAction,
   unusualCategories,
@@ -191,5 +192,25 @@ describe("followUpLine", () => {
 
   it("no target means no line", () => {
     expect(followUpLine({ kind: "none" }, ended(0))).toBeNull();
+  });
+});
+
+describe("parseActionTarget", () => {
+  it("accepts each stored target shape", () => {
+    const targets = [
+      { kind: "category", name: "Taxi", limit: 1000 },
+      { kind: "bucket", bucket: "WANTS" },
+      { kind: "savings" },
+      { kind: "none" },
+    ];
+    for (const t of targets) expect(parseActionTarget(t)).toEqual(t);
+  });
+
+  it("rejects anything else, so a bad row never breaks a report", () => {
+    expect(parseActionTarget(null)).toBeNull();
+    expect(parseActionTarget({ kind: "category", name: "Taxi" })).toBeNull();
+    expect(parseActionTarget({ kind: "bucket", bucket: "SAVINGS" })).toBeNull();
+    expect(parseActionTarget({ kind: "teleport" })).toBeNull();
+    expect(parseActionTarget("savings")).toBeNull();
   });
 });

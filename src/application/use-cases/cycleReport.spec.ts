@@ -16,14 +16,18 @@ describe("buildCycleReport", () => {
   let incomeRepository: any;
   // bucket defaults to WANTS; the mock honours categoryTotals' bucket filter.
   let cats: Record<number, { name: string; total: number; bucket?: string }[]>;
+  // The goal stored on last cycle's CYCLE_REPORT ledger row (null = none).
+  let nudgeRepository: any;
   const deps = () => ({
     expenseRepository,
     budgetConfigRepository,
     incomeRepository,
+    nudgeRepository,
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    nudgeRepository = { findMeta: vi.fn().mockResolvedValue(null) };
     budgetConfigRepository = {
       findByUserId: vi
         .fn()
@@ -152,47 +156,48 @@ describe("buildCycleReport", () => {
     expect(text).toContain("💡 Next cycle:");
   });
 
-  // April's report would have said "keep Taxi near ₹1,000" (3,000 vs a usual
-  // of 1,000 in Mar/Feb); May came in at 900, so the loop closes as done.
-  it("reports on last cycle's goal", async () => {
-    const AFTER = new Date(2027, 5, 10);
+  // April's report showed "keep Taxi near ₹1,000" and stored it; May came in
+  // at 900, so the loop closes as done.
+  it("reports on the goal last cycle's report stored", async () => {
     cats[5] = [...cats[5]!, { name: "Taxi", total: 900 }];
-    cats[4] = [...cats[4]!, { name: "Taxi", total: 3000 }];
-    cats[3] = [...cats[3]!, { name: "Taxi", total: 1000 }];
-    cats[2] = [...cats[2]!, { name: "Taxi", total: 1000 }];
-    const { text } = await buildCycleReport(deps(), user, AFTER);
+    nudgeRepository.findMeta.mockResolvedValue({
+      target: { kind: "category", name: "Taxi", limit: 1000 },
+    });
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(nudgeRepository.findMeta).toHaveBeenCalledWith(
+      "u1",
+      "NEEDS",
+      "CYCLE_REPORT",
+      "2026-04-01",
+    );
     expect(text).toContain(
       "✅ Last cycle's goal — Taxi near ₹1,000: done (₹900).",
     );
   });
 
-  // A first cycle has no previous report, so there is no goal to check.
-  it("omits the follow-up when the prior cycle had no spending", async () => {
-    cats = { 5: cats[5]! };
-    expenseRepository.sumByBucketForMonth = vi.fn(
-      (_u: string, bucket: string, start: Date) =>
-        Promise.resolve(
-          isEnded(start)
-            ? ({ NEEDS: 20000, WANTS: 10000, SAVINGS: 5000 } as any)[bucket]
-            : 0,
-        ),
-    );
-    const { text } = await buildCycleReport(
-      deps(),
-      user,
-      new Date(2027, 5, 10),
-    );
+  // No stored goal means last cycle's report never showed one — a first
+  // report, or one sent before goals shipped. Nothing to follow up on.
+  it("omits the follow-up when last cycle's report stored no goal", async () => {
+    const { text } = await buildCycleReport(deps(), user, NOW);
     expect(text).not.toContain("Last cycle's goal");
   });
 
-  // Reports sent before the goal line shipped carried no goal, so the first
-  // report after deploy must not "follow up" on one the user never saw.
-  it("does not follow up on a cycle whose report predates goals", async () => {
-    cats[4] = [...cats[4]!, { name: "Taxi", total: 3000 }];
-    cats[3] = [...cats[3]!, { name: "Taxi", total: 1000 }];
-    cats[2] = [...cats[2]!, { name: "Taxi", total: 1000 }];
-    const { text } = await buildCycleReport(deps(), user, NOW); // Jun 2026
+  it("ignores a malformed stored goal instead of failing the report", async () => {
+    nudgeRepository.findMeta.mockResolvedValue({
+      target: { kind: "teleport" },
+    });
+    const { text } = await buildCycleReport(deps(), user, NOW);
     expect(text).not.toContain("Last cycle's goal");
+    expect(text).toContain("💡 Next cycle:");
+  });
+
+  it("returns the goal it showed, for the next report to check", async () => {
+    const { target } = await buildCycleReport(deps(), user, NOW);
+    expect(target).toEqual({
+      kind: "category",
+      name: "Eating Out",
+      limit: (1500 + 1000 + 1200) / 3,
+    });
   });
 
   // Saving more than usual is not a problem to fix.

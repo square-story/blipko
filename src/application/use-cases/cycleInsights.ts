@@ -1,4 +1,5 @@
 import { Bucket } from "@prisma/client";
+import { z } from "zod";
 import { BUCKET_META, formatMoney, sanitizeMd } from "./budgetMath";
 
 // Pure decision logic for the end-of-cycle report: what moved, what was out of
@@ -13,6 +14,25 @@ export type ActionTarget =
   | { kind: "bucket"; bucket: Bucket }
   | { kind: "savings" }
   | { kind: "none" };
+
+// The goal a report showed is stored on its CYCLE_REPORT ledger row and read
+// back by the next report. Validated on the way in: a malformed row must cost
+// the follow-up line, never the report.
+const ActionTargetSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("category"),
+    name: z.string().min(1),
+    limit: z.number().nonnegative(),
+  }),
+  z.object({ kind: z.literal("bucket"), bucket: z.enum(["NEEDS", "WANTS"]) }),
+  z.object({ kind: z.literal("savings") }),
+  z.object({ kind: z.literal("none") }),
+]);
+
+export function parseActionTarget(raw: unknown): ActionTarget | null {
+  const parsed = ActionTargetSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
 // Below this excess a "2× usual" jump is noise (₹40 → ₹120 chai money).
 const MIN_EXCESS = 500;

@@ -13,12 +13,15 @@ import {
 } from "./budgetMath";
 import { zonedYmd } from "../../utils/time";
 import {
+  ActionTarget,
   BucketRow,
   followUpLine,
   movers,
   nextCycleAction,
+  parseActionTarget,
   unusualCategories,
 } from "./cycleInsights";
+import { INudgeRepository } from "../../domain/repositories/INudgeRepository";
 
 const DEFAULT_TZ = "Asia/Kolkata";
 
@@ -26,10 +29,6 @@ const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
 // How many categories to scan per cycle when ranking movers.
 const MOVER_SCAN = 50;
-// First cycle-start date whose report carried a "💡 Next cycle" goal. A report
-// for a cycle that started earlier went out before goals shipped, so there is
-// nothing to follow up on. Must be on/after the deploy date of the goal line.
-const GOALS_SINCE = "2026-12-01";
 
 // NEEDS + WANTS category totals summed by name. Savings categories never feed
 // "unusual" or a goal: saving more than usual is not a problem to fix.
@@ -47,6 +46,8 @@ export interface CycleReportDeps {
   expenseRepository: IExpenseRepository;
   budgetConfigRepository: IBudgetConfigRepository;
   incomeRepository: IIncomeRepository;
+  // Reads the goal last cycle's report stored on its CYCLE_REPORT row.
+  nudgeRepository: Pick<INudgeRepository, "findMeta">;
 }
 
 export interface CycleReportUser {
@@ -64,6 +65,9 @@ export interface CycleReport {
   // a salary they never received — and since the floor applies again next
   // cycle, that phantom amount compounds every time they accept it.
   cashLeftover: number;
+  // The "💡 Next cycle" goal this report shows. The sender stores it on the
+  // CYCLE_REPORT ledger row so the next report follows up on exactly this.
+  target: ActionTarget;
 }
 
 // "May" for calendar-month cycles (payday=1), else "May 25 – Jun 25". Formats in
@@ -142,9 +146,8 @@ export async function buildCycleReport(
   tz: string = DEFAULT_TZ,
 ): Promise<CycleReport> {
   const { payday } = user;
-  // [0] ended, [1] prior. [1..3] is the "usual" baseline for the ended cycle;
-  // [2..4] the baseline last cycle's report used, to recompute its suggestion.
-  const cycles = previousCycles(payday, 5, now, tz);
+  // [0] ended, [1] prior, [1..3] the "usual" baseline for the ended cycle.
+  const cycles = previousCycles(payday, 4, now, tz);
   const ended = cycles[0]!;
   const prior = cycles[1]!;
   const totals = (c: { start: Date; end: Date }, bucket: Bucket | null) =>
@@ -180,15 +183,9 @@ export async function buildCycleReport(
     deps.incomeRepository.sumCarryForMonth(user.id, ended.start, ended.end),
   ]);
   const endedIncome = effectiveMonthlyIncome(expected, endedEarned, endedCarry);
-  const [priorEarned, priorCarry] = await Promise.all([
-    deps.incomeRepository.sumEarnedForMonth(user.id, prior.start, prior.end),
-    deps.incomeRepository.sumCarryForMonth(user.id, prior.start, prior.end),
-  ]);
-  const priorIncome = effectiveMonthlyIncome(expected, priorEarned, priorCarry);
 
   const lines: string[] = [];
   const endedBuckets: BucketRow[] = [];
-  const priorBuckets: BucketRow[] = [];
   let totalSpent = 0;
   let totalPrev = 0;
   for (const bucket of ORDER) {
@@ -210,33 +207,31 @@ export async function buildCycleReport(
     totalPrev += prevSpent;
     const budget = bucketBudget(endedIncome, config, bucket);
     endedBuckets.push({ bucket, spent, budget });
-    priorBuckets.push({
-      bucket,
-      spent: prevSpent,
-      budget: bucketBudget(priorIncome, config, bucket),
-    });
     lines.push(bucketLine(bucket, spent, budget, prevSpent));
   }
 
   const { up, down } = movers(cats[0] ?? [], cats[1] ?? []);
   const unusual = unusualCategories(spendCats[0] ?? [], spendCats.slice(1, 4));
-  const days = (c: { start: Date; end: Date }) =>
-    Math.round((c.end.getTime() - c.start.getTime()) / 86_400_000);
-  const cycleDays = days(ended);
-  const lastTarget = nextCycleAction({
-    unusual: unusualCategories(spendCats[1] ?? [], spendCats.slice(2, 5)),
-    buckets: priorBuckets,
-    cycleDays: days(prior),
-  }).target;
-  // Last cycle's report (sent on ended.start) carried a goal only once goals
-  // shipped, and only meant something if there was spending to judge.
-  const followUp =
-    totalPrev > 0 && zonedYmd(ended.start, tz) >= GOALS_SINCE
-      ? followUpLine(lastTarget, {
-          cats: spendCats[0] ?? [],
-          buckets: endedBuckets,
-        })
-      : null;
+  const cycleDays = Math.round(
+    (ended.end.getTime() - ended.start.getTime()) / 86_400_000,
+  );
+  // The goal last cycle's report actually showed. None stored means that
+  // report predates goals (or never went out), so there is nothing to check.
+  const stored = await deps.nudgeRepository.findMeta(
+    user.id,
+    "NEEDS",
+    "CYCLE_REPORT",
+    zonedYmd(prior.start, tz),
+  );
+  const lastTarget = parseActionTarget(
+    (stored as { target?: unknown } | null)?.target,
+  );
+  const followUp = lastTarget
+    ? followUpLine(lastTarget, {
+        cats: spendCats[0] ?? [],
+        buckets: endedBuckets,
+      })
+    : null;
   const label = cycleLabel(ended.start, ended.end, payday, tz);
   const net = endedIncome - totalSpent;
 
@@ -281,12 +276,14 @@ export async function buildCycleReport(
       )
       .join(" · ")}`;
   }
-  text += `\n\n${nextCycleAction({ unusual, buckets: endedBuckets, cycleDays }).text}`;
+  const action = nextCycleAction({ unusual, buckets: endedBuckets, cycleDays });
+  text += `\n\n${action.text}`;
 
   return {
     text,
     endedKey: zonedYmd(ended.start, tz),
     net,
     cashLeftover: endedGross - totalSpent,
+    target: action.target,
   };
 }

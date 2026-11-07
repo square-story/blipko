@@ -43,7 +43,10 @@ describe("SendCycleReport", () => {
         .fn()
         .mockResolvedValue({ needsPct: 50, wantsPct: 30, savingsPct: 20 }),
     };
-    nudgeRepository = { recordSentIfNew: vi.fn().mockResolvedValue(true) };
+    nudgeRepository = {
+      recordSentIfNew: vi.fn().mockResolvedValue(true),
+      findMeta: vi.fn().mockResolvedValue(null),
+    };
     incomeRepository = {
       sumForMonth: vi.fn().mockResolvedValue(0),
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
@@ -74,8 +77,28 @@ describe("SendCycleReport", () => {
       "NEEDS",
       "CYCLE_REPORT",
       "2026-05-01", // ended cycle = May
+      expect.objectContaining({ target: expect.any(Object) }),
     );
     expect(messageService.sendMessage).toHaveBeenCalledOnce();
+  });
+
+  // The next report follows up on exactly this goal, so it rides on the
+  // ledger row that also dedupes the send.
+  it("stores the goal it showed and reads last cycle's", async () => {
+    await useCase.execute(new Date(Date.UTC(2026, 5, 1, 12)), true);
+    expect(nudgeRepository.findMeta).toHaveBeenCalledWith(
+      "u1",
+      "NEEDS",
+      "CYCLE_REPORT",
+      "2026-04-01",
+    );
+    expect(nudgeRepository.recordSentIfNew).toHaveBeenCalledWith(
+      "u1",
+      "NEEDS",
+      "CYCLE_REPORT",
+      "2026-05-01",
+      { target: { kind: "savings" } }, // nothing saved → the savings goal
+    );
   });
 
   it("asks a one-tap clarity score after the report", async () => {

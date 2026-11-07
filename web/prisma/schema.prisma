@@ -137,6 +137,10 @@ model BudgetNudge {
   bucket    Bucket
   kind      NudgeKind
   periodKey String // "YYYY-MM"
+  // What the nudge said, when a later message needs it. CYCLE_REPORT stores
+  // { target } — the goal the report showed — so the next report can follow
+  // up on exactly that goal instead of recomputing it from edited data.
+  meta      Json?
   createdAt DateTime  @default(now())
 
   @@unique([userId, bucket, kind, periodKey])
