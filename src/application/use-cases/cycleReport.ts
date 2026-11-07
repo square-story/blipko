@@ -14,6 +14,7 @@ import {
 import { zonedYmd } from "../../utils/time";
 import {
   BucketRow,
+  followUpLine,
   movers,
   nextCycleAction,
   unusualCategories,
@@ -125,8 +126,9 @@ export async function buildCycleReport(
   tz: string = DEFAULT_TZ,
 ): Promise<CycleReport> {
   const { payday } = user;
-  // [0] ended, [1] prior, [1..3] the "usual" baseline for the ended cycle.
-  const cycles = previousCycles(payday, 4, now, tz);
+  // [0] ended, [1] prior. [1..3] is the "usual" baseline for the ended cycle;
+  // [2..4] the baseline last cycle's report used, to recompute its suggestion.
+  const cycles = previousCycles(payday, 5, now, tz);
   const ended = cycles[0]!;
   const prior = cycles[1]!;
   const cats = await Promise.all(
@@ -153,9 +155,15 @@ export async function buildCycleReport(
     deps.incomeRepository.sumCarryForMonth(user.id, ended.start, ended.end),
   ]);
   const endedIncome = effectiveMonthlyIncome(expected, endedEarned, endedCarry);
+  const [priorEarned, priorCarry] = await Promise.all([
+    deps.incomeRepository.sumEarnedForMonth(user.id, prior.start, prior.end),
+    deps.incomeRepository.sumCarryForMonth(user.id, prior.start, prior.end),
+  ]);
+  const priorIncome = effectiveMonthlyIncome(expected, priorEarned, priorCarry);
 
   const lines: string[] = [];
   const endedBuckets: BucketRow[] = [];
+  const priorBuckets: BucketRow[] = [];
   let totalSpent = 0;
   let totalPrev = 0;
   for (const bucket of ORDER) {
@@ -177,14 +185,29 @@ export async function buildCycleReport(
     totalPrev += prevSpent;
     const budget = bucketBudget(endedIncome, config, bucket);
     endedBuckets.push({ bucket, spent, budget });
+    priorBuckets.push({
+      bucket,
+      spent: prevSpent,
+      budget: bucketBudget(priorIncome, config, bucket),
+    });
     lines.push(bucketLine(bucket, spent, budget, prevSpent));
   }
 
   const { up, down } = movers(cats[0] ?? [], cats[1] ?? []);
   const unusual = unusualCategories(cats[0] ?? [], cats.slice(1, 4));
-  const cycleDays = Math.round(
-    (ended.end.getTime() - ended.start.getTime()) / 86_400_000,
-  );
+  const days = (c: { start: Date; end: Date }) =>
+    Math.round((c.end.getTime() - c.start.getTime()) / 86_400_000);
+  const cycleDays = days(ended);
+  const lastTarget = nextCycleAction({
+    unusual: unusualCategories(cats[1] ?? [], cats.slice(2, 5)),
+    buckets: priorBuckets,
+    cycleDays: days(prior),
+  }).target;
+  // No spending last cycle means no report went out with a goal to check.
+  const followUp =
+    totalPrev > 0
+      ? followUpLine(lastTarget, { cats: cats[0] ?? [], buckets: endedBuckets })
+      : null;
   const label = cycleLabel(ended.start, ended.end, payday, tz);
   const net = endedIncome - totalSpent;
 
@@ -209,6 +232,7 @@ export async function buildCycleReport(
   let text =
     `📊 ${label} wrapped\n\n` +
     headline +
+    (followUp ? `\n${followUp}` : "") +
     `\n\n${incomeBasisLine(endedGross, endedEarned, endedIncome, endedCarry)}\n` +
     lines.join("\n") +
     // "budget − spend", not "income − spend": net is computed from the effective

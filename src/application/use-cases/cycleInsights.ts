@@ -82,6 +82,39 @@ export function nextCycleAction(input: {
   };
 }
 
+// Closes the loop: did the cycle that just ended follow last cycle's
+// suggestion? The target is recomputed from last cycle's data, so nothing is
+// stored. A category within 10% of its limit counts as done.
+export function followUpLine(
+  target: ActionTarget,
+  ended: { cats: CatTotal[]; buckets: BucketRow[] },
+): string | null {
+  const head = "Last cycle's goal —";
+  if (target.kind === "category") {
+    const actual = ended.cats.find((c) => c.name === target.name)?.total ?? 0;
+    const goal = `${sanitizeMd(target.name)} near ${formatMoney(target.limit)}`;
+    return actual <= target.limit * 1.1
+      ? `✅ ${head} ${goal}: done (${formatMoney(actual)}).`
+      : `↗ ${head} ${goal}: came in at ${formatMoney(actual)}.`;
+  }
+  if (target.kind === "bucket") {
+    const row = ended.buckets.find((b) => b.bucket === target.bucket);
+    if (!row) return null;
+    const goal = `${BUCKET_META[target.bucket].label} within budget`;
+    return row.spent <= row.budget
+      ? `✅ ${head} ${goal}: done.`
+      : `↗ ${head} ${goal}: ran ${formatMoney(row.spent - row.budget)} past.`;
+  }
+  if (target.kind === "savings") {
+    const row = ended.buckets.find((b) => b.bucket === "SAVINGS");
+    if (!row) return null;
+    return row.spent >= row.budget
+      ? `✅ ${head} savings target: done.`
+      : `↗ ${head} savings target: short by ${formatMoney(row.budget - row.spent)}.`;
+  }
+  return null;
+}
+
 // Category deltas (ended − prior) across the union of both cycles' categories.
 // Returns the single biggest riser and faller.
 export function movers(

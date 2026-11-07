@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  followUpLine,
   movers,
   nextCycleAction,
   unusualCategories,
@@ -131,5 +132,64 @@ describe("movers", () => {
       up: { name: "Eating Out", delta: 1500 },
       down: { name: "Groceries", delta: -1000 },
     });
+  });
+});
+
+describe("followUpLine", () => {
+  const cat = { kind: "category", name: "Food Delivery", limit: 1200 } as const;
+  const rows = (wants: number, savings: number): BucketRow[] => [
+    { bucket: "NEEDS", spent: 20000, budget: 25000 },
+    { bucket: "WANTS", spent: wants, budget: 15000 },
+    { bucket: "SAVINGS", spent: savings, budget: 10000 },
+  ];
+  const ended = (total: number | null, wants = 10000, savings = 10000) => ({
+    cats: total == null ? [] : [fd(total)],
+    buckets: rows(wants, savings),
+  });
+
+  it("category within 10% of the limit is done", () => {
+    expect(followUpLine(cat, ended(1300))).toBe(
+      "✅ Last cycle's goal — Food Delivery near ₹1,200: done (₹1,300).",
+    );
+  });
+
+  it("category above the limit reports what it came in at", () => {
+    expect(followUpLine(cat, ended(2000))).toBe(
+      "↗ Last cycle's goal — Food Delivery near ₹1,200: came in at ₹2,000.",
+    );
+  });
+
+  it("a category with no spend this cycle counts as done at ₹0", () => {
+    expect(followUpLine(cat, ended(null))).toBe(
+      "✅ Last cycle's goal — Food Delivery near ₹1,200: done (₹0).",
+    );
+  });
+
+  it("bucket within budget is done", () => {
+    expect(
+      followUpLine({ kind: "bucket", bucket: "WANTS" }, ended(0, 14000)),
+    ).toBe("✅ Last cycle's goal — Wants within budget: done.");
+  });
+
+  it("bucket over budget reports the overrun", () => {
+    expect(
+      followUpLine({ kind: "bucket", bucket: "WANTS" }, ended(0, 18000)),
+    ).toBe("↗ Last cycle's goal — Wants within budget: ran ₹3,000 past.");
+  });
+
+  it("savings target met is done", () => {
+    expect(followUpLine({ kind: "savings" }, ended(0, 0, 10000))).toBe(
+      "✅ Last cycle's goal — savings target: done.",
+    );
+  });
+
+  it("savings short reports the shortfall", () => {
+    expect(followUpLine({ kind: "savings" }, ended(0, 0, 6000))).toBe(
+      "↗ Last cycle's goal — savings target: short by ₹4,000.",
+    );
+  });
+
+  it("no target means no line", () => {
+    expect(followUpLine({ kind: "none" }, ended(0))).toBeNull();
   });
 });

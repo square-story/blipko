@@ -145,4 +145,32 @@ describe("buildCycleReport", () => {
     expect(text).not.toContain("Unusual this cycle");
     expect(text).toContain("💡 Next cycle:");
   });
+
+  // April's report would have said "keep Taxi near ₹1,000" (3,000 vs a usual
+  // of 1,000 in Mar/Feb); May came in at 900, so the loop closes as done.
+  it("reports on last cycle's goal", async () => {
+    cats[5] = [...cats[5]!, { name: "Taxi", total: 900 }];
+    cats[4] = [...cats[4]!, { name: "Taxi", total: 3000 }];
+    cats[3] = [...cats[3]!, { name: "Taxi", total: 1000 }];
+    cats[2] = [...cats[2]!, { name: "Taxi", total: 1000 }];
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).toContain(
+      "✅ Last cycle's goal — Taxi near ₹1,000: done (₹900).",
+    );
+  });
+
+  // A first cycle has no previous report, so there is no goal to check.
+  it("omits the follow-up when the prior cycle had no spending", async () => {
+    cats = { 5: cats[5]! };
+    expenseRepository.sumByBucketForMonth = vi.fn(
+      (_u: string, bucket: string, start: Date) =>
+        Promise.resolve(
+          isEnded(start)
+            ? ({ NEEDS: 20000, WANTS: 10000, SAVINGS: 5000 } as any)[bucket]
+            : 0,
+        ),
+    );
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).not.toContain("Last cycle's goal");
+  });
 });
