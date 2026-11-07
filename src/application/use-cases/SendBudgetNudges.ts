@@ -16,7 +16,7 @@ import {
   pctSpent,
   projectedRunOut,
 } from "./budgetMath";
-import { zonedParts, zonedYmd } from "../../utils/time";
+import { zonedParts, zonedStartOfDayUtc, zonedYmd } from "../../utils/time";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 // Savings overspend is good, not a leak — only nudge the spending buckets.
@@ -31,6 +31,9 @@ const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
 // ticks inside one window cannot re-send.
 const WINDOW_HOURS = 4;
 const DAY_MS = 86_400_000;
+// From this local hour the check-in asks about a day with nothing logged —
+// earlier, an empty day is just a day that hasn't happened yet.
+const QUIET_DAY_HOUR = 19;
 const NUDGE_WINDOWS: Record<NotificationDosage, number[]> = {
   OFF: [],
   GENTLE: [19], //           19:00-22:59
@@ -255,6 +258,17 @@ export class SendBudgetNudgesUseCase {
           lines.push(
             `At this pace ${runOut.label} runs out around ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: tz }).format(at)}.`,
           );
+        }
+        const local = zonedParts(now, tz);
+        if (local.hour >= QUIET_DAY_HOUR) {
+          const today = await this.expenseRepository.findRecent(user.id, {
+            limit: 1,
+            from: zonedStartOfDayUtc(local.year, local.month, local.day, tz),
+          });
+          if (today.length === 0)
+            lines.push(
+              'Nothing logged today yet — small stuff adds up. Reply like "chai 20, auto 60".',
+            );
         }
         await this.send(user.telegramId, lines.join("\n"));
         sent++;
