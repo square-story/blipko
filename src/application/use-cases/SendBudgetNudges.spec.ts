@@ -306,6 +306,15 @@ describe("SendBudgetNudges", () => {
     expect(checkin()).toContain("At this pace 🎯 Wants runs out around 23 Jun");
   });
 
+  // Rent (₹11,250) on day 1 plus ₹140/day would naively "run out" on day 29,
+  // but Needs is mostly fixed costs — a pace there is noise, not a warning.
+  it("never projects a pace for Needs", async () => {
+    setSpend({ NEEDS: 13350, WANTS: 5000 });
+    await useCase.execute(NOW, true);
+    expect(checkin()).toBeDefined();
+    expect(checkin()).not.toContain("At this pace");
+  });
+
   it("check-in has no pace line when spending lasts the cycle", async () => {
     setSpend({ NEEDS: 5000, WANTS: 5000 });
     await useCase.execute(NOW, true);

@@ -198,7 +198,13 @@ export class SendBudgetNudgesUseCase {
       );
       const meta = BUCKET_META[bucket];
       summary.push(`${meta.emoji} ${meta.label} ${pctSpent(spent, budget)}%`);
-      const runOutDay = projectedRunOut(spent, budget, day, daysInPeriod);
+      // Wants only: Needs is dominated by fixed costs (rent, EMIs) that land
+      // once, so averaging them into a daily pace cries wolf for two weeks.
+      // ponytail: Wants-only; subtract posted recurring rules if Needs pace is wanted.
+      const runOutDay =
+        bucket === "WANTS"
+          ? projectedRunOut(spent, budget, day, daysInPeriod)
+          : null;
       if (runOutDay !== null && (!runOut || runOutDay < runOut.day))
         runOut = { label: `${meta.emoji} ${meta.label}`, day: runOutDay };
 

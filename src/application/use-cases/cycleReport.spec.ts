@@ -14,7 +14,8 @@ describe("buildCycleReport", () => {
   let expenseRepository: any;
   let budgetConfigRepository: any;
   let incomeRepository: any;
-  let cats: Record<number, { name: string; total: number }[]>;
+  // bucket defaults to WANTS; the mock honours categoryTotals' bucket filter.
+  let cats: Record<number, { name: string; total: number; bucket?: string }[]>;
   const deps = () => ({
     expenseRepository,
     budgetConfigRepository,
@@ -68,8 +69,13 @@ describe("buildCycleReport", () => {
       ),
       // Keyed on the cycle's IST month: May ended, April prior, Mar/Feb/Jan
       // the baseline that "usual" is computed from.
-      categoryTotals: vi.fn((_u: string, start: Date) =>
-        Promise.resolve(cats[zonedParts(start, "Asia/Kolkata").month] ?? []),
+      categoryTotals: vi.fn(
+        (_u: string, start: Date, _end: Date, bucket: string | null) =>
+          Promise.resolve(
+            (cats[zonedParts(start, "Asia/Kolkata").month] ?? [])
+              .filter((c) => !bucket || (c.bucket ?? "WANTS") === bucket)
+              .map(({ name, total }) => ({ name, total })),
+          ),
       ),
     };
   });
@@ -149,11 +155,12 @@ describe("buildCycleReport", () => {
   // April's report would have said "keep Taxi near ₹1,000" (3,000 vs a usual
   // of 1,000 in Mar/Feb); May came in at 900, so the loop closes as done.
   it("reports on last cycle's goal", async () => {
+    const AFTER = new Date(2027, 5, 10);
     cats[5] = [...cats[5]!, { name: "Taxi", total: 900 }];
     cats[4] = [...cats[4]!, { name: "Taxi", total: 3000 }];
     cats[3] = [...cats[3]!, { name: "Taxi", total: 1000 }];
     cats[2] = [...cats[2]!, { name: "Taxi", total: 1000 }];
-    const { text } = await buildCycleReport(deps(), user, NOW);
+    const { text } = await buildCycleReport(deps(), user, AFTER);
     expect(text).toContain(
       "✅ Last cycle's goal — Taxi near ₹1,000: done (₹900).",
     );
@@ -170,8 +177,38 @@ describe("buildCycleReport", () => {
             : 0,
         ),
     );
-    const { text } = await buildCycleReport(deps(), user, NOW);
+    const { text } = await buildCycleReport(
+      deps(),
+      user,
+      new Date(2027, 5, 10),
+    );
     expect(text).not.toContain("Last cycle's goal");
+  });
+
+  // Reports sent before the goal line shipped carried no goal, so the first
+  // report after deploy must not "follow up" on one the user never saw.
+  it("does not follow up on a cycle whose report predates goals", async () => {
+    cats[4] = [...cats[4]!, { name: "Taxi", total: 3000 }];
+    cats[3] = [...cats[3]!, { name: "Taxi", total: 1000 }];
+    cats[2] = [...cats[2]!, { name: "Taxi", total: 1000 }];
+    const { text } = await buildCycleReport(deps(), user, NOW); // Jun 2026
+    expect(text).not.toContain("Last cycle's goal");
+  });
+
+  // Saving more than usual is not a problem to fix.
+  it("never flags a savings category as unusual", async () => {
+    cats[5] = [
+      ...cats[5]!,
+      { name: "Investments", total: 15000, bucket: "SAVINGS" },
+    ];
+    for (const m of [4, 3, 2])
+      cats[m] = [
+        ...cats[m]!,
+        { name: "Investments", total: 5000, bucket: "SAVINGS" },
+      ];
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).not.toContain("Investments ₹15,000 (usually");
+    expect(text).not.toContain("keep Investments near");
   });
 
   it("words an overrun as past budget, without shaming", async () => {

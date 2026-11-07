@@ -26,6 +26,22 @@ const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
 // How many categories to scan per cycle when ranking movers.
 const MOVER_SCAN = 50;
+// First cycle-start date whose report carried a "💡 Next cycle" goal. A report
+// for a cycle that started earlier went out before goals shipped, so there is
+// nothing to follow up on. Must be on/after the deploy date of the goal line.
+const GOALS_SINCE = "2026-12-01";
+
+// NEEDS + WANTS category totals summed by name. Savings categories never feed
+// "unusual" or a goal: saving more than usual is not a problem to fix.
+function spendTotals(
+  needs: { name: string; total: number }[],
+  wants: { name: string; total: number }[],
+): { name: string; total: number }[] {
+  const byName = new Map<string, number>();
+  for (const c of [...needs, ...wants])
+    byName.set(c.name, (byName.get(c.name) ?? 0) + c.total);
+  return [...byName].map(([name, total]) => ({ name, total }));
+}
 
 export interface CycleReportDeps {
   expenseRepository: IExpenseRepository;
@@ -131,17 +147,26 @@ export async function buildCycleReport(
   const cycles = previousCycles(payday, 5, now, tz);
   const ended = cycles[0]!;
   const prior = cycles[1]!;
-  const cats = await Promise.all(
-    cycles.map((c) =>
-      deps.expenseRepository.categoryTotals(
-        user.id,
-        c.start,
-        c.end,
-        null,
-        MOVER_SCAN,
-      ),
+  const totals = (c: { start: Date; end: Date }, bucket: Bucket | null) =>
+    deps.expenseRepository.categoryTotals(
+      user.id,
+      c.start,
+      c.end,
+      bucket,
+      MOVER_SCAN,
+    );
+  const [cats, spendCats] = await Promise.all([
+    Promise.all(cycles.map((c) => totals(c, null))),
+    Promise.all(
+      cycles.map(async (c) => {
+        const [needs, wants] = await Promise.all([
+          totals(c, "NEEDS"),
+          totals(c, "WANTS"),
+        ]);
+        return spendTotals(needs, wants);
+      }),
     ),
-  );
+  ]);
   const expected = Number(user.monthlyIncome ?? 0);
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
@@ -194,19 +219,23 @@ export async function buildCycleReport(
   }
 
   const { up, down } = movers(cats[0] ?? [], cats[1] ?? []);
-  const unusual = unusualCategories(cats[0] ?? [], cats.slice(1, 4));
+  const unusual = unusualCategories(spendCats[0] ?? [], spendCats.slice(1, 4));
   const days = (c: { start: Date; end: Date }) =>
     Math.round((c.end.getTime() - c.start.getTime()) / 86_400_000);
   const cycleDays = days(ended);
   const lastTarget = nextCycleAction({
-    unusual: unusualCategories(cats[1] ?? [], cats.slice(2, 5)),
+    unusual: unusualCategories(spendCats[1] ?? [], spendCats.slice(2, 5)),
     buckets: priorBuckets,
     cycleDays: days(prior),
   }).target;
-  // No spending last cycle means no report went out with a goal to check.
+  // Last cycle's report (sent on ended.start) carried a goal only once goals
+  // shipped, and only meant something if there was spending to judge.
   const followUp =
-    totalPrev > 0
-      ? followUpLine(lastTarget, { cats: cats[0] ?? [], buckets: endedBuckets })
+    totalPrev > 0 && zonedYmd(ended.start, tz) >= GOALS_SINCE
+      ? followUpLine(lastTarget, {
+          cats: spendCats[0] ?? [],
+          buckets: endedBuckets,
+        })
       : null;
   const label = cycleLabel(ended.start, ended.end, payday, tz);
   const net = endedIncome - totalSpent;
