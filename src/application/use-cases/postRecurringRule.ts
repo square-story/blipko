@@ -29,6 +29,8 @@ export async function postRecurringRule(
   monthKey: string,
 ): Promise<string | null> {
   const amount = Number(rule.amount);
+  // The "[recurring]" prefix is load-bearing: hasManualExpenseSince (Prisma
+  // expense repo) excludes it so an auto-post never counts as the user logging.
   const rawText = `[recurring] ${rule.note ?? rule.kind.toLowerCase()}`;
 
   let summary: string;

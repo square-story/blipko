@@ -289,13 +289,14 @@ export class SendBudgetNudgesUseCase {
         }
         const local = zonedParts(now, tz);
         if (local.hour >= QUIET_DAY_HOUR) {
-          const today = await this.expenseRepository.findRecent(user.id, {
-            limit: 1,
-            from: zonedStartOfDayUtc(local.year, local.month, local.day, tz),
-          });
-          if (today.length === 0)
+          const loggedToday =
+            await this.expenseRepository.hasManualExpenseSince(
+              user.id,
+              zonedStartOfDayUtc(local.year, local.month, local.day, tz),
+            );
+          if (!loggedToday)
             lines.push(
-              'Nothing logged today yet — small stuff adds up. Reply like "chai 20, auto 60".',
+              'No spending logged today yet — small stuff adds up. Reply like "chai 20, auto 60".',
             );
         }
         const tomorrow = chargesTomorrow(

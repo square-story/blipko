@@ -42,7 +42,7 @@ describe("SendBudgetNudges", () => {
     };
     expenseRepository = {
       sumByBucketForMonth: vi.fn().mockResolvedValue(0),
-      findRecent: vi.fn().mockResolvedValue([]),
+      hasManualExpenseSince: vi.fn().mockResolvedValue(false),
     };
     budgetConfigRepository = {
       findByUserId: vi
@@ -325,30 +325,30 @@ describe("SendBudgetNudges", () => {
   describe("quiet-day prompt", () => {
     const EVENING = new Date(Date.UTC(2026, 5, 15, 20));
     const QUIET =
-      'Nothing logged today yet — small stuff adds up. Reply like "chai 20, auto 60".';
+      'No spending logged today yet — small stuff adds up. Reply like "chai 20, auto 60".';
 
     it("nudges in the evening when nothing was logged today", async () => {
       setSpend({ NEEDS: 5000, WANTS: 5000 });
       await useCase.execute(EVENING, true);
       expect(checkin()).toContain(QUIET);
-      expect(expenseRepository.findRecent).toHaveBeenCalledWith("u1", {
-        limit: 1,
-        from: new Date(Date.UTC(2026, 5, 15)),
-      });
+      expect(expenseRepository.hasManualExpenseSince).toHaveBeenCalledWith(
+        "u1",
+        new Date(Date.UTC(2026, 5, 15)),
+      );
     });
 
     it("stays quiet when something was logged today", async () => {
       setSpend({ NEEDS: 5000, WANTS: 5000 });
-      expenseRepository.findRecent.mockResolvedValue([{ id: "e1" }]);
+      expenseRepository.hasManualExpenseSince.mockResolvedValue(true);
       await useCase.execute(EVENING, true);
-      expect(checkin()).not.toContain("Nothing logged today");
+      expect(checkin()).not.toContain("No spending logged today");
     });
 
     it("does not ask before the evening", async () => {
       setSpend({ NEEDS: 5000, WANTS: 5000 });
       await useCase.execute(NOW, true); // 12:00
-      expect(checkin()).not.toContain("Nothing logged today");
-      expect(expenseRepository.findRecent).not.toHaveBeenCalled();
+      expect(checkin()).not.toContain("No spending logged today");
+      expect(expenseRepository.hasManualExpenseSince).not.toHaveBeenCalled();
     });
   });
 

@@ -75,3 +75,26 @@ describe("PrismaExpenseRepository.findRecent category resolution", () => {
     });
   });
 });
+
+// The evening "nothing logged" prompt is about what the user typed. A rent
+// rule auto-posting at 06:00 must not count as the user having logged today.
+describe("PrismaExpenseRepository.hasManualExpenseSince", () => {
+  it("counts live expenses since the time, excluding auto-posted recurring ones", async () => {
+    const prisma: any = { expense: { count: vi.fn().mockResolvedValue(0) } };
+    const repo = new PrismaExpenseRepository(prisma);
+    const from = new Date(Date.UTC(2026, 5, 15));
+
+    expect(await repo.hasManualExpenseSince("u1", from)).toBe(false);
+    expect(prisma.expense.count).toHaveBeenCalledWith({
+      where: {
+        userId: "u1",
+        isDeleted: false,
+        date: { gte: from },
+        NOT: { rawText: { startsWith: "[recurring]" } },
+      },
+    });
+
+    prisma.expense.count.mockResolvedValue(2);
+    expect(await repo.hasManualExpenseSince("u1", from)).toBe(true);
+  });
+});
