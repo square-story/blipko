@@ -77,6 +77,16 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         why: "Savings stop being a leftover and become a thing with a name and a finish line.",
       },
       {
+        name: "End-of-cycle report",
+        what: "On the first morning of a new cycle the bot sends last cycle's summary: spend per bucket against budget, the biggest movers versus the cycle before, categories well above their usual, how last cycle's suggestion went, and one thing to change next cycle.",
+        why: "A summary that only lists numbers resets to zero every month. Checking last cycle's goal and naming one concrete change is what turns the report into progress.",
+      },
+      {
+        name: "Clarity check",
+        what: "After each cycle report, one tap rates how sure you are about where your money went.",
+        why: "So Blipko can tell whether it is actually making things clearer.",
+      },
+      {
         name: "Recurring income and expenses",
         what: 'Set up repeating items once — "rent 8000 on 1st every month" — and they post themselves each cycle.',
         why: "Rent, salary, EMIs and subscriptions are the predictable bulk of a month; logging them by hand is the boring part.",
