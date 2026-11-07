@@ -452,7 +452,7 @@ model ParseLog {
   batchId String?
 
   userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expense Expense?
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { getAllChangelogEntries } from "@/lib/changelog";
 import { redactExport } from "@/lib/export-redact";
 import { prisma } from "@/lib/prisma";
@@ -85,6 +85,29 @@ export async function exportMyData(): Promise<{
   if (!user) return { success: false, message: "Account not found" };
 
   return { success: true, json: JSON.stringify(redactExport(user), null, 2) };
+}
+
+// Hard-deletes the signed-in user. Every user-owned table cascades from User
+// (ParseLog included), so one delete erases expenses, chat history and raw
+// message logs. VerificationToken is keyed by email, not a FK, so it goes
+// explicitly. signOut redirects, so success never returns to the caller.
+export async function deleteMyAccount(): Promise<{
+  success: boolean;
+  message?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+  const { id, email } = session.user;
+
+  await prisma.$transaction([
+    ...(email
+      ? [prisma.verificationToken.deleteMany({ where: { identifier: email } })]
+      : []),
+    prisma.user.delete({ where: { id } }),
+  ]);
+
+  await signOut({ redirectTo: "/" });
+  return { success: true };
 }
 
 export type ChangelogNotice = {
