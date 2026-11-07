@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { getAllChangelogEntries } from "@/lib/changelog";
+import { redactExport } from "@/lib/export-redact";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "crypto";
@@ -50,6 +51,40 @@ export async function unlinkTelegram(): Promise<{ success: boolean }> {
 
   revalidatePath("/dashboard/account");
   return { success: true };
+}
+
+// Everything Blipko stores about the signed-in user, as pretty JSON (DPDP
+// right of access). Auth/link relations are never selected; redactExport is
+// the backstop if someone adds them later.
+export async function exportMyData(): Promise<{
+  success: boolean;
+  json?: string;
+  message?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      expenses: true,
+      incomes: true,
+      budgetConfig: true,
+      categories: true,
+      incomeCategories: true,
+      categoryMemories: true,
+      logs: true,
+      budgetNudges: true,
+      recurringRules: true,
+      boxes: true,
+      boxEntries: true,
+      conversationMessages: true,
+      pendingActions: true,
+    },
+  });
+  if (!user) return { success: false, message: "Account not found" };
+
+  return { success: true, json: JSON.stringify(redactExport(user), null, 2) };
 }
 
 export type ChangelogNotice = {
