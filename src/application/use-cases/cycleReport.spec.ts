@@ -14,6 +14,7 @@ describe("buildCycleReport", () => {
   let expenseRepository: any;
   let budgetConfigRepository: any;
   let incomeRepository: any;
+  let cats: Record<number, { name: string; total: number }[]>;
   const deps = () => ({
     expenseRepository,
     budgetConfigRepository,
@@ -43,22 +44,32 @@ describe("buildCycleReport", () => {
       WANTS: 12000,
       SAVINGS: 4000,
     };
+    cats = {
+      5: [
+        { name: "Groceries", total: 8000 },
+        { name: "Eating Out", total: 3000 },
+      ],
+      4: [
+        { name: "Groceries", total: 9000 },
+        { name: "Eating Out", total: 1500 },
+      ],
+      3: [
+        { name: "Groceries", total: 9000 },
+        { name: "Eating Out", total: 1000 },
+      ],
+      2: [
+        { name: "Groceries", total: 9000 },
+        { name: "Eating Out", total: 1200 },
+      ],
+    };
     expenseRepository = {
       sumByBucketForMonth: vi.fn((_u: string, bucket: string, start: Date) =>
         Promise.resolve((isEnded(start) ? ended : prior)[bucket] ?? 0),
       ),
+      // Keyed on the cycle's IST month: May ended, April prior, Mar/Feb/Jan
+      // the baseline that "usual" is computed from.
       categoryTotals: vi.fn((_u: string, start: Date) =>
-        Promise.resolve(
-          isEnded(start)
-            ? [
-                { name: "Groceries", total: 8000 },
-                { name: "Eating Out", total: 3000 },
-              ]
-            : [
-                { name: "Groceries", total: 9000 },
-                { name: "Eating Out", total: 1500 },
-              ],
-        ),
+        Promise.resolve(cats[zonedParts(start, "Asia/Kolkata").month] ?? []),
       ),
     };
   });
@@ -115,5 +126,23 @@ describe("buildCycleReport", () => {
     const { text } = await buildCycleReport(deps(), user, NOW);
     // 50,000 income − 35,000 spend = 15,000 saved.
     expect(text).toContain("Net saved ₹15,000");
+  });
+
+  // Eating Out: 3,000 in May vs a usual of (1,500 + 1,000 + 1,200) / 3 = 1,233.
+  it("adds an unusual line and one next-cycle action", async () => {
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).toContain(
+      "Unusual this cycle: Eating Out ₹3,000 (usually ₹1,233)",
+    );
+    expect(text).toContain(
+      "💡 Next cycle: keep Eating Out near its usual ₹1,233 — that frees ₹1,767.",
+    );
+  });
+
+  it("still ends with a next-cycle action when there is no history", async () => {
+    cats = { 5: cats[5]! };
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).not.toContain("Unusual this cycle");
+    expect(text).toContain("💡 Next cycle:");
   });
 });

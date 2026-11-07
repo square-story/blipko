@@ -12,6 +12,12 @@ import {
   sanitizeMd,
 } from "./budgetMath";
 import { zonedYmd } from "../../utils/time";
+import {
+  BucketRow,
+  movers,
+  nextCycleAction,
+  unusualCategories,
+} from "./cycleInsights";
 
 const DEFAULT_TZ = "Asia/Kolkata";
 
@@ -109,49 +115,6 @@ function bucketLine(
   return `${meta.emoji} ${meta.label}  ${amounts}  ${status}${vs}`;
 }
 
-// Category deltas (ended − prior) across the union of both cycles' categories,
-// sorted by signed change. Returns the single biggest riser and faller.
-async function movers(
-  deps: CycleReportDeps,
-  userId: string,
-  ended: { start: Date; end: Date },
-  prior: { start: Date; end: Date },
-): Promise<{
-  up: { name: string; delta: number } | null;
-  down: { name: string; delta: number } | null;
-}> {
-  const [endedCats, priorCats] = await Promise.all([
-    deps.expenseRepository.categoryTotals(
-      userId,
-      ended.start,
-      ended.end,
-      null,
-      MOVER_SCAN,
-    ),
-    deps.expenseRepository.categoryTotals(
-      userId,
-      prior.start,
-      prior.end,
-      null,
-      MOVER_SCAN,
-    ),
-  ]);
-
-  const deltas = new Map<string, number>();
-  for (const c of endedCats)
-    deltas.set(c.name, (deltas.get(c.name) ?? 0) + c.total);
-  for (const c of priorCats)
-    deltas.set(c.name, (deltas.get(c.name) ?? 0) - c.total);
-
-  let up: { name: string; delta: number } | null = null;
-  let down: { name: string; delta: number } | null = null;
-  for (const [name, delta] of deltas) {
-    if (delta > 0 && (!up || delta > up.delta)) up = { name, delta };
-    if (delta < 0 && (!down || delta < down.delta)) down = { name, delta };
-  }
-  return { up, down };
-}
-
 // End-of-cycle summary comparing the just-ended cycle to the one before it:
 // income, per-bucket spent vs budget with vs-last deltas, biggest movers, and a
 // decision-oriented headline. Pure formatting on top of the repositories.
@@ -162,9 +125,21 @@ export async function buildCycleReport(
   tz: string = DEFAULT_TZ,
 ): Promise<CycleReport> {
   const { payday } = user;
-  const cycles = previousCycles(payday, 2, now, tz);
+  // [0] ended, [1] prior, [1..3] the "usual" baseline for the ended cycle.
+  const cycles = previousCycles(payday, 4, now, tz);
   const ended = cycles[0]!;
   const prior = cycles[1]!;
+  const cats = await Promise.all(
+    cycles.map((c) =>
+      deps.expenseRepository.categoryTotals(
+        user.id,
+        c.start,
+        c.end,
+        null,
+        MOVER_SCAN,
+      ),
+    ),
+  );
   const expected = Number(user.monthlyIncome ?? 0);
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
@@ -180,6 +155,7 @@ export async function buildCycleReport(
   const endedIncome = effectiveMonthlyIncome(expected, endedEarned, endedCarry);
 
   const lines: string[] = [];
+  const endedBuckets: BucketRow[] = [];
   let totalSpent = 0;
   let totalPrev = 0;
   for (const bucket of ORDER) {
@@ -199,17 +175,16 @@ export async function buildCycleReport(
     ]);
     totalSpent += spent;
     totalPrev += prevSpent;
-    lines.push(
-      bucketLine(
-        bucket,
-        spent,
-        bucketBudget(endedIncome, config, bucket),
-        prevSpent,
-      ),
-    );
+    const budget = bucketBudget(endedIncome, config, bucket);
+    endedBuckets.push({ bucket, spent, budget });
+    lines.push(bucketLine(bucket, spent, budget, prevSpent));
   }
 
-  const { up, down } = await movers(deps, user.id, ended, prior);
+  const { up, down } = movers(cats[0] ?? [], cats[1] ?? []);
+  const unusual = unusualCategories(cats[0] ?? [], cats.slice(1, 4));
+  const cycleDays = Math.round(
+    (ended.end.getTime() - ended.start.getTime()) / 86_400_000,
+  );
   const label = cycleLabel(ended.start, ended.end, payday, tz);
   const net = endedIncome - totalSpent;
 
@@ -244,6 +219,16 @@ export async function buildCycleReport(
   if (moverBits.length > 0) {
     text += `\n\nBiggest movers: ${moverBits.join(" · ")}`;
   }
+
+  if (unusual.length > 0) {
+    text += `\n\nUnusual this cycle: ${unusual
+      .map(
+        (u) =>
+          `${sanitizeMd(u.name)} ${formatMoney(u.total)} (usually ${formatMoney(u.usual)})`,
+      )
+      .join(" · ")}`;
+  }
+  text += `\n\n${nextCycleAction({ unusual, buckets: endedBuckets, cycleDays }).text}`;
 
   return {
     text,
