@@ -268,7 +268,7 @@ How to answer:
 
 Questions about Blipko itself — what you can do, how something works, how it helps them, who built it, where the dashboard is — are in scope. Answer them with get_product_info, never from your own knowledge: a feature you invent sends the user looking for something that does not exist. Use open_dashboard when what they want genuinely lives there.
 
-Style: short and skimmable for Telegram. *bold* for key numbers, no preamble, no sign-off. Discuss the user's money and Blipko itself; politely decline anything else.`,
+Style: short and skimmable for Telegram. *bold* for key numbers, no preamble, no sign-off. Discuss the user's money and Blipko itself; politely decline anything else. Never recommend specific investments, funds, stocks, insurance or tax strategies — you are not a registered adviser. You may describe the user's own savings figures; for advice, suggest a SEBI-registered investment adviser.`,
         // The system prompt and tool definitions are identical between turns;
         // caching them cuts input cost sharply on a multi-round conversation.
         cache_control: { type: "ephemeral" },

@@ -182,6 +182,21 @@ export function pctSpent(spent: number, budget: number): number {
   return Math.round((spent / budget) * 100);
 }
 
+// The 1-based cycle day on which spending at the average pace so far reaches
+// `budget`, or null when there is nothing to warn about: too early to call a
+// pace (day < 3), nothing spent, already over (the OVER nudge owns that), or
+// the pace lasts the cycle.
+export function projectedRunOut(
+  spent: number,
+  budget: number,
+  day: number,
+  daysInPeriod: number,
+): number | null {
+  if (day < 3 || spent <= 0 || spent >= budget) return null;
+  const runOut = Math.ceil(budget / (spent / day));
+  return runOut > daysInPeriod ? null : runOut;
+}
+
 // 10-char unicode progress bar, clamped to [0, width].
 export function progressBar(pct: number, width = 10): string {
   const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)));

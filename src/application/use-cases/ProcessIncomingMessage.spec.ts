@@ -533,6 +533,47 @@ describe("ProcessIncomingMessage (budget flow)", () => {
   // aiParser.parseText was called at all — that call is the cost this path
   // exists to remove, and the cases it must NOT skip are the ones that would
   // silently log the wrong thing.
+  it("records a clarity-score tap before any AI parsing", async () => {
+    const clarityScoreRepository = {
+      record: vi.fn().mockResolvedValue(undefined),
+    };
+    const withClarity = new ProcessIncomingMessageUseCase(
+      aiParser,
+      userRepository,
+      expenseRepository,
+      categoryRepository,
+      budgetConfigRepository,
+      parseLogRepository,
+      incomeRepository,
+      incomeCategoryRepository,
+      recurringRuleRepository,
+      boxRepository,
+      conversationRepository,
+      messageService,
+      queryAgent,
+      async (fn: any) => fn({}),
+      "https://blipko.lol",
+      null,
+      null,
+      null,
+      clarityScoreRepository,
+    );
+
+    const out = await withClarity.execute({
+      platformUserId: "123",
+      textMessage: "clr:2026-05-01:4",
+      callbackQueryId: "cq1",
+    });
+
+    expect(clarityScoreRepository.record).toHaveBeenCalledWith(
+      "u1",
+      "2026-05-01",
+      4,
+    );
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+    expect(out.toast).toBe("Thanks — noted 🙏");
+  });
+
   describe("remembered phrases", () => {
     let categoryMemoryRepository: any;
     let memoUseCase: ProcessIncomingMessageUseCase;

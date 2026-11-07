@@ -59,7 +59,7 @@ describe("ReportProcessor", () => {
     );
   });
 
-  it("renders income, per-bucket deltas, savings goal, and biggest leaks", async () => {
+  it("renders income, per-bucket deltas, savings goal, and top Wants spends", async () => {
     await processor.process({
       user,
       platformUserId: "123",
@@ -73,9 +73,9 @@ describe("ReportProcessor", () => {
     expect(body).toContain("₹23,400 / ₹25,000");
     expect(body).toContain("under by ₹1,600");
     expect(body).toContain("₹16,200 / ₹15,000");
-    expect(body).toContain("over by ₹1,200");
+    expect(body).toContain("↗ ₹1,200 past budget");
     expect(body).toContain("goal hit");
-    expect(body).toContain("Biggest leaks in Wants:");
+    expect(body).toContain("Top Wants spends:");
     expect(body).toContain("Food delivery  ₹3,800");
     expect(body).toContain("Shopping  ₹2,900");
   });
@@ -113,7 +113,7 @@ describe("ReportProcessor", () => {
     expect(body).not.toContain("money coming back");
   });
 
-  it("omits the leaks section when there is no Wants spend", async () => {
+  it("omits the top-spends section when there is no Wants spend", async () => {
     expenseRepository.topCategoriesForMonth.mockResolvedValue([]);
     await processor.process({
       user,
@@ -121,6 +121,6 @@ describe("ReportProcessor", () => {
       textMessage: "report",
     } as any);
     const body = messageService.sendMessage.mock.calls[0][0].body;
-    expect(body).not.toContain("Biggest leaks");
+    expect(body).not.toContain("Top Wants spends");
   });
 });

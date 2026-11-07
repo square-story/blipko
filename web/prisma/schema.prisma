@@ -122,6 +122,7 @@ model User {
   conversationMessages ConversationMessage[]
   pendingActions       PendingAction[]
   telegramLinkToken    TelegramLinkToken?
+  clarityScores        ClarityScore[]
 }
 
 // Idempotency log for proactive nudges. periodKey carries the repeat scope, and
@@ -136,6 +137,10 @@ model BudgetNudge {
   bucket    Bucket
   kind      NudgeKind
   periodKey String // "YYYY-MM"
+  // What the nudge said, when a later message needs it. CYCLE_REPORT stores
+  // { target } — the goal the report showed — so the next report can follow
+  // up on exactly that goal instead of recomputing it from edited data.
+  meta      Json?
   createdAt DateTime  @default(now())
 
   @@unique([userId, bucket, kind, periodKey])
@@ -452,7 +457,7 @@ model ParseLog {
   batchId String?
 
   userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expense Expense?
 
@@ -564,4 +569,19 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// One-tap answer to "how sure are you about where your money went?" sent after
+// each cycle report. The product's north-star metric. One row per user per
+// ended cycle (cycleKey = its start date); a re-tap overwrites.
+model ClarityScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleKey  String
+  score     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, cycleKey])
 }

@@ -1,4 +1,4 @@
-import { Bucket, NotificationDosage } from "@prisma/client";
+import { Bucket, NotificationDosage, RecurringRule } from "@prisma/client";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
@@ -14,8 +14,11 @@ import {
   periodDayInfo,
   periodKey,
   pctSpent,
+  projectedRunOut,
+  sanitizeMd,
 } from "./budgetMath";
-import { zonedParts, zonedYmd } from "../../utils/time";
+import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
+import { zonedParts, zonedStartOfDayUtc, zonedYmd } from "../../utils/time";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 // Savings overspend is good, not a leak — only nudge the spending buckets.
@@ -29,12 +32,35 @@ const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
 // exact-hour gate loses the whole day. Every nudge is ledger-deduped, so extra
 // ticks inside one window cannot re-send.
 const WINDOW_HOURS = 4;
+const DAY_MS = 86_400_000;
+// From this local hour the check-in asks about a day with nothing logged —
+// earlier, an empty day is just a day that hasn't happened yet.
+const QUIET_DAY_HOUR = 19;
 const NUDGE_WINDOWS: Record<NotificationDosage, number[]> = {
   OFF: [],
   GENTLE: [19], //           19:00-22:59
   AGGRESSIVE: [13, 19], //   13:00-16:59, 19:00-22:59
   RELENTLESS: [9, 14, 19], // 09:00-12:59, 14:00-17:59, 19:00-22:59
 };
+
+// Subscriptions get forgotten "until the charge actually goes" — name the
+// expense rules that post tomorrow. dayOfMonth is clamped to 1–28 at creation,
+// so there is no month-end gap to handle.
+export function chargesTomorrow(
+  rules: Array<Pick<RecurringRule, "kind" | "dayOfMonth" | "amount" | "note">>,
+  tomorrowDay: number,
+): string | null {
+  const due = rules.filter(
+    (r) => r.kind === "EXPENSE" && r.dayOfMonth === tomorrowDay,
+  );
+  if (due.length === 0) return null;
+  return `📅 Tomorrow: ${due
+    .map(
+      (r) =>
+        `${sanitizeMd(r.note ?? "Recurring charge")} ${formatMoney(Number(r.amount))}`,
+    )
+    .join(" · ")}`;
+}
 
 // Which window this tick falls in, or null when the user should hear nothing.
 function currentWindow(hour: number, starts: number[]): number | null {
@@ -74,6 +100,7 @@ export class SendBudgetNudgesUseCase {
     private readonly nudgeRepository: INudgeRepository,
     private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly recurringRuleRepository: IRecurringRuleRepository,
   ) {}
 
   // `now`/`force` come from the cron tick; `force` bypasses the local-hour gate.
@@ -157,6 +184,8 @@ export class SendBudgetNudgesUseCase {
 
     let sent = 0;
     const summary: string[] = [];
+    // The watched bucket that runs out first at its current pace, if any.
+    let runOut: { label: string; day: number } | null = null;
     for (const bucket of WATCHED) {
       const budget = bucketBudget(income, config, bucket);
       if (budget <= 0) continue;
@@ -169,6 +198,15 @@ export class SendBudgetNudgesUseCase {
       );
       const meta = BUCKET_META[bucket];
       summary.push(`${meta.emoji} ${meta.label} ${pctSpent(spent, budget)}%`);
+      // Wants only: Needs is dominated by fixed costs (rent, EMIs) that land
+      // once, so averaging them into a daily pace cries wolf for two weeks.
+      // ponytail: Wants-only; subtract posted recurring rules if Needs pace is wanted.
+      const runOutDay =
+        bucket === "WANTS"
+          ? projectedRunOut(spent, budget, day, daysInPeriod)
+          : null;
+      if (runOutDay !== null && (!runOut || runOutDay < runOut.day))
+        runOut = { label: `${meta.emoji} ${meta.label}`, day: runOutDay };
 
       if (spent > budget) {
         // Over budget is the emergency: RELENTLESS re-raises it every window,
@@ -185,7 +223,7 @@ export class SendBudgetNudgesUseCase {
         ) {
           await this.send(
             user.telegramId,
-            `🔴 You've gone over ${meta.label} by ${formatMoney(spent - budget)} this cycle.`,
+            `🟠 ${meta.label} is ${formatMoney(spent - budget)} past this cycle's budget — the rest of the cycle can still balance it.`,
           );
           sent++;
         }
@@ -236,10 +274,37 @@ export class SendBudgetNudgesUseCase {
           slotKey,
         )
       ) {
-        await this.send(
-          user.telegramId,
+        const lines = [
           `📊 Daily check-in — ${summary.join(" · ")} · ${daysLeft} days left.`,
+        ];
+        if (runOut) {
+          // Noon of the run-out day, so a DST shift can't tip it into the
+          // neighbouring date when formatted in the user's zone.
+          const at = new Date(
+            start.getTime() + (runOut.day - 1) * DAY_MS + DAY_MS / 2,
+          );
+          lines.push(
+            `At this pace ${runOut.label} runs out around ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: tz }).format(at)}.`,
+          );
+        }
+        const local = zonedParts(now, tz);
+        if (local.hour >= QUIET_DAY_HOUR) {
+          const loggedToday =
+            await this.expenseRepository.hasManualExpenseSince(
+              user.id,
+              zonedStartOfDayUtc(local.year, local.month, local.day, tz),
+            );
+          if (!loggedToday)
+            lines.push(
+              'No spending logged today yet — small stuff adds up. Reply like "chai 20, auto 60".',
+            );
+        }
+        const tomorrow = chargesTomorrow(
+          await this.recurringRuleRepository.findByUserId(user.id),
+          zonedParts(new Date(now.getTime() + DAY_MS), tz).day,
         );
+        if (tomorrow) lines.push(tomorrow);
+        await this.send(user.telegramId, lines.join("\n"));
         sent++;
       }
     }

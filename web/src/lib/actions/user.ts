@@ -1,9 +1,12 @@
 "use server";
 
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { getAllChangelogEntries } from "@/lib/changelog";
+import { isDeleteConfirmed } from "@/lib/delete-confirm";
+import { redactExport } from "@/lib/export-redact";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { randomBytes } from "crypto";
 
 export async function generateTelegramLinkToken(): Promise<string> {
@@ -50,6 +53,80 @@ export async function unlinkTelegram(): Promise<{ success: boolean }> {
 
   revalidatePath("/dashboard/account");
   return { success: true };
+}
+
+// Everything Blipko stores about the signed-in user, as pretty JSON (DPDP
+// right of access). Auth/link relations are never selected; redactExport is
+// the backstop if someone adds them later.
+export async function exportMyData(): Promise<{
+  success: boolean;
+  json?: string;
+  message?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      expenses: true,
+      incomes: true,
+      budgetConfig: true,
+      categories: true,
+      incomeCategories: true,
+      categoryMemories: true,
+      logs: true,
+      budgetNudges: true,
+      recurringRules: true,
+      boxes: true,
+      boxEntries: true,
+      conversationMessages: true,
+      pendingActions: true,
+      clarityScores: true,
+    },
+  });
+  if (!user) return { success: false, message: "Account not found" };
+
+  return { success: true, json: JSON.stringify(redactExport(user), null, 2) };
+}
+
+// Hard-deletes the signed-in user. Every user-owned table cascades from User
+// (ParseLog included), so one delete erases expenses, chat history and raw
+// message logs. VerificationToken is keyed by email, not a FK, so it goes
+// explicitly. The typed confirmation is re-checked here: the dialog's check is
+// UX, this one is the gate. Signing out first lets NextAuth delete its own
+// session row; doing it after the cascade made its adapter throw P2025.
+export async function deleteMyAccount(confirmation: string): Promise<{
+  success: boolean;
+  message?: string;
+}> {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+  const { id, email } = session.user;
+  if (!isDeleteConfirmed(confirmation, email)) {
+    return { success: false, message: "Confirmation didn't match" };
+  }
+
+  await signOut({ redirect: false });
+  try {
+    await prisma.$transaction([
+      ...(email
+        ? [
+            prisma.verificationToken.deleteMany({
+              where: { identifier: email },
+            }),
+          ]
+        : []),
+      prisma.user.delete({ where: { id } }),
+    ]);
+  } catch (err) {
+    console.error(`Account delete failed for ${id}:`, err);
+    return {
+      success: false,
+      message: "Couldn't delete your account. Sign in and try again.",
+    };
+  }
+  redirect("/");
 }
 
 export type ChangelogNotice = {

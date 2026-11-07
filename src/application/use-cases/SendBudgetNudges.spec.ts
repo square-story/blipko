@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SendBudgetNudgesUseCase } from "./SendBudgetNudges";
+import { SendBudgetNudgesUseCase, chargesTomorrow } from "./SendBudgetNudges";
 
 const user = {
   id: "u1",
@@ -19,7 +19,14 @@ describe("SendBudgetNudges", () => {
   let budgetConfigRepository: any;
   let nudgeRepository: any;
   let messageService: any;
+  let recurringRuleRepository: any;
   let useCase: SendBudgetNudgesUseCase;
+
+  // The body of the daily check-in, if one was sent.
+  const checkin = (): string | undefined =>
+    messageService.sendMessage.mock.calls
+      .map((c: any) => c[0].body as string)
+      .find((b: string) => b.includes("Daily check-in"));
 
   // Helper: set per-bucket spend.
   const setSpend = (spend: Record<string, number>) => {
@@ -35,6 +42,7 @@ describe("SendBudgetNudges", () => {
     };
     expenseRepository = {
       sumByBucketForMonth: vi.fn().mockResolvedValue(0),
+      hasManualExpenseSince: vi.fn().mockResolvedValue(false),
     };
     budgetConfigRepository = {
       findByUserId: vi
@@ -48,6 +56,7 @@ describe("SendBudgetNudges", () => {
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
       sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
+    recurringRuleRepository = { findByUserId: vi.fn().mockResolvedValue([]) };
     useCase = new SendBudgetNudgesUseCase(
       userRepository,
       expenseRepository,
@@ -55,6 +64,7 @@ describe("SendBudgetNudges", () => {
       nudgeRepository,
       incomeRepository as any,
       messageService,
+      recurringRuleRepository,
     );
   });
 
@@ -71,7 +81,7 @@ describe("SendBudgetNudges", () => {
       expect.any(String),
     );
     expect(messageService.sendMessage.mock.calls[0][0].body).toContain(
-      "gone over Wants by ₹1,200",
+      "🟠 Wants is ₹1,200 past this cycle's budget",
     );
   });
 
@@ -286,5 +296,98 @@ describe("SendBudgetNudges", () => {
     );
     expect(kinds).toContain("OVER");
     expect(kinds).toContain("CHECKIN");
+  });
+
+  // Day 15 of 30, Wants budget 15,000, 10,000 spent → 15000 / (10000/15) = 22.5
+  // → runs out on cycle day 23 = 23 Jun.
+  it("check-in projects when Wants runs out at the current pace", async () => {
+    setSpend({ NEEDS: 5000, WANTS: 10000 });
+    await useCase.execute(NOW, true);
+    expect(checkin()).toContain("At this pace 🎯 Wants runs out around 23 Jun");
+  });
+
+  // Rent (₹11,250) on day 1 plus ₹140/day would naively "run out" on day 29,
+  // but Needs is mostly fixed costs — a pace there is noise, not a warning.
+  it("never projects a pace for Needs", async () => {
+    setSpend({ NEEDS: 13350, WANTS: 5000 });
+    await useCase.execute(NOW, true);
+    expect(checkin()).toBeDefined();
+    expect(checkin()).not.toContain("At this pace");
+  });
+
+  it("check-in has no pace line when spending lasts the cycle", async () => {
+    setSpend({ NEEDS: 5000, WANTS: 5000 });
+    await useCase.execute(NOW, true);
+    expect(checkin()).toBeDefined();
+    expect(checkin()).not.toContain("At this pace");
+  });
+
+  describe("quiet-day prompt", () => {
+    const EVENING = new Date(Date.UTC(2026, 5, 15, 20));
+    const QUIET =
+      'No spending logged today yet — small stuff adds up. Reply like "chai 20, auto 60".';
+
+    it("nudges in the evening when nothing was logged today", async () => {
+      setSpend({ NEEDS: 5000, WANTS: 5000 });
+      await useCase.execute(EVENING, true);
+      expect(checkin()).toContain(QUIET);
+      expect(expenseRepository.hasManualExpenseSince).toHaveBeenCalledWith(
+        "u1",
+        new Date(Date.UTC(2026, 5, 15)),
+      );
+    });
+
+    it("stays quiet when something was logged today", async () => {
+      setSpend({ NEEDS: 5000, WANTS: 5000 });
+      expenseRepository.hasManualExpenseSince.mockResolvedValue(true);
+      await useCase.execute(EVENING, true);
+      expect(checkin()).not.toContain("No spending logged today");
+    });
+
+    it("does not ask before the evening", async () => {
+      setSpend({ NEEDS: 5000, WANTS: 5000 });
+      await useCase.execute(NOW, true); // 12:00
+      expect(checkin()).not.toContain("No spending logged today");
+      expect(expenseRepository.hasManualExpenseSince).not.toHaveBeenCalled();
+    });
+  });
+
+  // NOW is June 15, so tomorrow is the 16th.
+  it("check-in flags a recurring charge due tomorrow", async () => {
+    setSpend({ NEEDS: 5000, WANTS: 5000 });
+    recurringRuleRepository.findByUserId.mockResolvedValue([
+      { kind: "EXPENSE", dayOfMonth: 16, amount: 649, note: "Netflix" },
+    ]);
+    await useCase.execute(NOW, true);
+    expect(recurringRuleRepository.findByUserId).toHaveBeenCalledWith("u1");
+    expect(checkin()).toContain("📅 Tomorrow: Netflix ₹649");
+  });
+});
+
+describe("chargesTomorrow", () => {
+  const rules = [
+    { kind: "EXPENSE", dayOfMonth: 16, amount: 649, note: "Netflix" },
+    { kind: "INCOME", dayOfMonth: 16, amount: 50000, note: "Salary" },
+    { kind: "EXPENSE", dayOfMonth: 20, amount: 1500, note: "Gym" },
+  ] as any;
+
+  it("lists only expense rules due tomorrow", () => {
+    expect(chargesTomorrow(rules, 16)).toBe("📅 Tomorrow: Netflix ₹649");
+  });
+
+  it("joins several and names an unlabelled rule", () => {
+    expect(
+      chargesTomorrow(
+        [
+          ...rules,
+          { kind: "EXPENSE", dayOfMonth: 16, amount: 299, note: null },
+        ],
+        16,
+      ),
+    ).toBe("📅 Tomorrow: Netflix ₹649 · Recurring charge ₹299");
+  });
+
+  it("is null when nothing is due", () => {
+    expect(chargesTomorrow(rules, 17)).toBeNull();
   });
 });

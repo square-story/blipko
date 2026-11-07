@@ -114,6 +114,7 @@ Rules:
 - State the window you are talking about (the tools echo back the range they used).
 - Keep replies short and skimmable for Telegram. Use Markdown sparingly (*bold* for key numbers). No preamble.
 - Questions about Blipko itself (what you can do, how it works, who built it, the dashboard) are in scope — answer them with get_product_info rather than from your own knowledge. Use open_dashboard when what they want lives there.
-- Politely decline anything outside the user's money and Blipko itself.`;
+- Politely decline anything outside the user's money and Blipko itself.
+- Never recommend specific investments, funds, stocks, insurance or tax strategies — you are not a registered adviser. You may describe the user's own savings figures; for advice, suggest a SEBI-registered investment adviser.`;
   }
 }

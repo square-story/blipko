@@ -11,6 +11,7 @@ import { buildCycleReport } from "./cycleReport";
 import { formatMoney, periodDayInfo, periodKey } from "./budgetMath";
 import { inLocalHourWindow } from "../../utils/time";
 import { carryCb } from "./carryCallback";
+import { clarityCb } from "./clarityCallback";
 
 // The cycle report goes out in the 07:00-10:59 window of the user's local
 // timezone, on day 1. A window and not a single hour because the cron tick
@@ -75,11 +76,12 @@ export class SendCycleReportUseCase {
       return 0;
     if (periodDayInfo(user.payday, now, tz).day !== 1) return 0;
 
-    const { text, endedKey, cashLeftover } = await buildCycleReport(
+    const { text, endedKey, cashLeftover, target } = await buildCycleReport(
       {
         expenseRepository: this.expenseRepository,
         budgetConfigRepository: this.budgetConfigRepository,
         incomeRepository: this.incomeRepository,
+        nudgeRepository: this.nudgeRepository,
       },
       user,
       now,
@@ -106,6 +108,8 @@ export class SendCycleReportUseCase {
       "NEEDS",
       "CYCLE_REPORT",
       endedKey,
+      // The goal this report shows; the next report follows up on it.
+      { target },
     );
     if (!isNew) return 0;
 
@@ -114,12 +118,24 @@ export class SendCycleReportUseCase {
         to: user.telegramId,
         body: text,
       });
-      return 1;
+    } else {
+      await this.messageService.sendInteractiveMessage(
+        user.telegramId,
+        `${text}\n\n${carry.body}`,
+        carry.rows,
+      );
     }
+    // Its own message so it never competes with the carry buttons. The answer
+    // is the product's north-star metric (ClarityScore).
     await this.messageService.sendInteractiveMessage(
       user.telegramId,
-      `${text}\n\n${carry.body}`,
-      carry.rows,
+      "One tap: how sure are you about where your money went last cycle? (1 = no idea · 5 = fully sure)",
+      [
+        [1, 2, 3, 4, 5].map((n) => ({
+          id: clarityCb(endedKey, n),
+          title: String(n),
+        })),
+      ],
     );
     return 1;
   }

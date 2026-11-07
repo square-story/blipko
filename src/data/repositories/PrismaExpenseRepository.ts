@@ -205,6 +205,18 @@ export class PrismaExpenseRepository implements IExpenseRepository {
     }));
   }
 
+  async hasManualExpenseSince(userId: string, from: Date): Promise<boolean> {
+    const n = await this.prisma.expense.count({
+      where: {
+        userId,
+        isDeleted: false,
+        date: { gte: from },
+        NOT: { rawText: { startsWith: "[recurring]" } },
+      },
+    });
+    return n > 0;
+  }
+
   async findRecent(
     userId: string,
     opts: RecentExpenseFilter,

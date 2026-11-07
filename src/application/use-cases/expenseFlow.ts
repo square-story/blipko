@@ -90,7 +90,7 @@ export function buildBucketBudgetLine(
     if (bucket === "SAVINGS") {
       return `${meta.emoji} ${meta.label}: ${formatMoney(-remaining)} beyond target`;
     }
-    return `⚠️ ${meta.label}: ${formatMoney(-remaining)} over budget`;
+    return `🟠 ${meta.label}: ${formatMoney(-remaining)} past budget`;
   }
   const safeDaily = Math.max(0, remaining) / Math.max(1, remainingDays);
   return `${meta.emoji} ${meta.label}: ${formatMoney(remaining)} left of ${formatMoney(budget)} · ${formatMoney(safeDaily)}/day safe`;

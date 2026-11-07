@@ -83,6 +83,9 @@ export interface IExpenseRepository {
     opts: RecentExpenseFilter,
   ): Promise<RecentExpenseRow[]>;
   softDelete(id: string): Promise<void>;
+  // Whether the user logged any expense themselves since `from` — rows the
+  // recurring poster created ("[recurring] …") don't count.
+  hasManualExpenseSince(userId: string, from: Date): Promise<boolean>;
 }
 
 export interface RecentExpenseFilter {

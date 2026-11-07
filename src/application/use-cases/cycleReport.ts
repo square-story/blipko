@@ -12,6 +12,16 @@ import {
   sanitizeMd,
 } from "./budgetMath";
 import { zonedYmd } from "../../utils/time";
+import {
+  ActionTarget,
+  BucketRow,
+  followUpLine,
+  movers,
+  nextCycleAction,
+  parseActionTarget,
+  unusualCategories,
+} from "./cycleInsights";
+import { INudgeRepository } from "../../domain/repositories/INudgeRepository";
 
 const DEFAULT_TZ = "Asia/Kolkata";
 
@@ -20,10 +30,24 @@ const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
 // How many categories to scan per cycle when ranking movers.
 const MOVER_SCAN = 50;
 
+// NEEDS + WANTS category totals summed by name. Savings categories never feed
+// "unusual" or a goal: saving more than usual is not a problem to fix.
+function spendTotals(
+  needs: { name: string; total: number }[],
+  wants: { name: string; total: number }[],
+): { name: string; total: number }[] {
+  const byName = new Map<string, number>();
+  for (const c of [...needs, ...wants])
+    byName.set(c.name, (byName.get(c.name) ?? 0) + c.total);
+  return [...byName].map(([name, total]) => ({ name, total }));
+}
+
 export interface CycleReportDeps {
   expenseRepository: IExpenseRepository;
   budgetConfigRepository: IBudgetConfigRepository;
   incomeRepository: IIncomeRepository;
+  // Reads the goal last cycle's report stored on its CYCLE_REPORT row.
+  nudgeRepository: Pick<INudgeRepository, "findMeta">;
 }
 
 export interface CycleReportUser {
@@ -41,6 +65,9 @@ export interface CycleReport {
   // a salary they never received — and since the floor applies again next
   // cycle, that phantom amount compounds every time they accept it.
   cashLeftover: number;
+  // The "💡 Next cycle" goal this report shows. The sender stores it on the
+  // CYCLE_REPORT ledger row so the next report follows up on exactly this.
+  target: ActionTarget;
 }
 
 // "May" for calendar-month cycles (payday=1), else "May 25 – Jun 25". Formats in
@@ -104,52 +131,9 @@ function bucketLine(
     status =
       delta >= 0
         ? `✅ under by ${formatMoney(delta)}`
-        : `❌ over by ${formatMoney(-delta)}`;
+        : `↗ ${formatMoney(-delta)} past budget`;
   }
   return `${meta.emoji} ${meta.label}  ${amounts}  ${status}${vs}`;
-}
-
-// Category deltas (ended − prior) across the union of both cycles' categories,
-// sorted by signed change. Returns the single biggest riser and faller.
-async function movers(
-  deps: CycleReportDeps,
-  userId: string,
-  ended: { start: Date; end: Date },
-  prior: { start: Date; end: Date },
-): Promise<{
-  up: { name: string; delta: number } | null;
-  down: { name: string; delta: number } | null;
-}> {
-  const [endedCats, priorCats] = await Promise.all([
-    deps.expenseRepository.categoryTotals(
-      userId,
-      ended.start,
-      ended.end,
-      null,
-      MOVER_SCAN,
-    ),
-    deps.expenseRepository.categoryTotals(
-      userId,
-      prior.start,
-      prior.end,
-      null,
-      MOVER_SCAN,
-    ),
-  ]);
-
-  const deltas = new Map<string, number>();
-  for (const c of endedCats)
-    deltas.set(c.name, (deltas.get(c.name) ?? 0) + c.total);
-  for (const c of priorCats)
-    deltas.set(c.name, (deltas.get(c.name) ?? 0) - c.total);
-
-  let up: { name: string; delta: number } | null = null;
-  let down: { name: string; delta: number } | null = null;
-  for (const [name, delta] of deltas) {
-    if (delta > 0 && (!up || delta > up.delta)) up = { name, delta };
-    if (delta < 0 && (!down || delta < down.delta)) down = { name, delta };
-  }
-  return { up, down };
 }
 
 // End-of-cycle summary comparing the just-ended cycle to the one before it:
@@ -162,9 +146,30 @@ export async function buildCycleReport(
   tz: string = DEFAULT_TZ,
 ): Promise<CycleReport> {
   const { payday } = user;
-  const cycles = previousCycles(payday, 2, now, tz);
+  // [0] ended, [1] prior, [1..3] the "usual" baseline for the ended cycle.
+  const cycles = previousCycles(payday, 4, now, tz);
   const ended = cycles[0]!;
   const prior = cycles[1]!;
+  const totals = (c: { start: Date; end: Date }, bucket: Bucket | null) =>
+    deps.expenseRepository.categoryTotals(
+      user.id,
+      c.start,
+      c.end,
+      bucket,
+      MOVER_SCAN,
+    );
+  const [cats, spendCats] = await Promise.all([
+    Promise.all(cycles.map((c) => totals(c, null))),
+    Promise.all(
+      cycles.map(async (c) => {
+        const [needs, wants] = await Promise.all([
+          totals(c, "NEEDS"),
+          totals(c, "WANTS"),
+        ]);
+        return spendTotals(needs, wants);
+      }),
+    ),
+  ]);
   const expected = Number(user.monthlyIncome ?? 0);
   const config =
     (await deps.budgetConfigRepository.findByUserId(user.id)) ?? DEFAULT_SPLIT;
@@ -180,6 +185,7 @@ export async function buildCycleReport(
   const endedIncome = effectiveMonthlyIncome(expected, endedEarned, endedCarry);
 
   const lines: string[] = [];
+  const endedBuckets: BucketRow[] = [];
   let totalSpent = 0;
   let totalPrev = 0;
   for (const bucket of ORDER) {
@@ -199,17 +205,33 @@ export async function buildCycleReport(
     ]);
     totalSpent += spent;
     totalPrev += prevSpent;
-    lines.push(
-      bucketLine(
-        bucket,
-        spent,
-        bucketBudget(endedIncome, config, bucket),
-        prevSpent,
-      ),
-    );
+    const budget = bucketBudget(endedIncome, config, bucket);
+    endedBuckets.push({ bucket, spent, budget });
+    lines.push(bucketLine(bucket, spent, budget, prevSpent));
   }
 
-  const { up, down } = await movers(deps, user.id, ended, prior);
+  const { up, down } = movers(cats[0] ?? [], cats[1] ?? []);
+  const unusual = unusualCategories(spendCats[0] ?? [], spendCats.slice(1, 4));
+  const cycleDays = Math.round(
+    (ended.end.getTime() - ended.start.getTime()) / 86_400_000,
+  );
+  // The goal last cycle's report actually showed. None stored means that
+  // report predates goals (or never went out), so there is nothing to check.
+  const stored = await deps.nudgeRepository.findMeta(
+    user.id,
+    "NEEDS",
+    "CYCLE_REPORT",
+    zonedYmd(prior.start, tz),
+  );
+  const lastTarget = parseActionTarget(
+    (stored as { target?: unknown } | null)?.target,
+  );
+  const followUp = lastTarget
+    ? followUpLine(lastTarget, {
+        cats: spendCats[0] ?? [],
+        buckets: endedBuckets,
+      })
+    : null;
   const label = cycleLabel(ended.start, ended.end, payday, tz);
   const net = endedIncome - totalSpent;
 
@@ -234,21 +256,34 @@ export async function buildCycleReport(
   let text =
     `📊 ${label} wrapped\n\n` +
     headline +
+    (followUp ? `\n${followUp}` : "") +
     `\n\n${incomeBasisLine(endedGross, endedEarned, endedIncome, endedCarry)}\n` +
     lines.join("\n") +
     // "budget − spend", not "income − spend": net is computed from the effective
     // figure, which carries the expected-salary floor. Saying "income" made the
     // arithmetic on screen fail to add up whenever the floor applied.
-    `\n\n${net >= 0 ? "Net saved" : "Net overspent"} ${formatMoney(Math.abs(net))} (budget − spend)`;
+    `\n\n${net >= 0 ? "Net saved" : "Spent beyond budget"} ${formatMoney(Math.abs(net))} (budget − spend)`;
 
   if (moverBits.length > 0) {
     text += `\n\nBiggest movers: ${moverBits.join(" · ")}`;
   }
+
+  if (unusual.length > 0) {
+    text += `\n\nUnusual this cycle: ${unusual
+      .map(
+        (u) =>
+          `${sanitizeMd(u.name)} ${formatMoney(u.total)} (usually ${formatMoney(u.usual)})`,
+      )
+      .join(" · ")}`;
+  }
+  const action = nextCycleAction({ unusual, buckets: endedBuckets, cycleDays });
+  text += `\n\n${action.text}`;
 
   return {
     text,
     endedKey: zonedYmd(ended.start, tz),
     net,
     cashLeftover: endedGross - totalSpent,
+    target: action.target,
   };
 }

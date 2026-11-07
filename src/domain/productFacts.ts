@@ -77,6 +77,16 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         why: "Savings stop being a leftover and become a thing with a name and a finish line.",
       },
       {
+        name: "End-of-cycle report",
+        what: "On the first morning of a new cycle the bot sends last cycle's summary: spend per bucket against budget, the biggest movers versus the cycle before, categories well above their usual, how last cycle's suggestion went, and one thing to change next cycle.",
+        why: "A summary that only lists numbers resets to zero every month. Checking last cycle's goal and naming one concrete change is what turns the report into progress.",
+      },
+      {
+        name: "Clarity check",
+        what: "After each cycle report, one tap rates how sure you are about where your money went.",
+        why: "So Blipko can tell whether it is actually making things clearer.",
+      },
+      {
         name: "Recurring income and expenses",
         what: 'Set up repeating items once — "rent 8000 on 1st every month" — and they post themselves each cycle.',
         why: "Rent, salary, EMIs and subscriptions are the predictable bulk of a month; logging them by hand is the boring part.",
@@ -88,7 +98,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       },
       {
         name: "Reminders you control",
-        what: "Optional nudges as a bucket fills up. Four intensities set how many times a day the bot speaks: off, gentle (once, in the evening), aggressive (twice), relentless (three times, and it keeps repeating while a bucket is over 80%).",
+        what: "Optional nudges as a bucket fills up. Four intensities set how many times a day the bot speaks: off, gentle (once, in the evening), aggressive (twice), relentless (three times, and it keeps repeating while a bucket is over 80%). The evening check-in warns when Wants will run out before payday at your pace, nudges you if you have logged no spending today, and flags subscriptions charging tomorrow.",
         why: "A warning before you overspend is worth more than a report afterwards — but only if you chose how loud it is. Off is the default.",
       },
       {
@@ -115,7 +125,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       },
       {
         command: "/report",
-        what: "This cycle's summary and biggest spending leaks.",
+        what: "This cycle's summary and top spends.",
       },
       {
         command: "/recurring",
@@ -144,6 +154,8 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       "Your spending records live in your own Blipko account and are only ever used to answer your questions.",
       "Every number reported is calculated by the app from your records, not made up by the AI. The AI chooses which figures to look up; the maths is done in code.",
       "Reminders are off by default and you choose how insistent they are.",
+      "Export everything Blipko stores about you as a file from the dashboard's Account page.",
+      "Delete your account from the Account page — every expense, message and log is erased permanently.",
     ],
 
     creator: {

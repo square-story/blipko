@@ -42,6 +42,25 @@ export async function mergeTelegramUser(
     data: { userId: webUserId },
   });
 
+  // Clarity ratings are unique per (user, cycle): where both rated a cycle,
+  // the web user's answer stands and the bot's copy is dropped.
+  const webRated = await tx.clarityScore.findMany({
+    where: { userId: webUserId },
+    select: { cycleKey: true },
+  });
+  if (webRated.length > 0) {
+    await tx.clarityScore.deleteMany({
+      where: {
+        userId: botUserId,
+        cycleKey: { in: webRated.map((r) => r.cycleKey) },
+      },
+    });
+  }
+  await tx.clarityScore.updateMany({
+    where: { userId: botUserId },
+    data: { userId: webUserId },
+  });
+
   // 2. Custom categories (system categories have userId null and are shared).
   const botCats = await tx.category.findMany({ where: { userId: botUserId } });
   for (const cat of botCats) {
