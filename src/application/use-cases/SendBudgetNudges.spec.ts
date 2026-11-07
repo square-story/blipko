@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SendBudgetNudgesUseCase } from "./SendBudgetNudges";
+import { SendBudgetNudgesUseCase, chargesTomorrow } from "./SendBudgetNudges";
 
 const user = {
   id: "u1",
@@ -19,6 +19,7 @@ describe("SendBudgetNudges", () => {
   let budgetConfigRepository: any;
   let nudgeRepository: any;
   let messageService: any;
+  let recurringRuleRepository: any;
   let useCase: SendBudgetNudgesUseCase;
 
   // The body of the daily check-in, if one was sent.
@@ -55,6 +56,7 @@ describe("SendBudgetNudges", () => {
       sumEarnedForMonth: vi.fn().mockResolvedValue(0),
       sumCarryForMonth: vi.fn().mockResolvedValue(0),
     };
+    recurringRuleRepository = { findByUserId: vi.fn().mockResolvedValue([]) };
     useCase = new SendBudgetNudgesUseCase(
       userRepository,
       expenseRepository,
@@ -62,6 +64,7 @@ describe("SendBudgetNudges", () => {
       nudgeRepository,
       incomeRepository as any,
       messageService,
+      recurringRuleRepository,
     );
   });
 
@@ -338,5 +341,44 @@ describe("SendBudgetNudges", () => {
       expect(checkin()).not.toContain("Nothing logged today");
       expect(expenseRepository.findRecent).not.toHaveBeenCalled();
     });
+  });
+
+  // NOW is June 15, so tomorrow is the 16th.
+  it("check-in flags a recurring charge due tomorrow", async () => {
+    setSpend({ NEEDS: 5000, WANTS: 5000 });
+    recurringRuleRepository.findByUserId.mockResolvedValue([
+      { kind: "EXPENSE", dayOfMonth: 16, amount: 649, note: "Netflix" },
+    ]);
+    await useCase.execute(NOW, true);
+    expect(recurringRuleRepository.findByUserId).toHaveBeenCalledWith("u1");
+    expect(checkin()).toContain("📅 Tomorrow: Netflix ₹649");
+  });
+});
+
+describe("chargesTomorrow", () => {
+  const rules = [
+    { kind: "EXPENSE", dayOfMonth: 16, amount: 649, note: "Netflix" },
+    { kind: "INCOME", dayOfMonth: 16, amount: 50000, note: "Salary" },
+    { kind: "EXPENSE", dayOfMonth: 20, amount: 1500, note: "Gym" },
+  ] as any;
+
+  it("lists only expense rules due tomorrow", () => {
+    expect(chargesTomorrow(rules, 16)).toBe("📅 Tomorrow: Netflix ₹649");
+  });
+
+  it("joins several and names an unlabelled rule", () => {
+    expect(
+      chargesTomorrow(
+        [
+          ...rules,
+          { kind: "EXPENSE", dayOfMonth: 16, amount: 299, note: null },
+        ],
+        16,
+      ),
+    ).toBe("📅 Tomorrow: Netflix ₹649 · Recurring charge ₹299");
+  });
+
+  it("is null when nothing is due", () => {
+    expect(chargesTomorrow(rules, 17)).toBeNull();
   });
 });

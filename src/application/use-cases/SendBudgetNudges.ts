@@ -1,4 +1,4 @@
-import { Bucket, NotificationDosage } from "@prisma/client";
+import { Bucket, NotificationDosage, RecurringRule } from "@prisma/client";
 import { IUserRepository } from "../../domain/repositories/IUserRepository";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { IBudgetConfigRepository } from "../../domain/repositories/IBudgetConfigRepository";
@@ -15,7 +15,9 @@ import {
   periodKey,
   pctSpent,
   projectedRunOut,
+  sanitizeMd,
 } from "./budgetMath";
+import { IRecurringRuleRepository } from "../../domain/repositories/IRecurringRuleRepository";
 import { zonedParts, zonedStartOfDayUtc, zonedYmd } from "../../utils/time";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
@@ -40,6 +42,25 @@ const NUDGE_WINDOWS: Record<NotificationDosage, number[]> = {
   AGGRESSIVE: [13, 19], //   13:00-16:59, 19:00-22:59
   RELENTLESS: [9, 14, 19], // 09:00-12:59, 14:00-17:59, 19:00-22:59
 };
+
+// Subscriptions get forgotten "until the charge actually goes" — name the
+// expense rules that post tomorrow. dayOfMonth is clamped to 1–28 at creation,
+// so there is no month-end gap to handle.
+export function chargesTomorrow(
+  rules: Array<Pick<RecurringRule, "kind" | "dayOfMonth" | "amount" | "note">>,
+  tomorrowDay: number,
+): string | null {
+  const due = rules.filter(
+    (r) => r.kind === "EXPENSE" && r.dayOfMonth === tomorrowDay,
+  );
+  if (due.length === 0) return null;
+  return `📅 Tomorrow: ${due
+    .map(
+      (r) =>
+        `${sanitizeMd(r.note ?? "Recurring charge")} ${formatMoney(Number(r.amount))}`,
+    )
+    .join(" · ")}`;
+}
 
 // Which window this tick falls in, or null when the user should hear nothing.
 function currentWindow(hour: number, starts: number[]): number | null {
@@ -79,6 +100,7 @@ export class SendBudgetNudgesUseCase {
     private readonly nudgeRepository: INudgeRepository,
     private readonly incomeRepository: IIncomeRepository,
     private readonly messageService: IMessagingPlatform,
+    private readonly recurringRuleRepository: IRecurringRuleRepository,
   ) {}
 
   // `now`/`force` come from the cron tick; `force` bypasses the local-hour gate.
@@ -270,6 +292,11 @@ export class SendBudgetNudgesUseCase {
               'Nothing logged today yet — small stuff adds up. Reply like "chai 20, auto 60".',
             );
         }
+        const tomorrow = chargesTomorrow(
+          await this.recurringRuleRepository.findByUserId(user.id),
+          zonedParts(new Date(now.getTime() + DAY_MS), tz).day,
+        );
+        if (tomorrow) lines.push(tomorrow);
         await this.send(user.telegramId, lines.join("\n"));
         sent++;
       }

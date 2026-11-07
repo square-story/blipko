@@ -342,6 +342,7 @@ export const sendBudgetNudges = new SendBudgetNudgesUseCase(
   nudgeRepository,
   incomeRepository,
   messageService,
+  recurringRuleRepository,
 );
 
 export const postRecurringCharges = new PostRecurringChargesUseCase(
