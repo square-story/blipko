@@ -122,6 +122,7 @@ model User {
   conversationMessages ConversationMessage[]
   pendingActions       PendingAction[]
   telegramLinkToken    TelegramLinkToken?
+  clarityScores        ClarityScore[]
 }
 
 // Idempotency log for proactive nudges. periodKey carries the repeat scope, and
@@ -564,4 +565,19 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// One-tap answer to "how sure are you about where your money went?" sent after
+// each cycle report. The product's north-star metric. One row per user per
+// ended cycle (cycleKey = its start date); a re-tap overwrites.
+model ClarityScore {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycleKey  String
+  score     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, cycleKey])
 }

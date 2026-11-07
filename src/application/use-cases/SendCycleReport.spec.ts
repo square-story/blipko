@@ -22,6 +22,12 @@ describe("SendCycleReport", () => {
   let incomeRepository: any;
   let messageService: any;
   let useCase: SendCycleReportUseCase;
+  // Interactive sends carrying car: buttons. The clarity question is its own
+  // interactive message, so "plain report" means no carry prompt, not zero sends.
+  const carryPrompts = () =>
+    messageService.sendInteractiveMessage.mock.calls.filter((c: any) =>
+      c[2].flat().some((b: any) => b.id.startsWith("car:")),
+    );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,6 +76,21 @@ describe("SendCycleReport", () => {
       "2026-05-01", // ended cycle = May
     );
     expect(messageService.sendMessage).toHaveBeenCalledOnce();
+  });
+
+  it("asks a one-tap clarity score after the report", async () => {
+    await useCase.execute(new Date(Date.UTC(2026, 5, 1, 12)), true);
+    const call = messageService.sendInteractiveMessage.mock.calls.at(-1);
+    expect(call[0]).toBe("123");
+    expect(call[1]).toContain("how sure are you about where your money went");
+    expect(call[2]).toHaveLength(1);
+    expect(call[2][0].map((b: any) => b.id)).toEqual([
+      "clr:2026-05-01:1",
+      "clr:2026-05-01:2",
+      "clr:2026-05-01:3",
+      "clr:2026-05-01:4",
+      "clr:2026-05-01:5",
+    ]);
   });
 
   it("does nothing mid-cycle", async () => {
@@ -136,7 +157,7 @@ describe("SendCycleReport", () => {
       // is the whole budget. Offering that as "leftover" would be nonsense.
       const { sent } = await useCase.execute(dayOne, true);
       expect(sent).toBe(1);
-      expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
+      expect(carryPrompts()).toHaveLength(0);
     });
 
     it("offers cash left over, not the expected-salary floor", async () => {
@@ -154,7 +175,7 @@ describe("SendCycleReport", () => {
       incomeRepository.sumForMonth.mockResolvedValue(30000);
       expenseRepository.sumByBucketForMonth.mockResolvedValue(10000); // ×3 buckets
       await useCase.execute(dayOne, true);
-      expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
+      expect(carryPrompts()).toHaveLength(0);
     });
 
     it("stays a plain report when the cycle ended overspent", async () => {
@@ -163,7 +184,7 @@ describe("SendCycleReport", () => {
       expenseRepository.sumByBucketForMonth.mockResolvedValue(40000);
       const { sent } = await useCase.execute(dayOne, true);
       expect(sent).toBe(1);
-      expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
+      expect(carryPrompts()).toHaveLength(0);
       expect(messageService.sendMessage).toHaveBeenCalledOnce();
     });
 
@@ -173,7 +194,7 @@ describe("SendCycleReport", () => {
         { ...unsettled, carryDecidedKey: "2026-06-01" },
       ]);
       await useCase.execute(dayOne, true);
-      expect(messageService.sendInteractiveMessage).not.toHaveBeenCalled();
+      expect(carryPrompts()).toHaveLength(0);
       expect(messageService.sendMessage).toHaveBeenCalledOnce();
     });
   });

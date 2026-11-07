@@ -80,6 +80,7 @@ export async function exportMyData(): Promise<{
       boxEntries: true,
       conversationMessages: true,
       pendingActions: true,
+      clarityScores: true,
     },
   });
   if (!user) return { success: false, message: "Account not found" };

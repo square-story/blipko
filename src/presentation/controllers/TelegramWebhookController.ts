@@ -12,6 +12,7 @@ import { OpenAiQueryAgent } from "../../data/ai/OpenAiQueryAgent";
 import { ClaudeAssistantAgent } from "../../data/ai/ClaudeAssistantAgent";
 import { AssistantWriteTools } from "../../application/use-cases/query/AssistantWriteTools";
 import { PrismaPendingActionRepository } from "../../data/repositories/PrismaPendingActionRepository";
+import { PrismaClarityScoreRepository } from "../../data/repositories/PrismaClarityScoreRepository";
 import { PrismaCategoryMemoryRepository } from "../../data/repositories/PrismaCategoryMemoryRepository";
 import { FinancialDataTools } from "../../application/use-cases/query/FinancialDataTools";
 import { SarvamTranscriptionService } from "../../data/ai/SarvamTranscriptionService";
@@ -78,6 +79,7 @@ const nudgeRepository = new PrismaNudgeRepository(prisma);
 const processedMessageRepository = new PrismaProcessedMessageRepository(prisma);
 const conversationRepository = new PrismaConversationRepository();
 const categoryMemoryRepository = new PrismaCategoryMemoryRepository(prisma);
+const clarityScoreRepository = new PrismaClarityScoreRepository(prisma);
 
 // Runs multiple repository writes atomically (e.g. recurring post + markPosted).
 const runInTransaction: RunInTransaction = (fn) => prisma.$transaction(fn);
@@ -129,6 +131,7 @@ const processIncomingMessage = new ProcessIncomingMessageUseCase(
   assistantAgent,
   pendingActionRepository,
   categoryMemoryRepository,
+  clarityScoreRepository,
 );
 
 const processVoiceMessage = new ProcessVoiceMessageUseCase(

@@ -64,6 +64,8 @@ import { parsePhraseAmount } from "./fastPath";
 import { uniqueLeafCategories } from "./categoryHints";
 import { ICategoryMemoryRepository } from "../../domain/repositories/ICategoryMemoryRepository";
 import { applyCategoryMemory } from "./categoryMemory";
+import { IClarityScoreRepository } from "../../domain/repositories/IClarityScoreRepository";
+import { ClarityScoreProcessor } from "./processors/ClarityScoreProcessor";
 
 export interface ProcessIncomingMessageInput {
   platformUserId: string;
@@ -112,6 +114,7 @@ export class ProcessIncomingMessageUseCase {
     // carry-forward "different amount" step, which ships either way.
     private readonly pendingActionRepository: IPendingActionRepository | null = null,
     private readonly categoryMemoryRepository: ICategoryMemoryRepository | null = null,
+    private readonly clarityScoreRepository: IClarityScoreRepository | null = null,
   ) {
     this.preParseProcessors = [
       // Confirmations for assistant-proposed writes. First, and before any AI:
@@ -177,6 +180,10 @@ export class ProcessIncomingMessageUseCase {
         runTransaction,
         boxRepository,
       ),
+      // The 1–5 tap sent after each cycle report.
+      ...(clarityScoreRepository
+        ? [new ClarityScoreProcessor(clarityScoreRepository)]
+        : []),
       new ConnectAccountProcessor(messageService, webAppUrl),
       new SettingsProcessor(userRepository, messageService),
       new HelpProcessor(messageService, webAppUrl),
