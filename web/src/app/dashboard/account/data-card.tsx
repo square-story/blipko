@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { Database, Download, Trash2 } from "lucide-react";
+import { Database, Download } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -10,11 +10,11 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/confirm-dialog";
-import { deleteMyAccount, exportMyData } from "@/lib/actions/user";
+import { exportMyData } from "@/lib/actions/user";
 import { toast } from "@/lib/toast";
+import { DeleteAccountDialog } from "./delete-account-dialog";
 
-export function DataCard() {
+export function DataCard({ email }: { email: string | null }) {
     const [isExporting, startExport] = useTransition();
 
     const handleExport = () =>
@@ -28,16 +28,12 @@ export function DataCard() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `blipko-export-${new Date().toISOString().split("T")[0]}.json`;
+            // en-CA formats as YYYY-MM-DD in the browser's own timezone; toISOString
+            // would name an IST export made before 05:30 with yesterday's date.
+            a.download = `blipko-export-${new Date().toLocaleDateString("en-CA")}.json`;
             a.click();
             URL.revokeObjectURL(url);
         });
-
-    // On success the action signs out and redirects, so only failure returns.
-    const handleDelete = async () => {
-        const res = await deleteMyAccount();
-        if (!res.success) toast.error(res.message ?? "Failed to delete account");
-    };
 
     return (
         <Card>
@@ -60,17 +56,10 @@ export function DataCard() {
                     <Download className="size-4" />
                     {isExporting ? "Exporting…" : "Export my data"}
                 </Button>
-                <ConfirmDialog
-                    title="Delete your account?"
-                    description="This permanently erases every expense, income, category, box, chat history and log. It can't be undone. Export your data first if you want a copy."
-                    confirmLabel="Delete everything"
-                    onConfirm={handleDelete}
-                    trigger={
-                        <Button variant="destructive" size="sm">
-                            <Trash2 className="size-4" />
-                            Delete account
-                        </Button>
-                    }
+                <DeleteAccountDialog
+                    email={email}
+                    onExport={handleExport}
+                    isExporting={isExporting}
                 />
             </CardContent>
         </Card>

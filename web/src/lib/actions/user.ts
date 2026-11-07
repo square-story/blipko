@@ -2,9 +2,11 @@
 
 import { auth, signOut } from "@/auth";
 import { getAllChangelogEntries } from "@/lib/changelog";
+import { isDeleteConfirmed } from "@/lib/delete-confirm";
 import { redactExport } from "@/lib/export-redact";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { randomBytes } from "crypto";
 
 export async function generateTelegramLinkToken(): Promise<string> {
@@ -91,24 +93,40 @@ export async function exportMyData(): Promise<{
 // Hard-deletes the signed-in user. Every user-owned table cascades from User
 // (ParseLog included), so one delete erases expenses, chat history and raw
 // message logs. VerificationToken is keyed by email, not a FK, so it goes
-// explicitly. signOut redirects, so success never returns to the caller.
-export async function deleteMyAccount(): Promise<{
+// explicitly. The typed confirmation is re-checked here: the dialog's check is
+// UX, this one is the gate. Signing out first lets NextAuth delete its own
+// session row; doing it after the cascade made its adapter throw P2025.
+export async function deleteMyAccount(confirmation: string): Promise<{
   success: boolean;
   message?: string;
 }> {
   const session = await auth();
   if (!session?.user?.id) return { success: false, message: "Unauthorized" };
   const { id, email } = session.user;
+  if (!isDeleteConfirmed(confirmation, email)) {
+    return { success: false, message: "Confirmation didn't match" };
+  }
 
-  await prisma.$transaction([
-    ...(email
-      ? [prisma.verificationToken.deleteMany({ where: { identifier: email } })]
-      : []),
-    prisma.user.delete({ where: { id } }),
-  ]);
-
-  await signOut({ redirectTo: "/" });
-  return { success: true };
+  await signOut({ redirect: false });
+  try {
+    await prisma.$transaction([
+      ...(email
+        ? [
+            prisma.verificationToken.deleteMany({
+              where: { identifier: email },
+            }),
+          ]
+        : []),
+      prisma.user.delete({ where: { id } }),
+    ]);
+  } catch (err) {
+    console.error(`Account delete failed for ${id}:`, err);
+    return {
+      success: false,
+      message: "Couldn't delete your account. Sign in and try again.",
+    };
+  }
+  redirect("/");
 }
 
 export type ChangelogNotice = {

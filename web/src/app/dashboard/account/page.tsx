@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { TelegramCard } from "@/components/telegram-card";
 import { getBudgetSettings } from "@/lib/actions/budget";
@@ -5,7 +6,7 @@ import { AccountSettings, AppearanceCard } from "./account-settings";
 import { DataCard } from "./data-card";
 
 export default async function Page() {
-    const settings = await getBudgetSettings();
+    const [settings, session] = await Promise.all([getBudgetSettings(), auth()]);
 
     return (
         <ContentLayout title="Account">
@@ -21,7 +22,7 @@ export default async function Page() {
                 <AccountSettings initial={settings} />
                 <AppearanceCard />
                 <TelegramCard />
-                <DataCard />
+                <DataCard email={session?.user?.email ?? null} />
             </div>
         </ContentLayout>
     );
