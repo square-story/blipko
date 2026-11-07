@@ -14,6 +14,7 @@ import {
   periodDayInfo,
   periodKey,
   pctSpent,
+  projectedRunOut,
 } from "./budgetMath";
 import { zonedParts, zonedYmd } from "../../utils/time";
 
@@ -29,6 +30,7 @@ const WATCHED: Bucket[] = ["NEEDS", "WANTS"];
 // exact-hour gate loses the whole day. Every nudge is ledger-deduped, so extra
 // ticks inside one window cannot re-send.
 const WINDOW_HOURS = 4;
+const DAY_MS = 86_400_000;
 const NUDGE_WINDOWS: Record<NotificationDosage, number[]> = {
   OFF: [],
   GENTLE: [19], //           19:00-22:59
@@ -157,6 +159,8 @@ export class SendBudgetNudgesUseCase {
 
     let sent = 0;
     const summary: string[] = [];
+    // The watched bucket that runs out first at its current pace, if any.
+    let runOut: { label: string; day: number } | null = null;
     for (const bucket of WATCHED) {
       const budget = bucketBudget(income, config, bucket);
       if (budget <= 0) continue;
@@ -169,6 +173,9 @@ export class SendBudgetNudgesUseCase {
       );
       const meta = BUCKET_META[bucket];
       summary.push(`${meta.emoji} ${meta.label} ${pctSpent(spent, budget)}%`);
+      const runOutDay = projectedRunOut(spent, budget, day, daysInPeriod);
+      if (runOutDay !== null && (!runOut || runOutDay < runOut.day))
+        runOut = { label: `${meta.emoji} ${meta.label}`, day: runOutDay };
 
       if (spent > budget) {
         // Over budget is the emergency: RELENTLESS re-raises it every window,
@@ -236,10 +243,20 @@ export class SendBudgetNudgesUseCase {
           slotKey,
         )
       ) {
-        await this.send(
-          user.telegramId,
+        const lines = [
           `📊 Daily check-in — ${summary.join(" · ")} · ${daysLeft} days left.`,
-        );
+        ];
+        if (runOut) {
+          // Noon of the run-out day, so a DST shift can't tip it into the
+          // neighbouring date when formatted in the user's zone.
+          const at = new Date(
+            start.getTime() + (runOut.day - 1) * DAY_MS + DAY_MS / 2,
+          );
+          lines.push(
+            `At this pace ${runOut.label} runs out around ${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: tz }).format(at)}.`,
+          );
+        }
+        await this.send(user.telegramId, lines.join("\n"));
         sent++;
       }
     }

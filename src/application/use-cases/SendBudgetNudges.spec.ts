@@ -21,6 +21,12 @@ describe("SendBudgetNudges", () => {
   let messageService: any;
   let useCase: SendBudgetNudgesUseCase;
 
+  // The body of the daily check-in, if one was sent.
+  const checkin = (): string | undefined =>
+    messageService.sendMessage.mock.calls
+      .map((c: any) => c[0].body as string)
+      .find((b: string) => b.includes("Daily check-in"));
+
   // Helper: set per-bucket spend.
   const setSpend = (spend: Record<string, number>) => {
     expenseRepository.sumByBucketForMonth = vi.fn(
@@ -286,5 +292,20 @@ describe("SendBudgetNudges", () => {
     );
     expect(kinds).toContain("OVER");
     expect(kinds).toContain("CHECKIN");
+  });
+
+  // Day 15 of 30, Wants budget 15,000, 10,000 spent → 15000 / (10000/15) = 22.5
+  // → runs out on cycle day 23 = 23 Jun.
+  it("check-in projects when Wants runs out at the current pace", async () => {
+    setSpend({ NEEDS: 5000, WANTS: 10000 });
+    await useCase.execute(NOW, true);
+    expect(checkin()).toContain("At this pace 🎯 Wants runs out around 23 Jun");
+  });
+
+  it("check-in has no pace line when spending lasts the cycle", async () => {
+    setSpend({ NEEDS: 5000, WANTS: 5000 });
+    await useCase.execute(NOW, true);
+    expect(checkin()).toBeDefined();
+    expect(checkin()).not.toContain("At this pace");
   });
 });

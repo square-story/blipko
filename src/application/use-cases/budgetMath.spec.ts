@@ -10,6 +10,7 @@ import {
   formatMoney,
   pctSpent,
   progressBar,
+  projectedRunOut,
   sanitizeMd,
 } from "./budgetMath";
 import { zonedStartOfDayUtc } from "../../utils/time";
@@ -119,5 +120,28 @@ describe("budgetMath", () => {
     expect(periodKey(25, new Date(2026, 5, 12))).toBe("2026-05-25");
     expect(periodKey(25, new Date(2026, 5, 26))).toBe("2026-06-25");
     expect(periodKey(1, new Date(2026, 5, 12))).toBe("2026-06-01");
+  });
+});
+
+describe("projectedRunOut", () => {
+  it("returns the cycle day spending at this pace reaches the budget", () => {
+    // 700/day → 15000 / 700 = 21.4 → day 22.
+    expect(projectedRunOut(7000, 15000, 10, 30)).toBe(22);
+  });
+
+  it("is null when the pace lasts the whole cycle", () => {
+    expect(projectedRunOut(1000, 15000, 10, 30)).toBeNull();
+  });
+
+  it("is null in the first two days — one purchase is not a pace", () => {
+    expect(projectedRunOut(5000, 15000, 2, 30)).toBeNull();
+  });
+
+  it("is null with nothing spent", () => {
+    expect(projectedRunOut(0, 15000, 10, 30)).toBeNull();
+  });
+
+  it("is null once already over (the OVER nudge covers it)", () => {
+    expect(projectedRunOut(16000, 15000, 10, 30)).toBeNull();
   });
 });
