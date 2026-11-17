@@ -45,12 +45,22 @@ export const CarryAmountPayload = z.object({
   cycleKey: z.string().min(1).max(10),
 });
 
+// A balance check found money that moved without being logged. `at` is the
+// moment of the new anchor (the gap is filed just before it), `since` the old
+// anchor — both ISO instants.
+export const BalanceGapPayload = z.object({
+  amount: z.number().positive().max(1_000_000_000),
+  at: z.string().datetime(),
+  since: z.string().datetime(),
+});
+
 export const PENDING_ACTION_SCHEMAS = {
   EDIT_EXPENSE: EditExpensePayload,
   DELETE_EXPENSE: DeleteExpensePayload,
   SET_RECURRING: SetRecurringPayload,
   BOX_MOVE: BoxMovePayload,
   CARRY_AMOUNT: CarryAmountPayload,
+  BALANCE_GAP: BalanceGapPayload,
 } as const;
 
 export type PendingActionKind = keyof typeof PENDING_ACTION_SCHEMAS;

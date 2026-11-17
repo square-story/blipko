@@ -65,6 +65,7 @@ import { uniqueLeafCategories } from "./categoryHints";
 import { ICategoryMemoryRepository } from "../../domain/repositories/ICategoryMemoryRepository";
 import { applyCategoryMemory } from "./categoryMemory";
 import { IClarityScoreRepository } from "../../domain/repositories/IClarityScoreRepository";
+import { BalanceProcessor } from "./processors/BalanceProcessor";
 import { ClarityScoreProcessor } from "./processors/ClarityScoreProcessor";
 
 export interface ProcessIncomingMessageInput {
@@ -193,6 +194,24 @@ export class ProcessIncomingMessageUseCase {
         incomeRepository,
         messageService,
       ),
+      // "balance 12400" and its bal: gap buttons. Needs the pending repo to
+      // stage the gap, the same rule as the carry processors.
+      ...(pendingActionRepository
+        ? [
+            new BalanceProcessor(
+              {
+                userRepository,
+                expenseRepository,
+                incomeRepository,
+                incomeCategoryRepository,
+                categoryRepository,
+                boxRepository,
+              },
+              pendingActionRepository,
+              messageService,
+            ),
+          ]
+        : []),
       new ReportProcessor(
         expenseRepository,
         budgetConfigRepository,
