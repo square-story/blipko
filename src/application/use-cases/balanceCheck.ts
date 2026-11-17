@@ -10,19 +10,27 @@ import { CARRY_EXPENSE_CATEGORY, parseBareAmount } from "./carryFlow";
 // the money that moved without being logged.
 
 const BALANCE_TEXT =
-  /^\/?(?:my\s+)?(?:(?:bank|account)\s+)?bal(?:ance)?(?:\s+is)?\s*[:=-]?\s*(.*)$/i;
+  /^\/?(?:my\s+)?(?:(?:bank|account)\s+)?bal(?:ance)?(?:\s+is)?\s*[:=]?\s*(.*)$/i;
 
-// null → not a balance message (falls through to the parser). { amount: null }
-// → a bare "/balance", asking what the balance should be.
+// After the balance prefix, anything that looks like it was meant to be a
+// figure ("12k", "-500") is claimed rather than handed to the parser, which
+// has no balance concept and could log it as a spend.
+const LOOKS_NUMERIC = /^(?:[-−₹\d]|rs\b)/i;
+
+// null → not a balance message (falls through to the parser).
+// { amount: null } → a bare "/balance", asking what the balance should be.
+// { amount: null, invalid: true } → a balance message without a plain number.
 export function parseBalanceText(
   text: string,
-): { amount: number | null } | null {
+): { amount: number | null; invalid?: true } | null {
   const m = BALANCE_TEXT.exec((text ?? "").trim());
   if (!m) return null;
-  const rest = m[1]!.trim();
+  // "12,400/-" is how Indian cheques and slips write a whole amount.
+  const rest = m[1]!.trim().replace(/\/-$/, "");
   if (!rest) return { amount: null };
   const amount = parseBareAmount(rest);
-  return amount === null ? null : { amount };
+  if (amount !== null) return { amount };
+  return LOOKS_NUMERIC.test(rest) ? { amount: null, invalid: true } : null;
 }
 
 export type BalanceVerdict = "MATCH" | "MISSING" | "EXTRA";

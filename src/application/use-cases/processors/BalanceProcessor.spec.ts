@@ -30,7 +30,12 @@ describe("BalanceProcessor", () => {
       balanceAnchorAt: ANCHOR_AT,
     };
     deps = {
-      userRepository: { update: vi.fn().mockResolvedValue({}) },
+      // Applies the write, so a second check in one test sees the new anchor.
+      userRepository: {
+        update: vi.fn(async (_id: string, data: object) =>
+          Object.assign(user, data),
+        ),
+      },
       incomeRepository: {
         sumForMonth: vi.fn().mockResolvedValue(0),
         sumCarryForMonth: vi.fn().mockResolvedValue(0),
@@ -117,6 +122,7 @@ describe("BalanceProcessor", () => {
         kind: "BALANCE_GAP",
         payload: {
           amount: 450,
+          actual: 9500,
           at: NOW.toISOString(),
           since: ANCHOR_AT.toISOString(),
         },
@@ -129,16 +135,20 @@ describe("BalanceProcessor", () => {
     expect(body).toContain(
       "₹450 isn't accounted for — usually small cash or UPI spends that never got logged.",
     );
+    expect(body).toContain("credit-card bill? Tap Skip");
     expect(rows).toEqual([
       [
         { id: "bal:pa1:y", title: "Log ₹450 as Untracked" },
         { id: "bal:pa1:n", title: "Skip" },
       ],
     ]);
-    expect(deps.userRepository.update).toHaveBeenCalledWith("u1", {
-      balanceAnchor: 9500,
-      balanceAnchorAt: NOW,
-    });
+  });
+
+  // The anchor moves only once the gap is settled. Re-anchoring here would
+  // make anything the user logs to explain the gap count twice next time.
+  it("keeps the old anchor until the gap is settled", async () => {
+    await processor.process(ctx("balance 9500"));
+    expect(deps.userRepository.update).not.toHaveBeenCalled();
   });
 
   it("points at unlogged income when there is more than expected", async () => {
@@ -146,7 +156,25 @@ describe("BalanceProcessor", () => {
     expect(sent()).toContain(
       "You have ₹1,050 more than expected — probably income or a refund that wasn't logged.",
     );
+    expect(sent()).toContain("then send your balance again");
     expect(pending.create).not.toHaveBeenCalled();
+    expect(deps.userRepository.update).not.toHaveBeenCalled();
+  });
+
+  // The bot's own advice: log the refund, check again. The second check must
+  // match, not report the refund as missing money.
+  it("matches after the user logs the income it pointed at", async () => {
+    await processor.process(ctx("balance 11000"));
+    deps.incomeRepository.sumForMonth.mockResolvedValue(1050);
+    messageService.sendMessage.mockClear();
+    await processor.process(ctx("balance 11000"));
+    expect(sent()).toContain("✅ All accounted for.");
+  });
+
+  it("asks for a plain number instead of guessing", async () => {
+    await processor.process(ctx("balance -500"));
+    expect(sent()).toContain('like "balance 12400"');
+    expect(deps.userRepository.update).not.toHaveBeenCalled();
   });
 
   it("answers a bare /balance with the expected figure, without re-anchoring", async () => {
@@ -169,6 +197,7 @@ describe("BalanceProcessor", () => {
       kind: "BALANCE_GAP",
       payload: {
         amount: 450,
+        actual: 9500,
         at: NOW.toISOString(),
         since: ANCHOR_AT.toISOString(),
       },
@@ -202,6 +231,22 @@ describe("BalanceProcessor", () => {
         [],
       );
       expect(out.toast).toBe("Logged ₹450 as Untracked");
+      // Settled: the stated balance becomes the anchor, as of the check.
+      expect(deps.userRepository.update).toHaveBeenCalledWith("u1", {
+        balanceAnchor: 9500,
+        balanceAnchorAt: NOW,
+      });
+    });
+
+    // A newer check moved the anchor; this button's figures are out of date.
+    it("refuses a tap from an older check", async () => {
+      pending.findLiveForUser.mockResolvedValue(row);
+      user.balanceAnchorAt = new Date("2026-11-16T06:30:00Z");
+      const out = await processor.process(ctx("bal:pa1:y"));
+      expect(pending.consume).not.toHaveBeenCalled();
+      expect(deps.expenseRepository.create).not.toHaveBeenCalled();
+      expect(deps.userRepository.update).not.toHaveBeenCalled();
+      expect(out.toast).toMatch(/out of date/);
     });
 
     it("writes once on a double tap", async () => {
@@ -227,6 +272,10 @@ describe("BalanceProcessor", () => {
       expect(deps.expenseRepository.create).not.toHaveBeenCalled();
       expect(messageService.editInteractiveMessage).toHaveBeenCalled();
       expect(out.toast).toBe("Skipped");
+      expect(deps.userRepository.update).toHaveBeenCalledWith("u1", {
+        balanceAnchor: 9500,
+        balanceAnchorAt: NOW,
+      });
     });
   });
 });

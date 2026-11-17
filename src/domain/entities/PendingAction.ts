@@ -45,11 +45,13 @@ export const CarryAmountPayload = z.object({
   cycleKey: z.string().min(1).max(10),
 });
 
-// A balance check found money that moved without being logged. `at` is the
-// moment of the new anchor (the gap is filed just before it), `since` the old
-// anchor — both ISO instants.
+// A balance check found money that moved without being logged. Settling it
+// (either button) re-anchors on `actual` as of `at`, the moment of the check;
+// a logged gap is filed just before `at`. `since` is the anchor the check ran
+// from — a tap is refused once a newer check has moved it. ISO instants.
 export const BalanceGapPayload = z.object({
   amount: z.number().positive().max(1_000_000_000),
+  actual: z.number().nonnegative().max(1_000_000_000),
   at: z.string().datetime(),
   since: z.string().datetime(),
 });

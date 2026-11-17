@@ -27,8 +27,9 @@ const PARSED = { intent: "UNKNOWN" as const, confidence: 1 };
 
 // "balance 12400" / "/balance": compares the user's real total balance with the
 // last one plus everything logged since, names the gap, and offers to log it
-// (callback "bal:"). Every check re-anchors on the new figure, so each one only
-// covers the time since the last.
+// (callback "bal:"). The anchor moves to the new figure only once the books
+// close — a match, or a tap on the gap buttons. Moving it while a gap is open
+// would make whatever the user logs to explain that gap count twice.
 export class BalanceProcessor implements MessageProcessor {
   constructor(
     private readonly deps: CarryFlowDeps,
@@ -47,8 +48,14 @@ export class BalanceProcessor implements MessageProcessor {
     const cb = parseBalanceCallback(context.textMessage);
     if (cb) return this.settleGap(context, cb.id, cb.choice);
 
-    const { amount } = parseBalanceText(context.textMessage)!;
+    const { amount, invalid } = parseBalanceText(context.textMessage)!;
     const { user, platformUserId } = context;
+    if (invalid) {
+      return this.reply(
+        platformUserId,
+        `Send your total balance as a plain number, like "balance 12400".`,
+      );
+    }
     const now = new Date();
     const exp = await expectedBalance(this.deps, user, now);
 
@@ -61,11 +68,8 @@ export class BalanceProcessor implements MessageProcessor {
       );
     }
 
-    await this.deps.userRepository.update(user.id, {
-      balanceAnchor: amount,
-      balanceAnchorAt: now,
-    });
     if (!exp) {
+      await this.anchor(user.id, amount, now);
       return this.reply(
         platformUserId,
         `✅ Balance saved: ${formatMoney(amount)}. Next time you send it, I'll check it against everything logged since.`,
@@ -88,17 +92,20 @@ export class BalanceProcessor implements MessageProcessor {
       `Expected ${formatMoney(exp.expected)} · you have ${formatMoney(actual)}`;
 
     if (verdict === "MATCH") {
+      await this.anchor(user.id, actual, now);
       return this.reply(platformUserId, `${head}\n\n✅ All accounted for.`);
     }
     if (verdict === "EXTRA") {
       return this.reply(
         platformUserId,
-        `${head}\n\nYou have ${formatMoney(-gap)} more than expected — probably income or a refund that wasn't logged. Send it like "refund 1500" and it'll count.`,
+        `${head}\n\nYou have ${formatMoney(-gap)} more than expected — probably income or a refund that wasn't logged. Log it (like "refund 1500"), then send your balance again.`,
       );
     }
 
     const amount = Math.round(gap);
-    const body = `${head}\n\n${formatMoney(amount)} isn't accounted for — usually small cash or UPI spends that never got logged.`;
+    const body =
+      `${head}\n\n${formatMoney(amount)} isn't accounted for — usually small cash or UPI spends that never got logged.\n` +
+      `Paid a credit-card bill? Tap Skip — those spends are already logged.`;
     // The body rides on the staged row so the tap can keep it while it clears
     // the buttons.
     const staged = await this.pendingActionRepository.create({
@@ -106,6 +113,7 @@ export class BalanceProcessor implements MessageProcessor {
       kind: "BALANCE_GAP",
       payload: {
         amount,
+        actual,
         at: now.toISOString(),
         since: exp.anchorAt.toISOString(),
       },
@@ -135,11 +143,19 @@ export class BalanceProcessor implements MessageProcessor {
     if (!row || parsed?.kind !== "BALANCE_GAP") {
       return this.toast("That check has expired — send your balance again.");
     }
+    const gap = parsed.data as {
+      amount: number;
+      actual: number;
+      at: string;
+      since: string;
+    };
+    if (user.balanceAnchorAt?.toISOString() !== gap.since) {
+      return this.toast("That check is out of date — send your balance again.");
+    }
     if (!(await this.pendingActionRepository.consume(id, user.id))) {
       return this.toast("Already done");
     }
 
-    const gap = parsed.data as { amount: number; at: string; since: string };
     let note = "Skipped";
     if (choice === "y") {
       const categoryId = await ensureNamedCategory(
@@ -161,6 +177,8 @@ export class BalanceProcessor implements MessageProcessor {
       });
       note = `Logged ${formatMoney(gap.amount)} as Untracked`;
     }
+    // Either way the books are closed as of the check.
+    await this.anchor(user.id, gap.actual, new Date(gap.at));
 
     if (
       context.callbackMessageId &&
@@ -179,6 +197,13 @@ export class BalanceProcessor implements MessageProcessor {
       toast: note,
       historyText: `[balance gap: ${note.toLowerCase()}]`,
     };
+  }
+
+  private anchor(userId: string, amount: number, at: Date) {
+    return this.deps.userRepository.update(userId, {
+      balanceAnchor: amount,
+      balanceAnchorAt: at,
+    });
   }
 
   private day(date: Date, tz: string): string {

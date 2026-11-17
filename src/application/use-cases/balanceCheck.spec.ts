@@ -34,6 +34,7 @@ describe("parseBalanceText", () => {
     ["bank balance: 12400", 12400],
     ["bal 500", 500],
     ["Balance 9000", 9000],
+    ["balance 12,400/-", 12400],
   ])("reads %s", (text, amount) => {
     expect(parseBalanceText(text)).toEqual({ amount });
   });
@@ -42,6 +43,15 @@ describe("parseBalanceText", () => {
     expect(parseBalanceText("/balance")).toEqual({ amount: null });
     expect(parseBalanceText("balance")).toEqual({ amount: null });
   });
+
+  // Claimed but not readable: these must never fall through to the parser,
+  // which has no balance concept and could log "balance 12k" as a spend.
+  it.each(["balance -500", "bal 12k", "my balance is ₹12.4k"])(
+    "claims %s but asks for a plain number",
+    (text) => {
+      expect(parseBalanceText(text)).toEqual({ amount: null, invalid: true });
+    },
+  );
 
   it.each(["chai 30", "balance sheet review", "balanced diet 200", "undo"])(
     "leaves %s to the parser",
