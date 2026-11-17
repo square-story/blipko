@@ -24,6 +24,7 @@ import * as yourDataYourCall from "../../content/changelog/2026-11-07-your-data-
 import * as closingTheLoop from "../../content/changelog/2026-11-07-closing-the-loop.mdx";
 import * as headsUp from "../../content/changelog/2026-11-07-heads-up.mdx";
 import * as balanceCheck from "../../content/changelog/2026-11-17-balance-check.mdx";
+import * as statementImport from "../../content/changelog/2026-11-17-statement-import.mdx";
 
 const modules = [
   telegram,
@@ -40,6 +41,7 @@ const modules = [
   closingTheLoop,
   headsUp,
   balanceCheck,
+  statementImport,
 ];
 
 // ── The `meta` contract ────────────────────────────────────────────────────

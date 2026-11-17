@@ -92,6 +92,11 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         why: "Unlogged small spends are the usual reason the bank balance surprises you.",
       },
       {
+        name: "Statement import",
+        what: "Upload your bank statement as a CSV on the dashboard's Import page; Blipko adds the spends you didn't log, skips ones it already has, and lets you undo the whole import.",
+        why: "Catches the purchases that never made it into chat.",
+      },
+      {
         name: "Recurring income and expenses",
         what: 'Set up repeating items once — "rent 8000 on 1st every month" — and they post themselves each cycle.',
         why: "Rent, salary, EMIs and subscriptions are the predictable bulk of a month; logging them by hand is the boring part.",
@@ -153,12 +158,13 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
     dashboard: {
       url: dashboardUrl,
       whatItIsFor:
-        "Charts and trends, the full transaction list with CSV export, editing categories and their monthly limits, changing which category an income is filed under, managing recurring rules, and all settings including income and reminder intensity.",
+        "Charts and trends, the full transaction list with CSV export, bank statement import (CSV), editing categories and their monthly limits, changing which category an income is filed under, managing recurring rules, and all settings including income and reminder intensity.",
       howToConnect:
         "Sign in on the dashboard, then tap Connect Telegram there to link this chat. Income and reminder settings are set up on the dashboard, not in chat. Categories do not have to be set up at all — the bot creates one the first time you spend on something, and the dashboard is where you rename them or give them a monthly limit.",
     },
 
     dataHandling: [
+      "Statement files are read in your browser; only the transactions you import are saved.",
       "Your messages are read by an AI model so it can work out the amount and category — that means the text you send is processed by an AI provider.",
       "Your spending records live in your own Blipko account and are only ever used to answer your questions.",
       "Every number reported is calculated by the app from your records, not made up by the AI. The AI chooses which figures to look up; the maths is done in code.",
