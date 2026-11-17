@@ -129,6 +129,13 @@ export function buildToolCatalog(
       required: [],
     },
     {
+      name: "get_expected_balance",
+      description:
+        "What the user's balance should be now, from their last stated balance plus everything logged since; it never knows the real bank balance. Quote expectedNow as 'should be about', not as their balance. A `note` means no balance was saved yet.",
+      properties: {},
+      required: [],
+    },
+    {
       name: "get_recent_expenses",
       description:
         "Individual recent expenses, newest first. Use for 'my last few spends' or 'when did I last spend on X'. For a total, use get_spend_by_category — do not add these rows up yourself.",
@@ -516,6 +523,8 @@ async function dispatch(
       );
     case "get_income":
       return tools.getIncome(userId, range);
+    case "get_expected_balance":
+      return tools.getExpectedBalance(userId);
     case "get_recent_expenses":
       return tools.getRecentExpenses(userId, {
         limit: asNumber(args.limit),

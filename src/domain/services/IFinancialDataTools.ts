@@ -73,6 +73,17 @@ export interface SpendByCategory {
   note?: string;
 }
 
+// What the balance should be now: the user's last stated balance plus
+// everything logged since. Never the real bank balance — Blipko can't see it.
+export interface ExpectedBalanceResult {
+  anchor?: string;
+  anchoredOn?: string; // YYYY-MM-DD, user's timezone
+  incomeSince?: string;
+  spentSince?: string;
+  expectedNow?: string;
+  note?: string;
+}
+
 export interface IncomeTotal {
   range: ResolvedRange;
   total: string;
@@ -178,6 +189,7 @@ export interface IFinancialDataTools {
     limit?: number,
   ): Promise<SpendByCategory>;
   getIncome(userId: string, range: DateRange): Promise<IncomeTotal>;
+  getExpectedBalance(userId: string): Promise<ExpectedBalanceResult>;
   getRecentExpenses(
     userId: string,
     opts: {

@@ -378,4 +378,37 @@ describe("FinancialDataTools", () => {
     expect(categoryRepository.findAllForUser).toHaveBeenCalledTimes(1);
     expect(categoryRepository.findById).not.toHaveBeenCalled();
   });
+
+  describe("getExpectedBalance", () => {
+    it("says there is nothing to go on before a balance is saved", async () => {
+      const res = await tools.getExpectedBalance("u1");
+      expect(res.expectedNow).toBeUndefined();
+      expect(res.note).toMatch(/No balance saved yet/);
+    });
+
+    it("returns the expected figure pre-formatted, dated in the user's zone", async () => {
+      userRepository.findById.mockResolvedValue({
+        ...user,
+        balanceAnchor: "10000.00",
+        // 20:00 UTC on Aug 5 is Aug 6 in IST.
+        balanceAnchorAt: new Date("2026-08-05T20:00:00Z"),
+      });
+      incomeRepository.sumForMonth.mockResolvedValue(0);
+      expenseRepository.sumByBucketForMonth = vi.fn((_u, b) =>
+        Promise.resolve(b === "WANTS" ? 450 : 0),
+      );
+      expenseRepository.sumByCategoryForMonth = vi.fn().mockResolvedValue(0);
+      categoryRepository.findByNameForUser = vi.fn().mockResolvedValue(null);
+      boxRepository.sumLinkedOutSince = vi.fn().mockResolvedValue(0);
+
+      const res = await tools.getExpectedBalance("u1");
+      expect(res).toEqual({
+        anchor: "₹10,000",
+        anchoredOn: "2026-08-06",
+        incomeSince: "₹0",
+        spentSince: "₹450",
+        expectedNow: "₹9,550",
+      });
+    });
+  });
 });

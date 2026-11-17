@@ -216,6 +216,17 @@ describe("buildCycleReport", () => {
     expect(text).not.toContain("keep Investments near");
   });
 
+  it("names what balance checks found that was never logged", async () => {
+    cats[5] = [...cats[5]!, { name: "Untracked", total: 450 }];
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).toContain("Found by balance checks: ₹450 you hadn't logged.");
+  });
+
+  it("says nothing about balance checks when none found a gap", async () => {
+    const { text } = await buildCycleReport(deps(), user, NOW);
+    expect(text).not.toContain("Found by balance checks");
+  });
+
   it("words an overrun as past budget, without shaming", async () => {
     expenseRepository.sumByBucketForMonth = vi.fn(
       (_u: string, bucket: string, start: Date) =>
