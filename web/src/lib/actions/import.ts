@@ -25,6 +25,8 @@ import {
 // a server action is a public endpoint.
 
 const MAX_ROWS = 1000;
+// Mirrors UNTRACKED_CATEGORY in src/application/use-cases/carryFlow.ts.
+const UNTRACKED_CATEGORY = "Untracked";
 const DAY_MS = 86_400_000;
 
 const txnSchema = z.object({
@@ -34,6 +36,7 @@ const txnSchema = z.object({
   narration: z.string().max(500),
   payee: z.string().min(1).max(100),
   cash: z.boolean(),
+  cardBill: z.boolean(),
 });
 const txnsSchema = z.array(txnSchema).min(1).max(MAX_ROWS);
 
@@ -82,20 +85,27 @@ function revalidateAll(): void {
   }
 }
 
+// The statement's date window in the user's zone, padded so a ±1 day match
+// at either end is still seen.
+function statementRange(tz: string, dates: string[]) {
+  const sorted = [...dates].sort();
+  return {
+    gte: new Date(importDate(sorted[0]!, tz).getTime() - 2 * DAY_MS),
+    lt: new Date(importDate(sorted.at(-1)!, tz).getTime() + 2 * DAY_MS),
+  };
+}
+
 // What's already logged around the statement's dates, as day keys in the
-// user's zone. Spends diverted into a box soft-delete their Expense, so their
-// LINKED box entries stand in for them — otherwise re-importing them would
-// look new.
+// user's zone. Moving a transaction into a box — the bot's linked-category
+// diversion or the dashboard's "Move to box" — soft-deletes it, so its box
+// entry stands in for it; otherwise re-importing it would look new.
 async function loggedRows(
   userId: string,
   tz: string,
-  dates: string[],
+  range: { gte: Date; lt: Date },
 ): Promise<LoggedRow[]> {
-  const sorted = [...dates].sort();
-  const gte = new Date(importDate(sorted[0]!, tz).getTime() - 2 * DAY_MS);
-  const lt = new Date(importDate(sorted.at(-1)!, tz).getTime() + 2 * DAY_MS);
-  const range = { gte, lt };
-  const [expenses, incomes, diverted] = await Promise.all([
+  const moved = { userId, isDeleted: false, isTracking: false, date: range };
+  const [expenses, incomes, movedOut, movedIn] = await Promise.all([
     prisma.expense.findMany({
       where: { userId, isDeleted: false, date: range },
       select: { date: true, amount: true },
@@ -106,13 +116,14 @@ async function loggedRows(
     }),
     prisma.boxEntry.findMany({
       where: {
-        userId,
-        isDeleted: false,
+        ...moved,
         direction: "OUT",
-        source: "LINKED",
-        isTracking: false,
-        date: range,
+        OR: [{ source: "LINKED" }, { sourceExpenseId: { not: null } }],
       },
+      select: { date: true, amount: true },
+    }),
+    prisma.boxEntry.findMany({
+      where: { ...moved, direction: "IN", sourceIncomeId: { not: null } },
       select: { date: true, amount: true },
     }),
   ]);
@@ -124,14 +135,15 @@ async function loggedRows(
     });
   return [
     ...expenses.map(row("DEBIT")),
-    ...diverted.map(row("DEBIT")),
+    ...movedOut.map(row("DEBIT")),
     ...incomes.map(row("CREDIT")),
+    ...movedIn.map(row("CREDIT")),
   ];
 }
 
 export async function previewImport(
   input: ImportTxn[],
-): Promise<Result<{ rows: PreviewRow[] }>> {
+): Promise<Result<{ rows: PreviewRow[]; untracked: number }>> {
   const user = await sessionUser();
   if (!user) return { success: false, message: "Unauthorized" };
   const parsed = txnsSchema.safeParse(input);
@@ -143,11 +155,24 @@ export async function previewImport(
   }
   const txns = parsed.data;
 
-  const logged = await loggedRows(
-    user.id,
+  const range = statementRange(
     user.tz,
     txns.map((t) => t.date),
   );
+  const [logged, untracked] = await Promise.all([
+    loggedRows(user.id, user.tz, range),
+    // A balance check's "Untracked" lump covers spends this statement lists
+    // one by one; the preview says so, since they can't be matched.
+    prisma.expense.aggregate({
+      where: {
+        userId: user.id,
+        isDeleted: false,
+        date: range,
+        category: { name: UNTRACKED_CATEGORY },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
   const dup = markDuplicates(txns, logged);
   const keys = txns.map((t) => phraseMemoryKey(t.payee));
   const remembered = await findRememberedCategories(user.id, [
@@ -156,6 +181,7 @@ export async function previewImport(
 
   return {
     success: true,
+    untracked: Number(untracked._sum.amount ?? 0),
     rows: txns.map((t, i) => ({
       duplicate: dup[i]!,
       categoryId:

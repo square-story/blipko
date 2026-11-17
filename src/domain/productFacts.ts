@@ -93,7 +93,7 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       },
       {
         name: "Statement import",
-        what: "Upload your bank statement as a CSV on the dashboard's Import page; Blipko adds the spends you didn't log, skips ones it already has, and lets you undo the whole import.",
+        what: "Upload your bank statement as a CSV on the dashboard's Import page; Blipko adds the spends you didn't log, skips ones it already has, and leaves card-bill payments, cash withdrawals and incoming money unticked. An Undo button appears right after importing.",
         why: "Catches the purchases that never made it into chat.",
       },
       {

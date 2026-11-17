@@ -57,6 +57,13 @@ describe("parseStatementDate", () => {
     ["05-Nov-2026", "2026-11-05"],
     ["1 Nov 2026", "2026-11-01"],
     ["2026-11-05", "2026-11-05"],
+    // Excel's "Save As CSV" writes datetimes; some banks print the time too.
+    ["01/11/2026 10:32", "2026-11-01"],
+    ["1/11/2026 0:00", "2026-11-01"],
+    ["01/11/2026 11:30 PM", "2026-11-01"],
+    ["2026-11-01 10:32:00", "2026-11-01"],
+    ["2026-11-01T10:32:00", "2026-11-01"],
+    ["01-Sept-2026", "2026-09-01"],
   ])("reads %s day-first as %s", (raw, ymd) => {
     expect(parseStatementDate(raw)).toBe(ymd);
   });
@@ -420,7 +427,7 @@ describe("importDate", () => {
 });
 
 describe("defaultInclude", () => {
-  const t = (kind: "DEBIT" | "CREDIT", cash = false) =>
+  const t = (kind: "DEBIT" | "CREDIT", cash = false, cardBill = false) =>
     ({
       date: "2026-11-01",
       amount: 1,
@@ -428,12 +435,39 @@ describe("defaultInclude", () => {
       narration: "",
       payee: "",
       cash,
+      cardBill,
     }) as const;
 
-  it("ticks only new, non-cash spends", () => {
+  it("ticks only new spends that aren't cash or a card bill", () => {
     expect(defaultInclude(t("DEBIT"), false)).toBe(true);
     expect(defaultInclude(t("DEBIT"), true)).toBe(false);
     expect(defaultInclude(t("DEBIT", true), false)).toBe(false);
+    expect(defaultInclude(t("DEBIT", false, true), false)).toBe(false);
     expect(defaultInclude(t("CREDIT"), false)).toBe(false);
+  });
+});
+
+// A card bill repays spends that were logged when they were made; importing
+// it would count them all a second time as one lump.
+describe("card bill payments", () => {
+  const first = (narration: string) => {
+    const r = parseCsv(
+      `Date,Narration,Debit,Credit\n01/11/2026,"${narration}",5000.00,`,
+    );
+    return toTransactions(r, detectColumns(r)!).txns[0]!;
+  };
+
+  it.each([
+    "BIL/ONL/000123456789/ICICI Credit Card/",
+    "CC 4XXXXXXXXXXX1234 AUTOPAY SI-TAD",
+    "UPI-CRED CLUB-CRED.CLUB@AXISB-UTIB0000100-6312-CREDIT CARD BILL",
+  ])("flags %s", (narration) => {
+    expect(first(narration).cardBill).toBe(true);
+  });
+
+  it("leaves an ordinary spend alone", () => {
+    expect(first("UPI-SWIGGY-SWIGGY8@YBL-YESB0YBLUPI-6312-PAY").cardBill).toBe(
+      false,
+    );
   });
 });

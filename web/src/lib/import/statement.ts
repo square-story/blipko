@@ -11,6 +11,7 @@ export interface StatementTxn {
   narration: string;
   payee: string;
   cash: boolean; // ATM / cash withdrawal
+  cardBill: boolean; // credit-card bill payment
 }
 
 export interface Mapping {
@@ -44,17 +45,23 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 // Day-first: these are Indian statements, so 05/11 is 5 November.
 export function parseStatementDate(raw: string): string | null {
-  const s = (raw ?? "").trim();
+  // A trailing time ("10:32", "11:30 PM", "T10:32:00") — Excel's Save As CSV
+  // writes datetimes — says nothing about the day.
+  const s = (raw ?? "")
+    .trim()
+    .replace(/[ T,]+\d{1,2}:\d{2}(:\d{2})?(\.\d+)?\s*([ap]m)?$/i, "");
   let y: number, m: number, d: number;
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   const dmy =
-    /^(\d{1,2})[/\-. ]([A-Za-z]{3}|\d{1,2})[/\-. ](\d{4}|\d{2})$/.exec(s);
+    /^(\d{1,2})[/\-. ]([A-Za-z]{3,4}|\d{1,2})[/\-. ](\d{4}|\d{2})$/.exec(s);
   if (iso) {
     [y, m, d] = [Number(iso[1]), Number(iso[2]), Number(iso[3])];
   } else if (dmy) {
     d = Number(dmy[1]);
     const mon = dmy[2]!;
-    m = /\d/.test(mon) ? Number(mon) : MONTHS.indexOf(mon.toLowerCase()) + 1;
+    m = /\d/.test(mon)
+      ? Number(mon)
+      : MONTHS.indexOf(mon.slice(0, 3).toLowerCase()) + 1;
     y = Number(dmy[3]);
     if (y < 100) y += 2000;
   } else {
@@ -84,6 +91,9 @@ export function parseAmount(raw: string): number | null {
 }
 
 const CASH = /\b(ATM|ATW|NWD|CASH WDL)\b/i;
+// Paying a card bill repays spends already logged when they were made.
+const CARD_BILL =
+  /credit\s*card|\bcc\b|card\s*(bill|payment)|autopay|\bcred\b/i;
 // Rails, directions and channel codes: never the payee.
 const STOP = new Set([
   "upi",
@@ -234,6 +244,7 @@ export function toTransactions(
       narration,
       payee: cash ? "Cash withdrawal" : payeeFromNarration(narration),
       cash,
+      cardBill: CARD_BILL.test(narration),
     });
   }
   return { txns, skipped };
@@ -291,8 +302,8 @@ export function importDate(ymd: string, tz: string): Date {
 // already logged; transfers and refunds would raise the budget), and so do
 // cash withdrawals: the cash is spent later and logged then.
 export function defaultInclude(
-  txn: Pick<StatementTxn, "kind" | "cash">,
+  txn: Pick<StatementTxn, "kind" | "cash" | "cardBill">,
   duplicate: boolean,
 ): boolean {
-  return txn.kind === "DEBIT" && !txn.cash && !duplicate;
+  return txn.kind === "DEBIT" && !txn.cash && !txn.cardBill && !duplicate;
 }

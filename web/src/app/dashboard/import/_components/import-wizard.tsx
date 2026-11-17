@@ -70,6 +70,7 @@ export function ImportWizard({
   const [rows, setRows] = useState<string[][] | null>(null);
   const [manual, setManual] = useState<ManualMap>({});
   const [items, setItems] = useState<Item[] | null>(null);
+  const [untracked, setUntracked] = useState(0);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -100,6 +101,7 @@ export function ImportWizard({
         toast.error(res.message);
         return;
       }
+      setUntracked(res.untracked);
       setItems(
         txns.map((txn, i) => ({
           txn,
@@ -189,11 +191,13 @@ export function ImportWizard({
 
   const counts = useMemo(() => {
     if (!items) return null;
-    const isNew = (it: Item) => it.txn.kind === "DEBIT" && !it.txn.cash && !it.duplicate;
+    const held = (it: Item) =>
+      it.txn.kind === "CREDIT" || it.txn.cash || it.txn.cardBill;
+    const isNew = (it: Item) => !held(it) && !it.duplicate;
     return {
       fresh: items.filter(isNew).length,
       logged: items.filter((it) => it.duplicate).length,
-      unticked: items.filter((it) => !it.duplicate && (it.txn.kind === "CREDIT" || it.txn.cash)).length,
+      unticked: items.filter((it) => !it.duplicate && held(it)).length,
       selected: items.filter((it) => it.include).length,
     };
   }, [items]);
@@ -295,8 +299,15 @@ export function ImportWizard({
               <CardTitle>Review</CardTitle>
               <CardDescription>
                 {counts.fresh} new · {counts.logged} already logged ·{" "}
-                {counts.unticked} credits &amp; cash (unticked)
+                {counts.unticked} credits, cash &amp; card bills (unticked)
               </CardDescription>
+              {untracked > 0 && (
+                <p className="text-sm text-amber-600">
+                  You logged {formatMoney(untracked)} as Untracked in this
+                  period. If these rows are what it was, delete that entry
+                  after importing so it isn&apos;t counted twice.
+                </p>
+              )}
             </div>
             <Button onClick={onImport} disabled={pending || counts.selected === 0}>
               {pending ? "Importing…" : `Import ${counts.selected}`}
@@ -365,6 +376,8 @@ export function ImportWizard({
                         <Badge variant="secondary">Already logged?</Badge>
                       ) : it.txn.cash ? (
                         <Badge variant="outline">Cash withdrawal</Badge>
+                      ) : it.txn.cardBill ? (
+                        <Badge variant="outline">Card bill</Badge>
                       ) : it.txn.kind === "CREDIT" ? (
                         <Badge variant="outline">Credit</Badge>
                       ) : null}
