@@ -4,6 +4,8 @@ import { Bucket } from "@prisma/client";
 // is deployed rooted at web/ and cannot import the backend's source tree. The
 // name is the join key, so the two must not drift.
 export const CARRY_INCOME_CATEGORY = "Opening Balance";
+// Mirrors INCOME_FALLBACK_CATEGORY in src/domain/incomeCategoryTemplate.ts.
+export const INCOME_FALLBACK_CATEGORY = "Other Income";
 
 // 50/30/20 buckets, in display order.
 export const BUCKETS: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];

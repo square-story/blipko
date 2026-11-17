@@ -7,6 +7,7 @@ import {
   Tag,
   RefreshCw,
   PiggyBank,
+  Upload,
 } from "lucide-react";
 
 type Submenu = {
@@ -68,6 +69,11 @@ export function getMenuList(): Group[] {
           href: "/dashboard/boxes",
           label: "Boxes",
           icon: PiggyBank,
+        },
+        {
+          href: "/dashboard/import",
+          label: "Import",
+          icon: Upload,
         },
       ],
     },

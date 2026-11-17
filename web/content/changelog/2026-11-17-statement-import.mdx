@@ -1,0 +1,38 @@
+export const meta = {
+  slug: "statement-import",
+  title: "Import your bank statement",
+  date: "2026-11-17",
+  summary:
+    "Upload a bank statement CSV on the dashboard and Blipko adds the spends you never logged — without double-counting the ones you did.",
+  tags: ["Feature"],
+};
+
+Chat logging catches what you remember to send. Your bank statement has the
+rest. Now you can bring it in.
+
+### How it works
+
+Open **Import** on the dashboard and pick your statement's CSV file (net
+banking usually offers it as a download; if your bank only gives Excel, open it
+and _Save As_ CSV). HDFC, SBI, ICICI, Axis and most other layouts are
+recognised automatically; if not, you pick the date, description and amount
+columns once.
+
+The file is read **in your browser** — the statement itself never leaves your
+device. Only the rows you choose to import are saved.
+
+### What gets ticked
+
+- **New spends** are ticked, with the payee pulled out of messy bank text
+  (_UPI-SWIGGY-SWIGGY8@YBL-…_ becomes **Swiggy**) and a category if you've
+  filed that payee before.
+- **Already logged?** Anything matching an entry you already have — same
+  amount, within a day — is left unticked, so nothing is counted twice.
+- **Credits, cash withdrawals and card bills** are shown but unticked. Salary
+  is usually logged already, transfers and refunds shouldn't raise your budget,
+  cash is counted when you spend it, and a card bill repays spends you logged
+  when you made them.
+
+Pick a category for one Swiggy row and every Swiggy row follows — and the bot
+remembers it for next time you text "swiggy 250". Changed your mind? The
+**Undo** button that appears right after importing removes the whole import.
