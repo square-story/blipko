@@ -12,6 +12,8 @@ export interface CreateExpenseDTO {
   categoryId?: string | undefined;
   parseLogId?: string | undefined;
   batchId?: string | undefined;
+  // Omitted → the DB default (now).
+  date?: Date | undefined;
 }
 
 // Partial edit of an existing expense (amount/bucket/category/note).

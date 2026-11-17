@@ -51,6 +51,9 @@ export interface IBoxRepository {
   // All non-archived boxes for a user with balances, ordered by priority.
   listWithBalances(userId: string): Promise<BoxWithBalance[]>;
   balanceFor(boxId: string): Promise<number>;
+  // Σ live diverted spends (LINKED, OUT, non-tracking) in [from, to). The
+  // diversion soft-deletes the Expense, so the balance check adds these back.
+  sumLinkedOutSince(userId: string, from: Date, to: Date): Promise<number>;
   update(id: string, data: UpdateBoxDTO): Promise<void>;
   delete(id: string): Promise<void>;
 

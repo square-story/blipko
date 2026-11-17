@@ -104,6 +104,11 @@ export async function mergeTelegramUser(
         locale: botUser.locale,
         payday: botUser.payday,
         hasOnboarded: true,
+        // Only the bot sets a balance anchor, so the bot's is the one to keep.
+        ...(botUser.balanceAnchorAt && {
+          balanceAnchor: botUser.balanceAnchor,
+          balanceAnchorAt: botUser.balanceAnchorAt,
+        }),
       },
     });
   }

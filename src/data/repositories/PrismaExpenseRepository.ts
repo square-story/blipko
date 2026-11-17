@@ -24,6 +24,7 @@ export class PrismaExpenseRepository implements IExpenseRepository {
         categoryId: data.categoryId ?? null,
         parseLogId: data.parseLogId ?? null,
         batchId: data.batchId ?? null,
+        ...(data.date && { date: data.date }),
       },
     });
   }

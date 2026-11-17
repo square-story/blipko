@@ -78,6 +78,25 @@ export class PrismaBoxRepository implements IBoxRepository {
     return (await this.balanceMap([boxId])).get(boxId) ?? 0;
   }
 
+  async sumLinkedOutSince(
+    userId: string,
+    from: Date,
+    to: Date,
+  ): Promise<number> {
+    const agg = await this.prisma.boxEntry.aggregate({
+      where: {
+        userId,
+        direction: "OUT",
+        source: "LINKED",
+        isTracking: false,
+        isDeleted: false,
+        date: { gte: from, lt: to },
+      },
+      _sum: { amount: true },
+    });
+    return Number(agg._sum.amount ?? 0);
+  }
+
   async update(id: string, data: UpdateBoxDTO): Promise<void> {
     await this.prisma.box.update({
       where: { id },

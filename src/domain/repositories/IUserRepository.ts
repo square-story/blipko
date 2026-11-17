@@ -16,6 +16,8 @@ export interface UpdateUserDTO {
   onboardingDraft?: Prisma.InputJsonValue | null;
   notificationDosage?: NotificationDosage;
   carryDecidedKey?: string | null;
+  balanceAnchor?: number | null;
+  balanceAnchorAt?: Date | null;
 }
 
 export interface IUserRepository {
