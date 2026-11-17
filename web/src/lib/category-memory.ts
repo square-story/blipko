@@ -46,3 +46,18 @@ export async function rememberCategoryChoice(
     // Best-effort. The correction itself has already been saved.
   }
 }
+
+// Remembered categories for many phrase keys at once (statement import):
+// phraseKey → categoryId. Group categories are skipped — an expense never
+// hangs off a container.
+export async function findRememberedCategories(
+  userId: string,
+  keys: string[],
+): Promise<Map<string, string>> {
+  if (keys.length === 0) return new Map();
+  const rows = await prisma.categoryMemory.findMany({
+    where: { userId, phraseKey: { in: keys }, category: { isGroup: false } },
+    select: { phraseKey: true, categoryId: true },
+  });
+  return new Map(rows.map((r) => [r.phraseKey, r.categoryId]));
+}

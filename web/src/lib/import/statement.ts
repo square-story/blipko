@@ -1,3 +1,5 @@
+import { zonedStartOfDayUtc } from "@/lib/time";
+
 // Bank statement → transactions. Pure (no Prisma, no Next) so it runs in the
 // browser and under vitest. Header detection by column name replaces per-bank
 // presets: Indian banks mostly differ in what they call the same columns.
@@ -275,4 +277,22 @@ export function markDuplicates(
     });
   }
   return dup;
+}
+
+// The instant a statement row is stored at: noon on its day in the user's
+// zone. A statement has dates, not times, and noon is the hour no timezone
+// offset can push onto a neighbouring day.
+export function importDate(ymd: string, tz: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number) as [number, number, number];
+  return new Date(zonedStartOfDayUtc(y, m, d, tz).getTime() + 12 * 3_600_000);
+}
+
+// What the preview ticks by default. Credits stay unticked (salary is usually
+// already logged; transfers and refunds would raise the budget), and so do
+// cash withdrawals: the cash is spent later and logged then.
+export function defaultInclude(
+  txn: Pick<StatementTxn, "kind" | "cash">,
+  duplicate: boolean,
+): boolean {
+  return txn.kind === "DEBIT" && !txn.cash && !duplicate;
 }

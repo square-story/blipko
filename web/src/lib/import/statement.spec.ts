@@ -2,8 +2,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseCsv } from "./csv";
+import { zonedYmd } from "@/lib/time";
 import {
+  defaultInclude,
   detectColumns,
+  importDate,
   markDuplicates,
   parseAmount,
   parseStatementDate,
@@ -397,5 +400,40 @@ describe("markDuplicates", () => {
       kind,
     }));
     expect(markDuplicates(txns, logged).every(Boolean)).toBe(true);
+  });
+});
+
+describe("importDate", () => {
+  // Noon in the user's zone: no offset can push it onto another calendar day.
+  it.each(["Asia/Kolkata", "America/Los_Angeles", "Pacific/Auckland"])(
+    "keeps the statement's day in %s",
+    (tz) => {
+      expect(zonedYmd(importDate("2026-11-01", tz), tz)).toBe("2026-11-01");
+    },
+  );
+
+  it("is noon IST for an Indian user", () => {
+    expect(importDate("2026-11-01", "Asia/Kolkata").toISOString()).toBe(
+      "2026-11-01T06:30:00.000Z",
+    );
+  });
+});
+
+describe("defaultInclude", () => {
+  const t = (kind: "DEBIT" | "CREDIT", cash = false) =>
+    ({
+      date: "2026-11-01",
+      amount: 1,
+      kind,
+      narration: "",
+      payee: "",
+      cash,
+    }) as const;
+
+  it("ticks only new, non-cash spends", () => {
+    expect(defaultInclude(t("DEBIT"), false)).toBe(true);
+    expect(defaultInclude(t("DEBIT"), true)).toBe(false);
+    expect(defaultInclude(t("DEBIT", true), false)).toBe(false);
+    expect(defaultInclude(t("CREDIT"), false)).toBe(false);
   });
 });
