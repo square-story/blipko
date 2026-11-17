@@ -399,7 +399,9 @@ describe("FinancialDataTools", () => {
       );
       expenseRepository.sumByCategoryForMonth = vi.fn().mockResolvedValue(0);
       categoryRepository.findByNameForUser = vi.fn().mockResolvedValue(null);
-      boxRepository.sumLinkedOutSince = vi.fn().mockResolvedValue(0);
+      boxRepository.sumMovedSince = vi
+        .fn()
+        .mockResolvedValue({ spent: 0, income: 0 });
 
       const res = await tools.getExpectedBalance("u1");
       expect(res).toEqual({

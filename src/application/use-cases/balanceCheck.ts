@@ -46,7 +46,7 @@ export interface BalanceDeps {
     "sumByBucketForMonth" | "sumByCategoryForMonth"
   >;
   categoryRepository: Pick<ICategoryRepository, "findByNameForUser">;
-  boxRepository: Pick<IBoxRepository, "sumLinkedOutSince">;
+  boxRepository: Pick<IBoxRepository, "sumMovedSince">;
 }
 
 export interface BalanceUser {
@@ -67,8 +67,8 @@ const BUCKETS: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
 
 // What the balance should be now: anchor + income − spend since the anchor.
 // Carry-forward rows ("Opening Balance" income, "Carried Forward" expense) are
-// bookkeeping between cycles, not cash moving, so both are left out. Spends
-// diverted into a box soft-delete their Expense, so they are added back.
+// bookkeeping between cycles, not cash moving, so both are left out. Money
+// moved into a box soft-deletes its Expense/Income, so it is added back.
 // ponytail: manual box IN/OUT is ignored — boxes are virtual jars, the cash
 // hasn't left the account. Revisit if boxes ever map to real accounts.
 export async function expectedBalance(
@@ -90,7 +90,7 @@ export async function expectedBalance(
       ? carryCat.id
       : null;
 
-  const [gross, carryIn, buckets, carried, diverted] = await Promise.all([
+  const [gross, carryIn, buckets, carried, moved] = await Promise.all([
     deps.incomeRepository.sumForMonth(user.id, from, now),
     deps.incomeRepository.sumCarryForMonth(user.id, from, now),
     Promise.all(
@@ -106,11 +106,11 @@ export async function expectedBalance(
           now,
         )
       : 0,
-    deps.boxRepository.sumLinkedOutSince(user.id, from, now),
+    deps.boxRepository.sumMovedSince(user.id, from, now),
   ]);
 
-  const income = gross - carryIn;
-  const spent = buckets.reduce((a, b) => a + b, 0) - carried + diverted;
+  const income = gross - carryIn + moved.income;
+  const spent = buckets.reduce((a, b) => a + b, 0) - carried + moved.spent;
   return {
     anchor,
     anchorAt: from,

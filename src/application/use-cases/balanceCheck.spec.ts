@@ -72,20 +72,23 @@ describe("expectedBalance", () => {
         .fn()
         .mockResolvedValue({ id: "carry", name: "Carried Forward" }),
     },
-    boxRepository: { sumLinkedOutSince: vi.fn().mockResolvedValue(300) },
+    boxRepository: {
+      sumMovedSince: vi.fn().mockResolvedValue({ spent: 300, income: 200 }),
+    },
   });
 
-  // income 6000 − carry 1000 = 5000; spend 1000+1000+1500 − carried 1500
-  // = 2000, + 300 diverted to a box = 2300; 10000 + 5000 − 2300 = 12700.
-  it("leaves carry bookkeeping out and counts diverted box spends", async () => {
+  // income 6000 − carry 1000 + 200 moved into a box = 5200; spend
+  // 1000+1000+1500 − carried 1500 = 2000, + 300 moved to a box = 2300;
+  // 10000 + 5200 − 2300 = 12900.
+  it("leaves carry bookkeeping out and counts money moved into boxes", async () => {
     const d = deps();
     const r = await expectedBalance(d, user, now);
     expect(r).toEqual({
       anchor: 10000,
       anchorAt: from,
-      income: 5000,
+      income: 5200,
       spent: 2300,
-      expected: 12700,
+      expected: 12900,
     });
     expect(d.expenseRepository.sumByCategoryForMonth).toHaveBeenCalledWith(
       "u1",
@@ -93,11 +96,7 @@ describe("expectedBalance", () => {
       from,
       now,
     );
-    expect(d.boxRepository.sumLinkedOutSince).toHaveBeenCalledWith(
-      "u1",
-      from,
-      now,
-    );
+    expect(d.boxRepository.sumMovedSince).toHaveBeenCalledWith("u1", from, now);
   });
 
   it("subtracts nothing for a carry category the user never got", async () => {

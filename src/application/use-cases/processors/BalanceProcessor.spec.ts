@@ -47,7 +47,9 @@ describe("BalanceProcessor", () => {
         findByNameForUser: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({ id: "untracked" }),
       },
-      boxRepository: { sumLinkedOutSince: vi.fn().mockResolvedValue(0) },
+      boxRepository: {
+        sumMovedSince: vi.fn().mockResolvedValue({ spent: 0, income: 0 }),
+      },
       incomeCategoryRepository: {},
     };
     pending = {

@@ -78,23 +78,37 @@ export class PrismaBoxRepository implements IBoxRepository {
     return (await this.balanceMap([boxId])).get(boxId) ?? 0;
   }
 
-  async sumLinkedOutSince(
+  async sumMovedSince(
     userId: string,
     from: Date,
     to: Date,
-  ): Promise<number> {
-    const agg = await this.prisma.boxEntry.aggregate({
-      where: {
-        userId,
-        direction: "OUT",
-        source: "LINKED",
-        isTracking: false,
-        isDeleted: false,
-        date: { gte: from, lt: to },
-      },
-      _sum: { amount: true },
-    });
-    return Number(agg._sum.amount ?? 0);
+  ): Promise<{ spent: number; income: number }> {
+    const base = {
+      userId,
+      isTracking: false,
+      isDeleted: false,
+      date: { gte: from, lt: to },
+    };
+    const [out, inn] = await Promise.all([
+      this.prisma.boxEntry.aggregate({
+        where: {
+          ...base,
+          direction: "OUT",
+          // Bot diversions are LINKED; the dashboard's "Move to box" is
+          // MANUAL but keeps the moved expense's id.
+          OR: [{ source: "LINKED" }, { sourceExpenseId: { not: null } }],
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.boxEntry.aggregate({
+        where: { ...base, direction: "IN", sourceIncomeId: { not: null } },
+        _sum: { amount: true },
+      }),
+    ]);
+    return {
+      spent: Number(out._sum.amount ?? 0),
+      income: Number(inn._sum.amount ?? 0),
+    };
   }
 
   async update(id: string, data: UpdateBoxDTO): Promise<void> {
