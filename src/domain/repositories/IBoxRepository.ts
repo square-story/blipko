@@ -51,6 +51,15 @@ export interface IBoxRepository {
   // All non-archived boxes for a user with balances, ordered by priority.
   listWithBalances(userId: string): Promise<BoxWithBalance[]>;
   balanceFor(boxId: string): Promise<number>;
+  // Money moved into boxes in [from, to): spends (bot diversion or dashboard
+  // "Move to box") and moved income. Both soft-delete the source transaction,
+  // so the balance check adds these back. Tracking links are excluded — their
+  // transaction stays live.
+  sumMovedSince(
+    userId: string,
+    from: Date,
+    to: Date,
+  ): Promise<{ spent: number; income: number }>;
   update(id: string, data: UpdateBoxDTO): Promise<void>;
   delete(id: string): Promise<void>;
 

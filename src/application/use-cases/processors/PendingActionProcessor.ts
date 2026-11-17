@@ -158,10 +158,11 @@ export class PendingActionProcessor implements MessageProcessor {
         return `🔁 Set up: ${formatMoney(p.amount)} expense on day ${p.dayOfMonth} every month.`;
       }
 
-      // Never reachable: CARRY_AMOUNT rows are staged and consumed by the
-      // carry-forward flow, which renders car: buttons, not act: ones. Listed
-      // so the switch stays exhaustive over PendingActionKind.
+      // Never reachable: CARRY_AMOUNT and BALANCE_GAP rows are staged and
+      // consumed by their own flows, which render car: / bal: buttons, not act:
+      // ones. Listed so the switch stays exhaustive over PendingActionKind.
       case "CARRY_AMOUNT":
+      case "BALANCE_GAP":
         return EXPIRED;
 
       case "BOX_MOVE": {

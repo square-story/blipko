@@ -97,6 +97,12 @@ model User {
   // to survive, and both surfaces read and write the same answer.
   carryDecidedKey String?
 
+  // Balance check: the last total balance the user stated (bank + UPI + cash)
+  // and when. The next check compares their new figure with this plus
+  // everything logged since, then re-anchors.
+  balanceAnchor   Decimal?  @db.Decimal(12, 2)
+  balanceAnchorAt DateTime?
+
   // Reminder dosage (opt-in; default OFF).
   notificationDosage NotificationDosage @default(OFF)
 

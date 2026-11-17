@@ -38,6 +38,12 @@ export class PrismaUserRepository implements IUserRepository {
         ...(data.carryDecidedKey !== undefined && {
           carryDecidedKey: data.carryDecidedKey,
         }),
+        ...(data.balanceAnchor !== undefined && {
+          balanceAnchor: data.balanceAnchor,
+        }),
+        ...(data.balanceAnchorAt !== undefined && {
+          balanceAnchorAt: data.balanceAnchorAt,
+        }),
         ...(data.onboardingDraft !== undefined && {
           onboardingDraft:
             data.onboardingDraft === null

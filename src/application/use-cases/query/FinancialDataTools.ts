@@ -8,6 +8,7 @@ import {
   CycleComparison,
   CycleSummary,
   DateRange,
+  ExpectedBalanceResult,
   IFinancialDataTools,
   IncomeTotal,
   PeriodStatus,
@@ -36,6 +37,7 @@ import {
 } from "../budgetMath";
 import { zonedParts, zonedStartOfDayUtc, zonedYmd } from "../../../utils/time";
 import { uniqueLeafCategories } from "../categoryHints";
+import { expectedBalance } from "../balanceCheck";
 
 const DEFAULT_SPLIT = { needsPct: 50, wantsPct: 30, savingsPct: 20 };
 const ORDER: Bucket[] = ["NEEDS", "WANTS", "SAVINGS"];
@@ -145,6 +147,31 @@ export class FinancialDataTools implements IFinancialDataTools {
     };
     if (rows.length === 0) result.note = NO_SPEND_NOTE;
     return result;
+  }
+
+  async getExpectedBalance(userId: string): Promise<ExpectedBalanceResult> {
+    const user = await this.requireUser(userId);
+    const exp = await expectedBalance(
+      {
+        incomeRepository: this.incomeRepository,
+        expenseRepository: this.expenseRepository,
+        categoryRepository: this.categoryRepository,
+        boxRepository: this.boxRepository,
+      },
+      user,
+    );
+    if (!exp) {
+      return {
+        note: "No balance saved yet — the user can send 'balance 12400'.",
+      };
+    }
+    return {
+      anchor: formatMoney(exp.anchor),
+      anchoredOn: zonedYmd(exp.anchorAt, user.timezone),
+      incomeSince: formatMoney(exp.income),
+      spentSince: formatMoney(exp.spent),
+      expectedNow: formatMoney(exp.expected),
+    };
   }
 
   async getIncome(userId: string, range: DateRange): Promise<IncomeTotal> {

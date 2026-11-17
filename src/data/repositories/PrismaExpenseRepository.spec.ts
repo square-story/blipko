@@ -98,3 +98,21 @@ describe("PrismaExpenseRepository.hasManualExpenseSince", () => {
     expect(await repo.hasManualExpenseSince("u1", from)).toBe(true);
   });
 });
+
+// The balance check files its gap just before the new anchor; without the
+// date the DB default (now) would count it again on the next check.
+describe("PrismaExpenseRepository.create date", () => {
+  it("passes an explicit date through", async () => {
+    const prisma: any = { expense: { create: vi.fn().mockResolvedValue({}) } };
+    const date = new Date("2026-11-10T06:30:00Z");
+    await new PrismaExpenseRepository(prisma).create({
+      userId: "u1",
+      amount: 450,
+      bucket: "WANTS",
+      rawText: "x",
+      confidence: 1,
+      date,
+    });
+    expect(prisma.expense.create.mock.calls[0]![0].data.date).toBe(date);
+  });
+});

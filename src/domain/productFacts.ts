@@ -87,6 +87,11 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
         why: "So Blipko can tell whether it is actually making things clearer.",
       },
       {
+        name: "Balance check",
+        what: "Send your real balance; Blipko compares it with what you logged since last time and shows what isn't accounted for, with one tap to log it.",
+        why: "Unlogged small spends are the usual reason the bank balance surprises you.",
+      },
+      {
         name: "Recurring income and expenses",
         what: 'Set up repeating items once — "rent 8000 on 1st every month" — and they post themselves each cycle.',
         why: "Rent, salary, EMIs and subscriptions are the predictable bulk of a month; logging them by hand is the boring part.",
@@ -126,6 +131,10 @@ export function buildProductFacts(dashboardUrl: string): ProductFacts {
       {
         command: "/report",
         what: "This cycle's summary and top spends.",
+      },
+      {
+        command: "/balance",
+        what: 'Send "balance 12400" with your total balance (bank + UPI + cash); Blipko checks it against what you logged since the last one. "/balance" alone shows what it should be now.',
       },
       {
         command: "/recurring",

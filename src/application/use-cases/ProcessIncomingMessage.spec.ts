@@ -574,6 +574,46 @@ describe("ProcessIncomingMessage (budget flow)", () => {
     expect(out.toast).toBe("Thanks — noted 🙏");
   });
 
+  it("saves a stated balance before any AI parsing", async () => {
+    userRepository.update = vi.fn().mockResolvedValue({});
+    const pendingActionRepository = {
+      create: vi.fn(),
+      findLiveForUser: vi.fn(),
+      findLiveByKindForUser: vi.fn().mockResolvedValue(null),
+      consume: vi.fn(),
+    };
+    const withPending = new ProcessIncomingMessageUseCase(
+      aiParser,
+      userRepository,
+      expenseRepository,
+      categoryRepository,
+      budgetConfigRepository,
+      parseLogRepository,
+      incomeRepository,
+      incomeCategoryRepository,
+      recurringRuleRepository,
+      boxRepository,
+      conversationRepository,
+      messageService,
+      queryAgent,
+      async (fn: any) => fn({}),
+      "https://blipko.lol",
+      null,
+      pendingActionRepository,
+    );
+
+    await withPending.execute({
+      platformUserId: "123",
+      textMessage: "balance 12,400",
+    });
+
+    expect(userRepository.update).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({ balanceAnchor: 12400 }),
+    );
+    expect(aiParser.parseText).not.toHaveBeenCalled();
+  });
+
   describe("remembered phrases", () => {
     let categoryMemoryRepository: any;
     let memoUseCase: ProcessIncomingMessageUseCase;
