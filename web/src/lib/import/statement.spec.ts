@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { parseCsv } from "./csv";
 import {
   detectColumns,
+  markDuplicates,
   parseAmount,
   parseStatementDate,
   payeeFromNarration,
@@ -331,5 +332,70 @@ describe("bank fixtures", () => {
         cash: false,
       },
     ]);
+  });
+});
+
+describe("markDuplicates", () => {
+  const t = (
+    date: string,
+    amount: number,
+    kind: "DEBIT" | "CREDIT" = "DEBIT",
+  ) => ({ date, amount, kind, narration: "", payee: "", cash: false }) as const;
+
+  it("lets each logged row absorb only one statement row", () => {
+    expect(
+      markDuplicates(
+        [t("2026-11-01", 20), t("2026-11-01", 20)],
+        [{ date: "2026-11-01", amount: 20, kind: "DEBIT" }],
+      ),
+    ).toEqual([true, false]);
+  });
+
+  // Bot-logged at 11:50 pm, posted by the bank the next morning.
+  it("matches across a one-day gap but not two", () => {
+    const logged = [
+      { date: "2026-11-01", amount: 250, kind: "DEBIT" as const },
+    ];
+    expect(markDuplicates([t("2026-11-02", 250)], logged)).toEqual([true]);
+    expect(markDuplicates([t("2026-11-03", 250)], logged)).toEqual([false]);
+  });
+
+  // Logged chai on the 1st; the statement has a ₹20 on the 2nd (listed first)
+  // and on the 1st. The 1st is the one already logged.
+  it("prefers a same-day match before reaching across a day", () => {
+    expect(
+      markDuplicates(
+        [t("2026-11-02", 20), t("2026-11-01", 20)],
+        [{ date: "2026-11-01", amount: 20, kind: "DEBIT" }],
+      ),
+    ).toEqual([false, true]);
+  });
+
+  it("never matches an expense against income", () => {
+    expect(
+      markDuplicates(
+        [t("2026-11-01", 500, "CREDIT")],
+        [{ date: "2026-11-01", amount: 500, kind: "DEBIT" }],
+      ),
+    ).toEqual([false]);
+  });
+
+  it("matches to the paisa", () => {
+    expect(
+      markDuplicates(
+        [t("2026-11-01", 1240.5)],
+        [{ date: "2026-11-01", amount: 1240, kind: "DEBIT" }],
+      ),
+    ).toEqual([false]);
+  });
+
+  it("flags a whole re-imported file", () => {
+    const { txns } = importFixture("hdfc.csv");
+    const logged = txns.map(({ date, amount, kind }) => ({
+      date,
+      amount,
+      kind,
+    }));
+    expect(markDuplicates(txns, logged).every(Boolean)).toBe(true);
   });
 });

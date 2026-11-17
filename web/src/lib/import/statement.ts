@@ -236,3 +236,43 @@ export function toTransactions(
   }
   return { txns, skipped };
 }
+
+export interface LoggedRow {
+  date: string; // YYYY-MM-DD in the user's timezone
+  amount: number;
+  kind: StatementTxn["kind"];
+}
+
+const dayNumber = (ymd: string) => Date.parse(`${ymd}T00:00:00Z`) / 86_400_000;
+
+// Which statement rows are probably already logged: same kind, same amount to
+// the paisa, dates at most a day apart. One-to-one — each logged row absorbs
+// one statement row, so two ₹20 chais against one logged ₹20 leaves one new.
+// Payee is deliberately not compared: the bot has "lunch 250" where the bank
+// says "Swiggy", and missing that match would count the money twice. Same-day
+// matches are claimed first so a ±1 match can't steal another row's partner.
+export function markDuplicates(
+  txns: Pick<StatementTxn, "date" | "amount" | "kind">[],
+  logged: LoggedRow[],
+): boolean[] {
+  const used = new Array<boolean>(logged.length).fill(false);
+  const dup = new Array<boolean>(txns.length).fill(false);
+  for (const window of [0, 1]) {
+    txns.forEach((t, i) => {
+      if (dup[i]) return;
+      const day = dayNumber(t.date);
+      const j = logged.findIndex(
+        (l, k) =>
+          !used[k] &&
+          l.kind === t.kind &&
+          Math.round(l.amount * 100) === Math.round(t.amount * 100) &&
+          Math.abs(dayNumber(l.date) - day) <= window,
+      );
+      if (j >= 0) {
+        used[j] = true;
+        dup[i] = true;
+      }
+    });
+  }
+  return dup;
+}
