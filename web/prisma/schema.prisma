@@ -19,6 +19,7 @@ enum Bucket {
 enum ExpenseSource {
   TEXT
   VOICE
+  IMPORT // bank statement upload on the dashboard
 }
 
 // Proactive budget nudges. WARN_* / OVER are once per bucket per cycle;

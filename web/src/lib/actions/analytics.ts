@@ -1085,7 +1085,7 @@ export async function getHabitAnalytics(
 
   const expenses = await prisma.expense.findMany({
     where: { userId: ctx.userId, isDeleted: false, date: { gte, lt } },
-    select: { amount: true, date: true, bucket: true },
+    select: { amount: true, date: true, bucket: true, source: true },
   });
 
   const rows: WeekdayRow[] = WEEKDAYS.map((weekday, weekdayIndex) => ({
@@ -1111,7 +1111,11 @@ export async function getHabitAnalytics(
     row.total += amount;
     row.txnCount += 1;
     row[e.bucket] += amount;
-    hourTotals[zonedHour(e.date, ctx.timezone)]! += amount;
+    // Imported statement rows carry a date but no time (stored at noon), so
+    // they would pile onto 12:00.
+    if (e.source !== "IMPORT") {
+      hourTotals[zonedHour(e.date, ctx.timezone)]! += amount;
+    }
   }
 
   for (const row of rows) {
