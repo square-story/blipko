@@ -50,3 +50,33 @@ describe("mergeTelegramUser clarity scores", () => {
     );
   });
 });
+
+describe("mergeTelegramUser balance anchor", () => {
+  const tx = (botUser: unknown): any => ({
+    expense: model(),
+    income: model(),
+    recurringRule: model(),
+    parseLog: model(),
+    conversationMessage: model(),
+    budgetNudge: model(),
+    category: model(),
+    budgetConfig: model(),
+    clarityScore: model(),
+    user: model({ findUnique: vi.fn().mockResolvedValue(botUser) }),
+  });
+
+  // The anchor is the bot user's last stated balance; dropping it would make
+  // the next "balance 9000" a silent first anchor instead of a check.
+  it("carries the bot user's balance anchor to the web user", async () => {
+    const at = new Date("2026-11-10T06:30:00Z");
+    const t = tx({ balanceAnchor: "12400.00", balanceAnchorAt: at });
+    await mergeTelegramUser(t, "bot", "web", "tg1");
+    const profile = t.user.update.mock.calls.find(
+      (c: any) => c[0].where.id === "web" && "payday" in c[0].data,
+    );
+    expect(profile[0].data).toMatchObject({
+      balanceAnchor: "12400.00",
+      balanceAnchorAt: at,
+    });
+  });
+});

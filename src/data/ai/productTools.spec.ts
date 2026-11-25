@@ -50,6 +50,23 @@ describe("product knowledge tools", () => {
     expect(names).toContain("open_dashboard");
   });
 
+  it("offers the expected-balance read without letting it claim the bank's figure", async () => {
+    const tool = buildToolCatalog([], false).find(
+      (t) => t.name === "get_expected_balance",
+    );
+    expect(tool?.description).toMatch(/never knows the real bank balance/i);
+    const getExpectedBalance = vi
+      .fn()
+      .mockResolvedValue({ expectedNow: "₹9,550" });
+    const res = await runAssistantTool(
+      { ...ctx, tools: { getExpectedBalance } as never },
+      "get_expected_balance",
+      {},
+    );
+    expect(getExpectedBalance).toHaveBeenCalledWith("u1");
+    expect(res).toEqual({ ok: true, expectedNow: "₹9,550" });
+  });
+
   describe("get_product_info", () => {
     it("returns an overview with no topic", async () => {
       const res: any = await runAssistantTool(ctx, "get_product_info", {});

@@ -22,6 +22,7 @@ import {
   unusualCategories,
 } from "./cycleInsights";
 import { INudgeRepository } from "../../domain/repositories/INudgeRepository";
+import { UNTRACKED_CATEGORY } from "./carryFlow";
 
 const DEFAULT_TZ = "Asia/Kolkata";
 
@@ -275,6 +276,12 @@ export async function buildCycleReport(
           `${sanitizeMd(u.name)} ${formatMoney(u.total)} (usually ${formatMoney(u.usual)})`,
       )
       .join(" · ")}`;
+  }
+  const untracked = (cats[0] ?? []).find(
+    (c) => c.name === UNTRACKED_CATEGORY,
+  )?.total;
+  if (untracked && untracked > 0) {
+    text += `\n\nFound by balance checks: ${formatMoney(untracked)} you hadn't logged.`;
   }
   const action = nextCycleAction({ unusual, buckets: endedBuckets, cycleDays });
   text += `\n\n${action.text}`;

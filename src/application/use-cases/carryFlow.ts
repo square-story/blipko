@@ -1,4 +1,4 @@
-import { Box, User } from "@prisma/client";
+import { Box, Bucket, User } from "@prisma/client";
 import { ICategoryRepository } from "../../domain/repositories/ICategoryRepository";
 import { IExpenseRepository } from "../../domain/repositories/IExpenseRepository";
 import { IIncomeRepository } from "../../domain/repositories/IIncomeRepository";
@@ -39,32 +39,39 @@ export interface CarryFlowDeps {
   boxRepository: IBoxRepository;
 }
 
+// The leaf "Untracked" money found by a balance check is filed under.
+export const UNTRACKED_CATEGORY = "Untracked";
+
 // Reuse the user's own leaf if they already have one, otherwise make it. Named
 // lookup rather than a seeded system row because system categories are only
-// cloned into a user's taxonomy during onboarding, and this one appears later.
-async function carryExpenseCategoryId(
+// cloned into a user's taxonomy during onboarding, and these appear later.
+export async function ensureNamedCategory(
   categoryRepository: ICategoryRepository,
   userId: string,
-): Promise<string | undefined> {
-  const existing = await categoryRepository.findByNameForUser(
-    userId,
-    CARRY_EXPENSE_CATEGORY,
-  );
+  name: string,
+  bucket: Bucket,
+): Promise<string> {
+  const existing = await categoryRepository.findByNameForUser(userId, name);
   // Reserved name, so accept an EXACT hit only. findByNameForUser also matches
   // on a loosened key, and a box-linked row keying to "carried forward" would
   // trip the double-post described above.
-  if (
-    existing &&
-    existing.name.toLowerCase() === CARRY_EXPENSE_CATEGORY.toLowerCase()
-  ) {
+  if (existing && existing.name.toLowerCase() === name.toLowerCase()) {
     return existing.id;
   }
-  const created = await categoryRepository.create({
-    userId,
-    name: CARRY_EXPENSE_CATEGORY,
-    bucket: "SAVINGS",
-  });
+  const created = await categoryRepository.create({ userId, name, bucket });
   return created.id;
+}
+
+function carryExpenseCategoryId(
+  categoryRepository: ICategoryRepository,
+  userId: string,
+): Promise<string | undefined> {
+  return ensureNamedCategory(
+    categoryRepository,
+    userId,
+    CARRY_EXPENSE_CATEGORY,
+    "SAVINGS",
+  );
 }
 
 // Carried money is filed as a SAVINGS expense: it leaves the spendable pool and
